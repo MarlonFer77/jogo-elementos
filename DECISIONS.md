@@ -766,3 +766,67 @@ Flutter rodando localmente **sem nenhum backend local no ar** — criei
 uma partida pela tela, confirmei via `curl` que ela existia no Render,
 "beto" entrou via `curl`, e a tela da "ana" pegou a mudança sozinha via
 polling, sem eu recarregar nada.
+
+## DECISION-029
+Data: 2026-09-04
+Decisão: primeiro APK Android de verdade, publicado como GitHub Release
+(`v0.1.0`) — pedido explícito do usuário: "quero que continue até
+termos um apk pra baixar e poder jogar eu e meu amigo de forma
+tranquila".
+Passos: `flutter create --platforms=android .` gerou `app/android/`
+(nunca tinha sido criado — só web/windows existiam, DECISION-010).
+`AndroidManifest.xml` ganhou `<uses-permission
+android:name="android.permission.INTERNET"/>`, que o template não inclui
+por padrão — sem isso o Multiplayer falharia silenciosamente em
+dispositivo Android (rede bloqueada pelo próprio Android). Toolchain do
+Android instalada nesta máquina: command-line tools do Android SDK
+(baixadas direto do Google, sem depender do pacote `android-sdk` do
+Chocolatey, marcado como "possibly broken"), plataformas/build-tools
+`35`/`36`/`28.0.3` (as versões que o Flutter atual pediu), licenças
+aceitas.
+Problema real encontrado: `flutter build apk --release` local falha com
+`java.io.IOException: Unable to establish loopback connection` — a
+*mesma* limitação de rede da JVM que já tinha impedido o emulador do
+Firestore de rodar (DECISION-015), agora atingindo a conexão entre o
+processo Flutter e o daemon/Tooling API do Gradle. As mesmas mitigações
+tentadas na DECISION-015 (`-Djava.net.preferIPv4Stack=true`, desabilitar
+o daemon do Gradle, rodar sem sandbox) não resolveram — falha em ~3ms,
+antes de qualquer trabalho de rede de verdade começar, confirmando que
+não é algo contornável por configuração.
+Solução: compilar via GitHub Actions em vez de localmente. Novo
+`.github/workflows/build-apk.yml` (`workflow_dispatch`, runner
+`ubuntu-latest`, sem essa limitação) — `flutter pub get` +
+`flutter build apk --release` + upload do artefato. Precisei que o
+usuário autorizasse o escopo `workflow` pro `gh` CLI via
+`gh auth refresh -s workflow` (fluxo de autorização por dispositivo no
+navegador — só ele podia completar isso). Depois de rodar o workflow
+(`gh workflow run` + `gh run watch`) e confirmar sucesso, baixei o
+artefato (`gh run download`) e publiquei como asset de uma GitHub
+Release (`gh release create v0.1.0 ...`) — não bastava mandar o arquivo
+só pro usuário: o link também precisa alcançar o amigo dele, que não
+está nesta conversa, então um link de download direto (funciona de
+qualquer navegador, inclusive no Android) é a forma certa de entregar
+isso, não o chat.
+Motivo: pedido explícito do usuário, sequência direta do deploy do
+backend (DECISION-028) — sem um APK, "jogar de forma tranquila" ainda
+significava alguém rodar `flutter run` numa máquina de desenvolvedor.
+Consequência (lacuna conhecida, não esquecida): o build usa a chave de
+assinatura de **debug** (`signingConfig = signingConfigs.getByName
+("debug")` já vinha assim no template gerado) — funciona pra instalar
+direto num aparelho ("sideload", com "fontes desconhecidas" habilitado),
+mas não é uma chave de release de verdade nem serve pra publicar numa
+loja. Sem atualização automática — uma nova versão do jogo exige gerar
+e publicar um APK novo manualmente (não há checagem de versão no app
+nem CI disparando sozinho em cada push ainda, só `workflow_dispatch`
+manual). iOS continua fora de alcance (precisa de um Mac). O
+`gradle.properties` local ganhou `org.gradle.daemon=false` e
+`-Djava.net.preferIPv4Stack=true` das tentativas de mitigação — inofensivo
+mantê-los (não atrapalham o build no CI), mas não resolveram o problema
+local.
+Testes: nenhum teste novo (mudança de infraestrutura/build, não de
+lógica) — os 52 testes do app continuam verdes. Verificado de ponta a
+ponta de verdade: o workflow rodou no GitHub Actions e terminou com
+todos os passos verdes (`✓ flutter build apk --release`), o artefato
+baixado tinha o tamanho esperado (~48MB), e o link de download da
+Release respondeu com `Content-Type:
+application/vnd.android.package-archive` e o `Content-Length` correto.

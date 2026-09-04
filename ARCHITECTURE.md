@@ -221,9 +221,27 @@ passa pelo Game Domain (`app/lib/game_domain/`), mesmo quando o wrapper é fino.
   `app-web` (`flutter run -d web-server --web-port 5000` a partir de
   `game/app`) e `backend-dev` (`npm run dev` a partir de `game/backend`,
   porta 3000) — pra pré-visualizar o app e o backend juntos no navegador.
-  O Multiplayer só funciona de verdade com os dois rodando ao mesmo tempo.
+  O Multiplayer local (contra o backend rodando na máquina, em vez do
+  Render) só funciona de verdade com os dois rodando ao mesmo tempo.
 - Dependências: `flame` (open source), `http` (open source, cliente HTTP
   usado só pelo Multiplayer) — ambas via `flutter pub add`.
+- **Plataformas com toolchain nesta máquina**: web, Windows (desktop) e
+  **Android** (`app/android/`, gerado via `flutter create
+  --platforms=android .` — ver DECISION-029; ganhou
+  `<uses-permission android:name="android.permission.INTERNET"/>` no
+  `AndroidManifest.xml`, que o template não inclui por padrão e o
+  Multiplayer precisa). iOS fica de fora — precisa de um Mac. `flutter
+  build apk` **não roda localmente** nesta máquina (mesma limitação de
+  rede da JVM da DECISION-015 — "Unable to establish loopback
+  connection", agora no Gradle) — compila só via
+  `.github/workflows/build-apk.yml` (GitHub Actions, `workflow_dispatch`,
+  runner `ubuntu-latest`), disparado com `gh workflow run build-apk.yml`
+  e baixado com `gh run download`. O APK usa a assinatura de **debug**
+  (suficiente pra instalar direto num aparelho, não pra publicar numa
+  loja) e é distribuído como asset de uma GitHub Release
+  (`github.com/MarlonFer77/jogo-elementos/releases`) — não só enviado
+  pelo chat, porque o link precisa alcançar quem for jogar também, não
+  só quem está desenvolvendo.
 
 ## Battle Engine (packages/battle_engine)
 

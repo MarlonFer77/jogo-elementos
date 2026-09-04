@@ -41,7 +41,10 @@ uma tarefa nova terminar revelando um gap novo.
 - `BattleScreen`/`DemoBattle` ainda é só a demo fixa do Flame, não jogo real
 - Sistema de build do Modo Treino simplificado (um slot só, tudo
   desbloqueado se aplica sempre — DECISION-018)
-- Sem Android/iOS — só web/windows têm toolchain nesta máquina (DECISION-010)
+- Sem iOS — precisa de um Mac, indisponível (DECISION-010). Android agora
+  tem APK de verdade (ver DECISION-029), mas só compila via GitHub
+  Actions — o Gradle não roda localmente nesta máquina (mesma limitação
+  de rede da JVM da DECISION-015)
 
 **Multiplayer (cliente)**
 - A modal de Habilidades não escuta o polling por trás — se a vez mudar
@@ -55,11 +58,16 @@ uma tarefa nova terminar revelando um gap novo.
   `default_combinations.dart` ganhar uma combinação nova
 
 **Produção / deploy**
-- Backend implantado no Render (free tier) — ver DECISION-028. Ainda
-  faltam: o app Flutter em si não está implantado em lugar nenhum (só
-  roda localmente, `flutter run -d web-server`); Firebase continua só
+- Backend implantado no Render (free tier) — ver DECISION-028. APK
+  Android distribuído via GitHub Release (ver DECISION-029) — compilado
+  via GitHub Actions, não localmente (Gradle não roda nesta máquina).
+  Ainda faltam: versão web do app não está implantada em lugar nenhum
+  (só roda localmente, `flutter run -d web-server`); Firebase continua só
   local (emulador); free tier do Render hiberna após ~15min sem uso
-  (primeira requisição depois disso demora mais, "cold start")
+  (primeira requisição depois disso demora mais, "cold start"); APK sem
+  assinatura de release de verdade (usa a chave de debug — suficiente
+  pra instalar direto, não pra publicar numa loja); sem atualização
+  automática — uma nova versão do jogo exige gerar e reenviar um APK novo
 
 # DONE
 
@@ -339,6 +347,20 @@ uma tarefa nova terminar revelando um gap novo.
   direto (criar/entrar/jogar com dano correto) e o app rodando localmente
   **sem nenhum backend local no ar** — criei partida pela tela, "beto"
   entrou via `curl`, a tela da "ana" pegou a mudança sozinha via polling
+- APK Android de verdade: gerado `app/android/` (`flutter create
+  --platforms=android .`), `AndroidManifest.xml` ganhou a permissão de
+  INTERNET (faltava, o Multiplayer não funcionaria sem ela). Build local
+  (`flutter build apk`) esbarra na mesma limitação de rede da JVM da
+  DECISION-015 ("Unable to establish loopback connection", agora no
+  Gradle) — contornado compilando via GitHub Actions
+  (`.github/workflows/build-apk.yml`, `workflow_dispatch`, runner
+  `ubuntu-latest`). APK publicado como asset de uma GitHub Release
+  (`v0.1.0`) pra dar um link de download direto, já que o arquivo
+  (48MB) passa do limite de anexo do chat e o amigo também precisa
+  baixá-lo (não só o usuário). Ver DECISION-029. Verificado: build real
+  no Actions terminou verde, `curl` no link de download confirmou
+  `Content-Type: application/vnd.android.package-archive` e tamanho
+  correto
 
 # BLOCKED
 
