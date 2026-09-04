@@ -1,0 +1,23 @@
+# Node.js
+node_modules/
+npm-debug.log*
+
+# Dart/Flutter
+.dart_tool/
+.packages
+build/
+*.iml
+
+# Flutter web/desktop build artifacts already covered by build/ above
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env files that might carry secrets
+.env
+.env.*

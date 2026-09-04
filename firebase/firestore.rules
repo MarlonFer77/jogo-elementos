@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// Padrão seguro: nega tudo. Ainda não existe modelo de dados nem estratégia
+// de autenticação definidos (ver ARCHITECTURE.md) — regras específicas
+// chegam junto com o schema real (Multiplayer / persistência de partida).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

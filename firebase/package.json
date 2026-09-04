@@ -1,0 +1,13 @@
+{
+  "name": "firebase",
+  "version": "1.0.0",
+  "description": "Configuração e ferramentas do Firebase (free tier). Sem dependências de runtime — só firebase-tools para os emuladores locais.",
+  "private": true,
+  "scripts": {
+    "emulators": "firebase emulators:start --project demo-jogo-elementos",
+    "emulators:ci": "firebase emulators:exec --project demo-jogo-elementos \"echo emulators started ok\""
+  },
+  "devDependencies": {
+    "firebase-tools": "^15.29.0"
+  }
+}
