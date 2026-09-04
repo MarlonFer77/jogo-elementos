@@ -705,3 +705,64 @@ aplicados: Escudo" e "Jogador A: Escudo" apareceram (no jogador certo,
 não no oponente) — joguei Fogo+Vento no outro jogador contra ele: "Última
 combinação: Tempestade Ígnea" disparou mas o HP do jogador guardado ficou
 em 100/100 e o Escudo sumiu (bloqueado e consumido).
+
+## DECISION-028
+Data: 2026-09-04
+Decisão: backend implantado de verdade no Render (free tier), fechando o
+maior item do BACKLOG de "Produção/deploy" — até aqui só rodava com
+`npm run dev` na máquina de quem estivesse desenvolvendo, então dois
+amigos em dispositivos diferentes nunca conseguiam jogar entre si de
+verdade, mesmo com todo o resto (dano/HP/Escudo/Skill Tree/Multiplayer)
+já funcionando.
+Passos: `tsx` (rodava o TypeScript direto, sem etapa de build) estava em
+`devDependencies` no `backend/package.json` — corrigido pra
+`dependencies`, já que é preciso em runtime, não só em dev (`npm install`
+em produção não instala devDependencies). Projeto inteiro virou um
+repositório git pela primeira vez (`git init`, `.gitignore` cobrindo
+`node_modules`/`build`/`.dart_tool`/etc.) e foi publicado no GitHub via
+`gh repo create` (conta já autenticada na máquina, escopo `repo`) —
+revisei a lista de arquivos staged antes de commitar, nada sensível.
+Serviço `jogo-elementos-backend` criado no Render (plano `free`
+explicitamente, runtime Node, `buildCommand: cd backend && npm install`,
+`startCommand: cd backend && npm start`, região Virginia — mais perto do
+Brasil que as outras opções disponíveis: Oregon/Frankfurt/Singapore/Ohio)
+via MCP, apontando pro repositório GitHub. `defaultMultiplayerBaseUrl` no
+app Flutter passou a apontar pra URL do Render em vez de `localhost:3000`
+— telas que precisam do backend local pra desenvolver já aceitam um
+`MultiplayerClient` com `baseUrl` customizado.
+Decisão adjacente, não planejada: a integração nativa Render↔GitHub App
+deu erro do lado do Render ao tentar conceder acesso a um repositório
+novo (reproduzido pelo usuário, não algo que eu pudesse contornar sozinho
+— pedir a instalação/permissão do GitHub App é uma ação que só o usuário
+pode autorizar). Com a integração quebrada, o Render oferece repositório
+público como alternativa direta (sem precisar do App instalado) — perguntei
+explicitamente ao usuário antes de tornar o repositório público (`gh repo
+edit --visibility public`), ele confirmou. `jogo-elementos` no GitHub é
+público desde então — é só código do jogo, sem segredos (chave nenhuma,
+`.env` nenhum; conferido antes do commit inicial).
+Motivo: pedido explícito do usuário — "utilize o Render, ele está
+conectado com o Claude" — depois de eu ter respondido honestamente que o
+jogo não estava "pronto" justamente por nada estar implantado.
+Consequência (lacuna conhecida, não esquecida): o **app Flutter em si**
+continua sem estar implantado em lugar nenhum — só o backend. Pra dois
+amigos jogarem de verdade hoje, alguém ainda precisa rodar
+`flutter run -d web-server` localmente (apontando pro backend do Render,
+que já é o default). Publicar o app em algum lugar (Firebase Hosting,
+Render Static Site, GitHub Pages) é o próximo passo pra isso não depender
+de rodar nada localmente. `MatchStore` continua em memória — reiniciar o
+serviço no Render (redeploy, ou o free tier hibernando e sendo reativado)
+não derruba partidas em andamento (hibernação não reinicia o processo,
+só pausa), mas um redeploy de verdade (novo commit) sim. CORS continua
+`Access-Control-Allow-Origin: *` (DECISION-021) — agora com uma origem de
+produção de verdade, vale reavaliar restringir isso no futuro. Repositório
+GitHub é público — qualquer pessoa pode ver o código-fonte (aceito
+explicitamente pelo usuário).
+Testes: nenhum teste novo (mudança de infraestrutura, não de lógica) —
+`npm test`/`npm run typecheck` do backend continuam verdes depois da
+mudança em `package.json` (123 testes). Verificado de ponta a ponta de
+verdade contra o serviço real no Render: `curl` direto (`/health`, criar/
+entrar/jogar uma partida com dano correto) e, principal prova, o app
+Flutter rodando localmente **sem nenhum backend local no ar** — criei
+uma partida pela tela, confirmei via `curl` que ela existia no Render,
+"beto" entrou via `curl`, e a tela da "ana" pegou a mudança sozinha via
+polling, sem eu recarregar nada.

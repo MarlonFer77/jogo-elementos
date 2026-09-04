@@ -55,9 +55,11 @@ uma tarefa nova terminar revelando um gap novo.
   `default_combinations.dart` ganhar uma combinação nova
 
 **Produção / deploy**
-- Nada implantado em lugar nenhum — backend só roda local (`npm run dev`),
-  Firebase só local (emulador); sem isso o Multiplayer só funciona com os
-  dois lados na mesma máquina
+- Backend implantado no Render (free tier) — ver DECISION-028. Ainda
+  faltam: o app Flutter em si não está implantado em lugar nenhum (só
+  roda localmente, `flutter run -d web-server`); Firebase continua só
+  local (emulador); free tier do Render hiberna após ~15min sem uso
+  (primeira requisição depois disso demora mais, "cold start")
 
 # DONE
 
@@ -324,6 +326,19 @@ uma tarefa nova terminar revelando um gap novo.
   elemento ("Jogador A: Escudo" apareceu no jogador certo), o outro
   jogador disparou Tempestade Ígnea contra ele — HP ficou intacto em
   100/100 e o Escudo foi consumido
+- Backend implantado no Render (free tier): `tsx` movido de
+  `devDependencies` pra `dependencies` (precisa em runtime, não só em
+  dev). Projeto virou repositório git pela primeira vez, publicado no
+  GitHub (`github.com/MarlonFer77/jogo-elementos`, público — a integração
+  Render↔GitHub App deu erro tentando conceder acesso a um repo privado
+  novo, então usei repositório público como alternativa, confirmado com o
+  usuário antes). Serviço `jogo-elementos-backend` criado no Render
+  (plano free, região Virginia) via MCP. App Flutter passou a apontar
+  `defaultMultiplayerBaseUrl` pro Render em vez de `localhost:3000`. Ver
+  DECISION-028. Verificado de ponta a ponta contra o serviço real: `curl`
+  direto (criar/entrar/jogar com dano correto) e o app rodando localmente
+  **sem nenhum backend local no ar** — criei partida pela tela, "beto"
+  entrou via `curl`, a tela da "ana" pegou a mudança sozinha via polling
 
 # BLOCKED
 

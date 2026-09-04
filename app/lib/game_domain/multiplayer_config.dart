@@ -1,5 +1,10 @@
-/// Backend base URL for the Multiplayer client. `localhost:3000` is where
-/// `npm run dev` serves it (see backend/package.json, .claude/launch.json)
-/// — there's no deployed backend yet (ver ARCHITECTURE.md), so this only
-/// works with the backend running locally alongside the app.
-const defaultMultiplayerBaseUrl = 'http://localhost:3000';
+/// Backend base URL for the Multiplayer client. Points at the real
+/// deployed backend (Render, free tier — ver DECISION-028) so Multiplayer
+/// works without anyone running `npm run dev` locally. Free tier spins
+/// down after ~15min idle — the first request after that takes longer
+/// (cold start) while it wakes back up.
+///
+/// For local backend development, pass a `MultiplayerClient` pointing at
+/// `http://localhost:3000` explicitly instead of relying on this default
+/// (every screen that takes one already accepts an override).
+const defaultMultiplayerBaseUrl = 'https://jogo-elementos-backend.onrender.com';

@@ -125,9 +125,13 @@ passa pelo Game Domain (`app/lib/game_domain/`), mesmo quando o wrapper é fino.
   `package:http` injetável (testes usam `http/testing.dart`'s `MockClient`,
   sem servidor real). Resposta HTTP fora de 2xx vira `MultiplayerException`
   com a mensagem `error` do corpo.
-- `lib/game_domain/multiplayer_config.dart`: `defaultMultiplayerBaseUrl`
-  (`http://localhost:3000` — onde `npm run dev` serve o backend; não existe
-  backend implantado em lugar nenhum ainda).
+- `lib/game_domain/multiplayer_config.dart`: `defaultMultiplayerBaseUrl` —
+  aponta pro backend implantado de verdade no Render
+  (`https://jogo-elementos-backend.onrender.com`, free tier — ver
+  DECISION-028), não pro `localhost:3000` do `npm run dev`. Pra
+  desenvolver contra o backend local, passar um `MultiplayerClient` com
+  `baseUrl` explícito (toda tela que aceita um já suporta isso — mesmo
+  padrão do `initialMatch`/`client` opcional nas telas de Multiplayer).
 - `lib/game_domain/multiplayer_match.dart`: `MultiplayerMatch` — visão de
   uma partida a partir de um jogador (`localPlayerId`): `create`/`join`/
   `reconnect`/`refresh`/`playElementIds` chamam o `MultiplayerClient` e
@@ -635,6 +639,16 @@ GET  /matches/:id                      → estado completo da partida
   Fogo+Vento causou 20 de dano ("Campo: Tempestade Ígnea" exibido via
   `CombinationCatalog`) e a outra aba pegou a atualização sozinha, via
   polling, sem recarregar.
+- **Implantado de verdade**: backend rodando no Render
+  (`jogo-elementos-backend`, free tier, região Virginia) —
+  `https://jogo-elementos-backend.onrender.com`. O app já aponta pra lá
+  por padrão (`defaultMultiplayerBaseUrl`), então Multiplayer funciona sem
+  ninguém rodar `npm run dev`. Ver DECISION-028 pro código-fonte
+  (repositório GitHub público, só pra viabilizar o deploy — ver a
+  decisão), free tier e suas limitações (hiberna após ~15min ocioso).
+  O app Flutter em si **não** está implantado em lugar nenhum ainda — só
+  o backend; jogar de verdade com um amigo remoto ainda exige rodar o app
+  localmente (`flutter run`) apontando pro Render.
 
 ## Offline
 
