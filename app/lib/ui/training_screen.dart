@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../game_domain/attack_event.dart';
 import '../game_domain/battle_scene_view.dart';
 import '../game_domain/element_catalog.dart';
 import '../game_domain/training_match.dart';
@@ -25,6 +26,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
   late TrainingMatch _match = widget._initialMatch ?? TrainingMatch();
   final Set<String> _selectedIds = {};
   String? _error;
+  AttackEvent? _pendingAttack;
 
   void _toggleElement(String id) {
     setState(() {
@@ -39,9 +41,29 @@ class _TrainingScreenState extends State<TrainingScreen> {
   void _playTurn() {
     setState(() {
       _error = null;
+      final playedElementIds = _selectedIds.toList();
+      final wasPlayerATurn = _match.isPlayerATurn;
+      final hpABefore = _match.playerACurrentHp;
+      final hpBBefore = _match.playerBCurrentHp;
       try {
-        _match.playElementIds(_selectedIds.toList());
+        _match.playElementIds(playedElementIds);
         _selectedIds.clear();
+
+        final triggered = _match.lastTriggeredCombinationName != null;
+        final appliedStatus = _match.lastAppliedStatusNames;
+        if (triggered || appliedStatus.isNotEmpty) {
+          final damage = wasPlayerATurn
+              ? hpBBefore - _match.playerBCurrentHp
+              : hpABefore - _match.playerACurrentHp;
+          _pendingAttack = AttackEvent(
+            sequenceId: _match.turnsPlayed,
+            attackerIsLeft: wasPlayerATurn,
+            elementIds: playedElementIds,
+            comboName: _match.lastTriggeredCombinationName,
+            damage: damage,
+            appliedStatusNames: appliedStatus,
+          );
+        }
       } on ArgumentError {
         _error = 'Jogada inválida.';
       }
@@ -148,6 +170,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                 rightCurrentHp: _match.playerBCurrentHp,
                 rightMaxHp: _match.playerBMaxHp,
                 isLeftTurn: _match.isPlayerATurn,
+                lastAttack: _pendingAttack,
               ),
             ),
             const SizedBox(height: 16),
