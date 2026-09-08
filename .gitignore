@@ -24,3 +24,6 @@ Thumbs.db
 
 # Claude Code session-local state (not project source)
 .claude/scheduled_tasks.lock
+
+# Superpowers brainstorming companion (local mockups, not project source)
+.superpowers/
