@@ -43,6 +43,9 @@ class TrainingMatch {
 
   String? _lastTriggeredCombinationName;
   List<String> _lastAppliedStatusNames = [];
+  int _turnsPlayed = 0;
+
+  int get turnsPlayed => _turnsPlayed;
 
   String get currentTurnName => _state.currentTurn.name;
 
@@ -169,5 +172,6 @@ class TrainingMatch {
         result.triggeredCombination!,
       );
     }
+    _turnsPlayed++;
   }
 }

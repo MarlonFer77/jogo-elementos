@@ -152,12 +152,18 @@ Em `app/lib/game_domain/training_match.dart`, adicionar um campo e incrementá-l
   int get turnsPlayed => _turnsPlayed;
 ```
 
-(logo abaixo de `String? get lastTriggeredCombinationName => ...` ou em qualquer ponto entre os outros getters). Em `playElementIds`, como primeira linha do corpo do método:
+(logo abaixo de `String? get lastTriggeredCombinationName => ...` ou em qualquer ponto entre os outros getters). Em `playElementIds`, incrementar só no
+final do método (depois que tudo já teve sucesso — `elementIds` inválido
+lança `ArgumentError` mais cedo, antes desse ponto, e não deve contar como
+jogada):
 
 ```dart
-  void playElementIds(List<String> elementIds) {
+    if (result.triggeredCombination != null) {
+      _discoveryBook = _discoveryBook.withDiscovered(
+        result.triggeredCombination!,
+      );
+    }
     _turnsPlayed++;
-    final elements = elementIds
 ```
 
 - [ ] **Step 4: Rodar e confirmar que passa**

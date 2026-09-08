@@ -178,4 +178,15 @@ void main() {
     match.playElementIds(['ice']);
     expect(match.isPlayerATurn, isTrue);
   });
+
+  test('turnsPlayed counts successful plays regardless of damage', () {
+    final match = TrainingMatch();
+    expect(match.turnsPlayed, 0);
+
+    match.playElementIds(['fire']); // sem dano, ainda conta
+    expect(match.turnsPlayed, 1);
+
+    match.playElementIds(['wind']);
+    expect(match.turnsPlayed, 2);
+  });
 }
