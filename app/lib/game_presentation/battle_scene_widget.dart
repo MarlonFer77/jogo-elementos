@@ -2,13 +2,14 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
 import '../game_domain/battle_scene_view.dart';
+import 'battle_hud_widget.dart';
 import 'battle_scene_game.dart';
 
-/// Hospeda um [BattleSceneGame] numa área de altura fixa no topo de uma
-/// tela de batalha. O jogo é criado uma única vez por instância deste
-/// widget e recebe [view] via `updateView` a cada rebuild — não a cada
-/// frame do jogo, só quando a tela que o contém já ia re-renderizar de
-/// qualquer forma (nova jogada, poll do Multiplayer, etc.).
+/// Hospeda um [BattleSceneGame] (arena + personagens, Flame) com um
+/// [BattleHudWidget] (HP no topo, Flutter puro) sobreposto — numa área de
+/// altura fixa no topo de uma tela de batalha. O jogo é criado uma única
+/// vez por instância deste widget e recebe [view] via `updateView` a cada
+/// rebuild.
 class BattleSceneWidget extends StatefulWidget {
   const BattleSceneWidget({super.key, required this.view});
 
@@ -36,8 +37,18 @@ class _BattleSceneWidgetState extends State<BattleSceneWidget> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 220,
-      child: GameWidget(game: _game),
+      height: 260,
+      child: Stack(
+        children: [
+          Positioned.fill(child: GameWidget(game: _game)),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: BattleHudWidget(view: widget.view),
+          ),
+        ],
+      ),
     );
   }
 }
