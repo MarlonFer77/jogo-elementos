@@ -12,6 +12,8 @@ class BattleSceneView {
   final int rightMaxHp;
   final bool isLeftTurn;
   final AttackEvent? lastAttack;
+  final String leftLabel;
+  final String rightLabel;
 
   const BattleSceneView({
     required this.leftCurrentHp,
@@ -20,5 +22,7 @@ class BattleSceneView {
     required this.rightMaxHp,
     required this.isLeftTurn,
     this.lastAttack,
+    this.leftLabel = 'Esquerda',
+    this.rightLabel = 'Direita',
   });
 }

@@ -39,4 +39,24 @@ void main() {
     );
     expect(withAttack.lastAttack, same(event));
   });
+
+  test('leftLabel/rightLabel default to generic text and can be set', () {
+    const withoutLabels = BattleSceneView(
+      leftCurrentHp: 100, leftMaxHp: 100,
+      rightCurrentHp: 100, rightMaxHp: 100,
+      isLeftTurn: true,
+    );
+    expect(withoutLabels.leftLabel, 'Esquerda');
+    expect(withoutLabels.rightLabel, 'Direita');
+
+    const withLabels = BattleSceneView(
+      leftCurrentHp: 100, leftMaxHp: 100,
+      rightCurrentHp: 100, rightMaxHp: 100,
+      isLeftTurn: true,
+      leftLabel: 'Jogador A',
+      rightLabel: 'Jogador B',
+    );
+    expect(withLabels.leftLabel, 'Jogador A');
+    expect(withLabels.rightLabel, 'Jogador B');
+  });
 }
