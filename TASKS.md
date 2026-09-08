@@ -38,7 +38,6 @@ uma tarefa nova terminar revelando um gap novo.
 
 **App Flutter (app/)**
 - Livro de Descobertas sem tela própria (só o contador no Modo Treino)
-- `BattleScreen`/`DemoBattle` ainda é só a demo fixa do Flame, não jogo real
 - Sistema de build do Modo Treino simplificado (um slot só, tudo
   desbloqueado se aplica sempre — DECISION-018)
 - Sem iOS — precisa de um Mac, indisponível (DECISION-010). Android agora
@@ -56,6 +55,9 @@ uma tarefa nova terminar revelando um gap novo.
   backend
 - `CombinationCatalog` precisa sincronizar manualmente toda vez que
   `default_combinations.dart` ganhar uma combinação nova
+- Cena de batalha visual não mostra ícone de Escudo/Queimadura — o
+  Multiplayer não recebe estados ativos por jogador do backend hoje
+  (DECISION-030)
 
 **Produção / deploy**
 - Backend implantado no Render (free tier) — ver DECISION-028. APK
@@ -361,6 +363,9 @@ uma tarefa nova terminar revelando um gap novo.
   no Actions terminou verde, `curl` no link de download confirmou
   `Content-Type: application/vnd.android.package-archive` e tamanho
   correto
+- Cenário de batalha visual (Flame): fundo CC0 + dois personagens
+  genéricos por lado + flash/shake ao tomar dano, ligado ao Modo Treino e
+  ao Multiplayer, substituindo a demo Flame desconectada (DECISION-030)
 
 # BLOCKED
 

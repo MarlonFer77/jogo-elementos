@@ -830,3 +830,48 @@ todos os passos verdes (`✓ flutter build apk --release`), o artefato
 baixado tinha o tamanho esperado (~48MB), e o link de download da
 Release respondeu com `Content-Type:
 application/vnd.android.package-archive` e o `Content-Length` correto.
+
+## DECISION-030
+Data: 2026-09-08
+Decisão: cenário de batalha visual (Flame) ligado a `TrainingScreen` e
+`MultiplayerBattleScreen` — pedido do usuário depois de testar o APK e
+sentir falta de um campo de batalha/personagens.
+Passos: novo `BattleSceneView` (Game Domain, dado puro) montado por cada
+tela a partir do que já expõe (HP/vez) — nenhuma mudança em
+`TrainingMatch`/`MultiplayerMatch` além de um getter (`isPlayerATurn`).
+Novo `BattleSceneGame` (Flame) renderiza um fundo estático mais dois
+`BattleCharacterComponent` — personagens genéricos desenhados em código
+(sem sprite), diferenciados só por lado/cor — com barra de HP, indicador
+de vez, e um flash+shake local (contagem regressiva em `update(dt)`, sem
+o sistema `Effect` do Flame, que exigiria o mixin `HasPaint`) quando o HP
+de um lado cai. `BattleSceneWidget` hospeda o `GameWidget` numa área fixa
+no topo de cada tela — o resto do layout (HP em texto, chips, botões)
+continua exatamente como era. A demo Flame desconectada anterior
+(`BattleView`/`BattleGame`/`BattleScreen`/`DemoBattle`, nunca ligada a uma
+partida real) foi removida.
+Fundo: imagem CC0 "Meadow background" de `bart`, OpenGameArt.org
+(https://opengameart.org/content/meadow-background) — domínio público,
+sem exigência de atribuição, 89.7 KB.
+Detalhe encontrado durante a implementação: a cena de 220px estourava a
+altura do `Column` das duas telas em telas menores (overflow de layout,
+e os botões perto do fim do formulário ficavam fora da área tocável nos
+testes de widget). Corrigido trocando o `Padding` do `body` por um
+`SingleChildScrollView` nas duas telas — nenhuma outra mudança de layout.
+Motivo: pedido explícito do usuário; abordagem híbrida (fundo pronto CC0 +
+personagens em código) escolhida em vez de um asset pack completo para
+evitar depender de achar sprites genéricos para "dois lados" e para não
+correr risco de licença nos personagens.
+Consequência (lacuna conhecida, não esquecida): sem ícones de status
+(Escudo/Queimadura) sobre o personagem — `RemoteBattleState` do
+Multiplayer não expõe estados ativos por jogador hoje; adicionar isso é
+mudança de contrato do backend, fora desta tarefa. Sem sprites por
+elemento/combinação, sem animação de movimento. O APK existente
+(DECISION-029) não inclui essa mudança — gerar um novo é ação separada.
+Testes: suíte completa do app (`flutter test`, 61 testes) e `flutter
+analyze` passando depois da mudança. Verificado de ponta a ponta de
+verdade via `flutter run -d web-server`: cena renderizando fundo + dois
+personagens com HP/vez corretos no Modo Treino (jogada de Fogo+Vento
+reduziu o HP do oponente e a barra encolheu visivelmente) e no
+Multiplayer (duas abas de navegador, `ana` criando a partida e `beto`
+entrando com o código — lado esquerdo/direito e indicador de vez
+corretos nos dois lados).
