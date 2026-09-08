@@ -6,11 +6,13 @@ class CombinationOption {
   final String id;
   final String name;
   final String description;
+  final List<String> elementIds;
 
   const CombinationOption({
     required this.id,
     required this.name,
     required this.description,
+    required this.elementIds,
   });
 }
 
@@ -29,6 +31,7 @@ class CombinationCatalog {
           id: combination.resultId,
           name: combination.resultName,
           description: combination.description,
+          elementIds: combination.elements.map((e) => e.id).toList(),
         );
       }
     }
