@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../game_domain/attack_event.dart';
 import '../game_domain/battle_scene_view.dart';
 import '../game_domain/combination_catalog.dart';
+import '../game_domain/detect_opponent_attack.dart';
 import '../game_domain/element_catalog.dart';
 import '../game_domain/multiplayer_exception.dart';
 import '../game_domain/multiplayer_match.dart';
@@ -37,12 +39,16 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
   Timer? _pollTimer;
   String? _error;
   bool _startingRematch = false;
+  AttackEvent? _pendingAttack;
+  int _attackSequenceCounter = 0;
+  Set<String> _previousFieldEffectIds = {};
 
   MultiplayerMatch get _match => widget.match;
 
   @override
   void initState() {
     super.initState();
+    _previousFieldEffectIds = _match.activeFieldEffectIds.toSet();
     _pollTimer = Timer.periodic(widget._pollInterval, (_) => _poll());
   }
 
@@ -57,15 +63,55 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
       _pollTimer?.cancel();
       return;
     }
+    final myHpBefore = _match.myCurrentHp;
+    final previousFieldEffectIds = _previousFieldEffectIds;
     await _match.refresh();
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {
+        final newFieldEffectIds = _match.activeFieldEffectIds.toSet();
+        _previousFieldEffectIds = newFieldEffectIds;
+
+        if (myHpBefore != null) {
+          _attackSequenceCounter++;
+          final detected = detectOpponentAttack(
+            previousFieldEffectIds: previousFieldEffectIds,
+            newFieldEffectIds: newFieldEffectIds,
+            myHpBefore: myHpBefore,
+            myHpAfter: _match.myCurrentHp ?? myHpBefore,
+            sequenceId: _attackSequenceCounter,
+          );
+          if (detected != null) {
+            _pendingAttack = detected;
+          }
+        }
+      });
+    }
   }
 
   Future<void> _playTurn() async {
     setState(() => _error = null);
+    final playedElementIds = _selectedIds.toList();
+    final opponentHpBefore = _match.opponentCurrentHp;
     try {
-      await _match.playElementIds(_selectedIds.toList());
-      setState(() => _selectedIds.clear());
+      await _match.playElementIds(playedElementIds);
+      setState(() {
+        _selectedIds.clear();
+        final triggeredId = _match.lastTriggeredCombinationId;
+        if (triggeredId != null && opponentHpBefore != null) {
+          _attackSequenceCounter++;
+          final damage = opponentHpBefore - (_match.opponentCurrentHp ?? opponentHpBefore);
+          final combo = const CombinationCatalog().byId(triggeredId);
+          _pendingAttack = AttackEvent(
+            sequenceId: _attackSequenceCounter,
+            attackerIsLeft: true,
+            elementIds: playedElementIds,
+            comboName: combo?.name,
+            damage: damage,
+            appliedStatusNames: const [],
+          );
+        }
+        _previousFieldEffectIds = _match.activeFieldEffectIds.toSet();
+      });
     } catch (_) {
       setState(() => _error = _match.lastError ?? 'Jogada inválida.');
     }
@@ -250,6 +296,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
           rightCurrentHp: _match.opponentCurrentHp ?? 0,
           rightMaxHp: _match.opponentMaxHp ?? 0,
           isLeftTurn: _match.isMyTurn,
+          lastAttack: _pendingAttack,
         ),
       ),
       const SizedBox(height: 16),
