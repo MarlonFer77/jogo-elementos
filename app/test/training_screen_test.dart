@@ -22,6 +22,7 @@ void main() {
       await tester.tap(find.text('🌪️ Vento'));
       await tester.pump();
 
+      await tester.ensureVisible(find.text('Jogar'));
       await tester.tap(find.text('Jogar'));
       await tester.pump();
 
@@ -60,16 +61,19 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
 
       await tester.tap(find.byIcon(Icons.auto_awesome));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
       await tester.tap(find.text('Desbloquear').first);
       await tester.pump();
 
       await tester.tap(find.text('Fechar'));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
       await tester.tap(find.text('🔥 Fogo'));
       await tester.pump();
+      await tester.ensureVisible(find.text('Jogar'));
       await tester.tap(find.text('Jogar'));
       await tester.pump();
 
@@ -119,6 +123,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
+    await tester.ensureVisible(find.text('Nova partida'));
     await tester.tap(find.text('Nova partida'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));

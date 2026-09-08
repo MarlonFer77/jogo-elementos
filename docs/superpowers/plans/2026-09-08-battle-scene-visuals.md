@@ -260,7 +260,7 @@ void main() {
       );
 
       component.playHitEffect();
-      component.update(0.05);
+      component.update(0.07);
       expect(component.position, isNot(equals(basePosition)));
 
       component.update(0.5);
@@ -370,7 +370,7 @@ class BattleCharacterComponent extends PositionComponent {
       final flashOpacity = (_hitEffectRemaining / _hitEffectDuration).clamp(0.0, 1.0);
       canvas.drawRRect(
         bodyRRect,
-        Paint()..color = Colors.white.withOpacity(flashOpacity * 0.7),
+        Paint()..color = Colors.white.withValues(alpha: flashOpacity * 0.7),
       );
     }
 
@@ -545,10 +545,10 @@ class BattleSceneGame extends FlameGame {
   }
 
   @override
-  void onGameResize(Vector2 newSize) {
-    super.onGameResize(newSize);
+  void onGameResize(Vector2 size) {
+    super.onGameResize(size);
     for (final child in children.whereType<SpriteComponent>()) {
-      child.size = newSize;
+      child.size = size;
     }
   }
 
@@ -765,6 +765,16 @@ por:
 
 Run: `flutter test test/training_screen_test.dart`
 Expected: PASS (todos os testes existentes, incluindo os ajustados no Step 3).
+
+**Achado durante a execução:** com a cena de 220px, o `Column` do corpo
+estourava a altura da superfície de teste (800×600) — `RenderFlex
+overflowed`, e os taps em "Jogar"/"Nova partida" (perto do fim do
+`Column`) caíam fora da área visível. Corrigido trocando o `Padding` do
+`body` por um `SingleChildScrollView` (mesmo `padding`, mesmo `Column`
+por dentro) e adicionando `await tester.ensureVisible(...)` antes de
+cada `tester.tap()` em botões perto do fim do formulário (`Jogar` nos
+dois lugares em que é tocado, `Nova partida`) — sem isso, `tester.tap()`
+não rola até o alvo sozinho.
 
 - [ ] **Step 5: `flutter analyze`**
 

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../game_domain/battle_scene_view.dart';
 import '../game_domain/element_catalog.dart';
 import '../game_domain/training_match.dart';
+import '../game_presentation/battle_scene_widget.dart';
 
 /// Modo treino: batalha local, offline, hotseat — os dois lados jogados no
 /// mesmo aparelho. Sem backend, sem multiplayer, sem IA. Cada jogador pode
@@ -134,11 +136,21 @@ class _TrainingScreenState extends State<TrainingScreen> {
           ),
         ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            BattleSceneWidget(
+              view: BattleSceneView(
+                leftCurrentHp: _match.playerACurrentHp,
+                leftMaxHp: _match.playerAMaxHp,
+                rightCurrentHp: _match.playerBCurrentHp,
+                rightMaxHp: _match.playerBMaxHp,
+                isLeftTurn: _match.isPlayerATurn,
+              ),
+            ),
+            const SizedBox(height: 16),
             Text(
               'Vez de: ${_match.currentTurnName}',
               style: Theme.of(context).textTheme.titleLarge,
