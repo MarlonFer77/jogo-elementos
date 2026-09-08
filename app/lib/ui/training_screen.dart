@@ -171,6 +171,8 @@ class _TrainingScreenState extends State<TrainingScreen> {
                 rightMaxHp: _match.playerBMaxHp,
                 isLeftTurn: _match.isPlayerATurn,
                 lastAttack: _pendingAttack,
+                leftLabel: 'Jogador A',
+                rightLabel: 'Jogador B',
               ),
             ),
             const SizedBox(height: 16),
@@ -179,13 +181,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 4),
-            Text(
-              'Jogador A: ${_match.playerACurrentHp}/${_match.playerAMaxHp} HP',
-            ),
             Text('Jogador A: ${_statusSummary(_match.playerAStatusNames)}'),
-            Text(
-              'Jogador B: ${_match.playerBCurrentHp}/${_match.playerBMaxHp} HP',
-            ),
             Text('Jogador B: ${_statusSummary(_match.playerBStatusNames)}'),
             const SizedBox(height: 4),
             Text(
