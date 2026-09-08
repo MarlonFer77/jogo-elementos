@@ -1,3 +1,5 @@
+import 'attack_event.dart';
+
 /// Read-only view of what the battle scene should show: a fraction of HP
 /// per side and whose turn it is. Game Presentation (Flame) nunca toca em
 /// tipos de `battle_engine` ou do backend diretamente — renderiza um
@@ -9,6 +11,7 @@ class BattleSceneView {
   final int rightCurrentHp;
   final int rightMaxHp;
   final bool isLeftTurn;
+  final AttackEvent? lastAttack;
 
   const BattleSceneView({
     required this.leftCurrentHp,
@@ -16,5 +19,6 @@ class BattleSceneView {
     required this.rightCurrentHp,
     required this.rightMaxHp,
     required this.isLeftTurn,
+    this.lastAttack,
   });
 }

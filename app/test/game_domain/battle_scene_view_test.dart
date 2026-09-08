@@ -1,3 +1,4 @@
+import 'package:app/game_domain/attack_event.dart';
 import 'package:app/game_domain/battle_scene_view.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -16,5 +17,26 @@ void main() {
     expect(view.rightCurrentHp, 60);
     expect(view.rightMaxHp, 100);
     expect(view.isLeftTurn, isTrue);
+  });
+
+  test('lastAttack defaults to null and can be set', () {
+    const withoutAttack = BattleSceneView(
+      leftCurrentHp: 100, leftMaxHp: 100,
+      rightCurrentHp: 100, rightMaxHp: 100,
+      isLeftTurn: true,
+    );
+    expect(withoutAttack.lastAttack, isNull);
+
+    const event = AttackEvent(
+      sequenceId: 1, attackerIsLeft: true, elementIds: ['fire'],
+      damage: 10, appliedStatusNames: [],
+    );
+    const withAttack = BattleSceneView(
+      leftCurrentHp: 90, leftMaxHp: 100,
+      rightCurrentHp: 100, rightMaxHp: 100,
+      isLeftTurn: false,
+      lastAttack: event,
+    );
+    expect(withAttack.lastAttack, same(event));
   });
 }
