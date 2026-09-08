@@ -167,4 +167,15 @@ void main() {
       expect(match.playerBCurrentHp, equals(100)); // 80 + 20, not 120
     });
   });
+
+  test('isPlayerATurn reflects whose turn it currently is', () {
+    final match = TrainingMatch();
+    expect(match.isPlayerATurn, isTrue);
+
+    match.playElementIds(['fire']);
+    expect(match.isPlayerATurn, isFalse);
+
+    match.playElementIds(['ice']);
+    expect(match.isPlayerATurn, isTrue);
+  });
 }

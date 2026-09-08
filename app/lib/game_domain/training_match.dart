@@ -78,6 +78,11 @@ class TrainingMatch {
 
   bool get _isPlayerATurn => _state.currentTurn == _playerA;
 
+  /// Exposição pública de [_isPlayerATurn] — usada pela Game Presentation
+  /// para saber de que lado é a vez, sem comparar `currentTurnName` por
+  /// string.
+  bool get isPlayerATurn => _isPlayerATurn;
+
   SkillProgress get _currentProgress =>
       _isPlayerATurn ? _progressA : _progressB;
 
