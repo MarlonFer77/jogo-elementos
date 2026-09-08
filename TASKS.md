@@ -369,6 +369,9 @@ uma tarefa nova terminar revelando um gap novo.
 - Sequência de feedback visual de ataque (Bloco 1 da direção de produto):
   preparação→efeito→impacto→dano→estado pra qualquer combinação, Modo
   Treino e Multiplayer, sem mudar battle_engine/backend (DECISION-031)
+- Arena de batalha em pixel art (Bloco 2 da direção de produto): HUD estilo
+  jogo de luta no topo, personagens em sprite pixel art (grade de cores em
+  código), fundo procedural — Modo Treino e Multiplayer (DECISION-032)
 
 # BLOCKED
 

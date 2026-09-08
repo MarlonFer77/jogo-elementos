@@ -911,3 +911,44 @@ verdade via `flutter run -d web-server`: jogada de Fogo+Vento no Modo
 Treino disparou a sequência completa — pulso no atacante, flash de
 impacto tingindo o alvo no momento certo, HP caindo de 100 pra 80,
 indicador de turno migrando pro lado certo — sem nenhum erro no console.
+
+## DECISION-032
+Data: 2026-09-08
+Decisão: arena de batalha em pixel art (Bloco 2 da direção de produto) —
+HUD de HP fixo no topo (estilo jogo de luta), personagens desenhados como
+sprite pixel art estilo Pokémon GBA/GBC (grade de cores em código, sem
+asset), fundo procedural em blocos de cor. Vale pro Modo Treino e pro
+Multiplayer (componentes compartilhados).
+Passos: `BattleSceneView` ganhou `leftLabel`/`rightLabel`. Novo
+`BattleHudWidget` (Flutter puro, não Canvas) desenha o painel de HP no
+topo — `BattleSceneWidget` virou um `Stack` com ele sobreposto ao
+`GameWidget`. Novo `pixel_sprite.dart`: uma grade 20×16 de índices de cor
+(dado) + uma função de desenho genérica (`drawPixelGrid`) + duas paletas
+(esquerda/direita, mesmos índices, só a cor principal/sombra muda).
+`BattleCharacterComponent` passou a desenhar essa grade em vez de formas
+soltas, e perdeu a barra de HP/contorno de turno (migraram pro HUD) — o
+mesmo `canvas.scale` já usado no pulso de preparação agora também espelha
+o lado direito. Novo `PixelArenaBackground` substitui a imagem CC0 por
+céu/chão em blocos de cor; `battlefield_bg.jpg` e a declaração `assets:`
+correspondente foram removidos.
+Como pedido explícito do usuário: as linhas "Jogador X: HP" em texto
+simples abaixo da cena foram removidas (redundantes com o HUD novo) — o
+resto do texto (estados, descobertas, combinação, campo, chips, botão)
+continua igual.
+Motivo: Bloco 2 da nova direção de produto (game feel) — pedido explícito
+do usuário por um visual "estilo jogos de luta, bonecos de gameboy tipo
+pokemon", feito em código.
+Consequência (lacuna conhecida, não esquecida): a sequência de ataque
+(`AttackSequencePlayer`: burst elemental, número de dano, texto de
+estado) continua com o visual anterior (texto/formas simples), não em
+pixel art — fora de escopo deste bloco. Sem escolha de avatar, sem
+animação de idle, sem sprites por elemento — tudo já era esperado desde a
+spec.
+Testes: suíte completa do app (`flutter test`, 87 testes) e `flutter
+analyze` passando depois da mudança. Verificado de ponta a ponta de
+verdade via `flutter run -d web-server`: HUD, arena e personagens
+pixelados renderizando corretamente no Modo Treino (jogada de Fogo+Vento
+disparou a sequência de ataque normalmente sobre o novo visual, HP e
+indicador de turno corretos) e no Multiplayer (duas abas, "Você"/
+"Oponente" no HUD, indicador de turno correto) — sem nenhum erro no
+console nos dois casos.
