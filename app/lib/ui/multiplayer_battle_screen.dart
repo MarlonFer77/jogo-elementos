@@ -297,6 +297,8 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
           rightMaxHp: _match.opponentMaxHp ?? 0,
           isLeftTurn: _match.isMyTurn,
           lastAttack: _pendingAttack,
+          leftLabel: 'Você',
+          rightLabel: 'Oponente',
         ),
       ),
       const SizedBox(height: 16),
@@ -305,8 +307,6 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
         style: Theme.of(context).textTheme.titleLarge,
       ),
       const SizedBox(height: 4),
-      Text('Você: ${_match.myCurrentHp}/${_match.myMaxHp} HP'),
-      Text('Oponente: ${_match.opponentCurrentHp}/${_match.opponentMaxHp} HP'),
       if (_match.activeFieldEffectIds.isNotEmpty)
         Padding(
           padding: const EdgeInsets.only(top: 4),

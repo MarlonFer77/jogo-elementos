@@ -82,7 +82,9 @@ void main() {
       await tester.pump();
 
       expect(find.text('Vez do oponente'), findsOneWidget);
-      expect(find.textContaining('Você: 100/100 HP'), findsOneWidget);
+      expect(find.text('Você'), findsOneWidget);
+      expect(find.text('Oponente'), findsOneWidget);
+      expect(find.textContaining('100/100 HP'), findsNWidgets(2));
 
       // beto plays out of turn (ana's turn) — the backend mock above only
       // answers /turns with a state where it's ana's turn again, mimicking
