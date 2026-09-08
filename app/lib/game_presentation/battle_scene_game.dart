@@ -1,10 +1,10 @@
-import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 
 import '../game_domain/attack_event.dart';
 import '../game_domain/battle_scene_view.dart';
 import 'attack_sequence_player.dart';
 import 'battle_character_component.dart';
+import 'pixel_arena_background.dart';
 
 /// Se [currentHp] deve ser tratado como dano em relação a [previousHp].
 /// `previousHp == null` (primeira leitura, ainda sem baseline) nunca conta
@@ -14,9 +14,10 @@ bool didTakeDamage({required int? previousHp, required int currentHp}) {
   return previousHp != null && currentHp < previousHp;
 }
 
-/// Jogo Flame que renderiza um [BattleSceneView]: um fundo estático mais
-/// dois personagens genéricos (um por lado) com barra de HP, indicador de
-/// vez, e um flash+shake breve quando o HP de um lado cai. Apresentação
+/// Jogo Flame que renderiza um [BattleSceneView]: um fundo procedural mais
+/// dois personagens genéricos em pixel art (um por lado), com sequência de
+/// ataque quando uma combinação é jogada. Barra de HP e indicador de vez
+/// moram no `BattleHudWidget` (Flutter, fora deste jogo). Apresentação
 /// pura — nenhuma regra de batalha mora aqui; o estado a renderizar vem de
 /// fora via [updateView].
 class BattleSceneGame extends FlameGame {
@@ -33,8 +34,10 @@ class BattleSceneGame extends FlameGame {
   Future<void> onLoad() async {
     await super.onLoad();
 
-    final background = await loadSprite('battlefield_bg.jpg');
-    add(SpriteComponent(sprite: background, size: size)..priority = -1);
+    final background = PixelArenaBackground()
+      ..size = size
+      ..priority = -1;
+    add(background);
 
     final left = BattleCharacterComponent(
       side: BattleSide.left,
@@ -58,15 +61,16 @@ class BattleSceneGame extends FlameGame {
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
-    for (final child in children.whereType<SpriteComponent>()) {
+    for (final child in children.whereType<PixelArenaBackground>()) {
       child.size = size;
     }
   }
 
-  /// Reflete [view] na cena: atualiza as duas barras de HP e o indicador
-  /// de vez, e toca o efeito de dano no lado cujo HP acabou de cair em
-  /// relação à última chamada. Seguro chamar antes do `onLoad` terminar
-  /// (guarda a view pendente e aplica assim que os personagens existirem).
+  /// Reflete [view] na cena: dispara a sequência de ataque quando
+  /// [BattleSceneView.lastAttack] traz um evento novo, ou (defensivamente)
+  /// um flash simples se o HP caiu sem nenhum evento. Seguro chamar antes
+  /// do `onLoad` terminar (guarda a view pendente e aplica assim que os
+  /// personagens existirem).
   void updateView(BattleSceneView view) {
     if (_left == null || _right == null) {
       _pendingView = view;
@@ -78,11 +82,6 @@ class BattleSceneGame extends FlameGame {
   void _applyView(BattleSceneView view) {
     final left = _left!;
     final right = _right!;
-
-    left.setHpFraction(view.leftMaxHp == 0 ? 0 : view.leftCurrentHp / view.leftMaxHp);
-    right.setHpFraction(view.rightMaxHp == 0 ? 0 : view.rightCurrentHp / view.rightMaxHp);
-    left.setActiveTurn(view.isLeftTurn);
-    right.setActiveTurn(!view.isLeftTurn);
 
     final attack = view.lastAttack;
     if (attack != null && attack.sequenceId != _lastPlayedSequenceId) {
