@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../game_domain/battle_scene_view.dart';
 import '../game_domain/combination_catalog.dart';
 import '../game_domain/element_catalog.dart';
 import '../game_domain/multiplayer_exception.dart';
 import '../game_domain/multiplayer_match.dart';
 import '../game_domain/skill_tree_catalog.dart';
+import '../game_presentation/battle_scene_widget.dart';
 
 /// The multiplayer battle itself — reachable only after
 /// [MultiplayerLobbyScreen] created or joined a match. Polls the backend on
@@ -185,7 +187,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
             ),
         ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,6 +243,16 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
     const combinationCatalog = CombinationCatalog();
 
     return [
+      BattleSceneWidget(
+        view: BattleSceneView(
+          leftCurrentHp: _match.myCurrentHp ?? 0,
+          leftMaxHp: _match.myMaxHp ?? 0,
+          rightCurrentHp: _match.opponentCurrentHp ?? 0,
+          rightMaxHp: _match.opponentMaxHp ?? 0,
+          isLeftTurn: _match.isMyTurn,
+        ),
+      ),
+      const SizedBox(height: 16),
       Text(
         _match.isMyTurn ? 'Sua vez' : 'Vez do oponente',
         style: Theme.of(context).textTheme.titleLarge,

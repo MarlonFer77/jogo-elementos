@@ -249,7 +249,8 @@ void main() {
       await tester.pump();
 
       await tester.tap(find.byTooltip('Habilidades'));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
       expect(find.text('[fogo] Maestria da Brasa'), findsOneWidget);
 
@@ -261,7 +262,8 @@ void main() {
       expect(find.text('[fogo] Caminho do Incêndio'), findsOneWidget);
 
       await tester.tap(find.text('Fechar'));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
       await tester.pumpWidget(const SizedBox()); // dispose the poll Timer
     },
   );
