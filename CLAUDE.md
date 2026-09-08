@@ -8,6 +8,31 @@ Jogo mobile 2D de batalhas 1v1 por turnos para dois amigos, baseado em combinaç
 elementos, Skill Tree, builds e efeitos de campo. Objetivo: partidas de 3–7 minutos,
 decisões relevantes, "só mais uma partida".
 
+## Direção de produto (game feel)
+
+O projeto deixou de ser tratado como protótipo técnico — é um jogo que precisa de
+identidade, apresentação, game feel, conteúdo e acabamento. A base funcional já
+existente (battle engine, multiplayer, HP/dano, Skill Tree, reconexão, revanche,
+etc.) deve ser preservada — essa mudança de foco não muda stack nem arquitetura.
+
+Toda funcionalidade nova ou revisada deve ser avaliada em 4 dimensões antes de
+ser considerada pronta: **Funcionalidade** (funciona?), **UX** (o jogador entende
+o que está acontecendo?), **Visual** (tem apresentação adequada?), **Game Feel**
+(transmite impacto/resposta/satisfação?). Funcionar tecnicamente não é
+suficiente — só a primeira dimensão não fecha a tarefa.
+
+Ordem de prioridade de trabalho: identidade visual > batalha (feedback de
+ataque) > feedback visual > animações > UI/UX > áudio > efeitos > progressão >
+conteúdo > funcionalidades secundárias. A batalha é o coração do jogo — é onde
+mais vale investir apresentação.
+
+Trabalhar em blocos pequenos e completos (não uma sequência artificial de
+fases), cada um terminando em estado jogável — nunca dezenas de sistemas em
+paralelo. Não bloquear por arte definitiva: usar placeholders/assets CC0 bem
+organizados, com uma camada que permita substituição futura sem misturar
+caminho de assets com lógica de gameplay (ex: nunca fazer a Battle Engine ou o
+Game Domain saber de um path de arquivo de imagem/áudio).
+
 ## Stack
 
 - Mobile: Flutter + Dart + Flame
