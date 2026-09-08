@@ -366,6 +366,9 @@ uma tarefa nova terminar revelando um gap novo.
 - Cenário de batalha visual (Flame): fundo CC0 + dois personagens
   genéricos por lado + flash/shake ao tomar dano, ligado ao Modo Treino e
   ao Multiplayer, substituindo a demo Flame desconectada (DECISION-030)
+- Sequência de feedback visual de ataque (Bloco 1 da direção de produto):
+  preparação→efeito→impacto→dano→estado pra qualquer combinação, Modo
+  Treino e Multiplayer, sem mudar battle_engine/backend (DECISION-031)
 
 # BLOCKED
 

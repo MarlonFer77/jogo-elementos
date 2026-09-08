@@ -875,3 +875,39 @@ reduziu o HP do oponente e a barra encolheu visivelmente) e no
 Multiplayer (duas abas de navegador, `ana` criando a partida e `beto`
 entrando com o código — lado esquerdo/direito e indicador de vez
 corretos nos dois lados).
+
+## DECISION-031
+Data: 2026-09-08
+Decisão: sequência de feedback visual de ataque (Bloco 1 da nova direção de
+produto — ver CLAUDE.md, seção "Direção de produto (game feel)") — dano
+instantâneo vira preparação→efeito elemental→impacto→dano→estado, pra
+qualquer combinação, no Modo Treino e no Multiplayer.
+Passos: novo `AttackEvent` (Game Domain, dado puro) descreve o que
+aconteceu num turno; cada tela monta esse evento a partir do que já sabia
+(elementos jogados, combinação, dano, estados). Novo
+`AttackSequencePlayer` (Flame `Component`) toca a sequência com timer
+manual (mesmo padrão do `BattleCharacterComponent`), sem o sistema
+`Effect` do Flame. Identidade visual mínima: símbolo já existente de cada
+elemento (`ElementCatalog`) mais uma cor nova por elemento — sem asset
+novo. `BattleCharacterComponent` ganhou barra de HP interpolada (persegue
+o valor novo em vez de saltar) e um pulso de escala pro passo de
+preparação.
+No Multiplayer, o backend não manda quais elementos o oponente jogou — a
+jogada dele é deduzida (`detectOpponentAttack`) comparando os efeitos de
+campo ativos antes/depois de cada poll: um efeito novo identifica a
+combinação, e por tabela os elementos que a formam
+(`CombinationCatalog.elementIds`, novo), sem mudar o contrato do backend.
+Motivo: primeiro bloco da nova direção de produto (game feel) — o usuário
+pediu blocos pequenos e completos, priorizando a batalha (o "coração do
+jogo") antes de identidade visual ampla, áudio, etc.
+Consequência (lacuna conhecida, não esquecida): no Multiplayer, o passo de
+"Estado" da sequência nunca toca — o cliente não recebe estados ativos por
+jogador do backend (mesma lacuna da DECISION-030). Sem crítico (não existe
+no jogo), sem projétil com física de verdade, sem ícone de status
+persistente entre turnos — tudo já fora de escopo desde a spec.
+Testes: suíte completa do app (`flutter test`, 81 testes) e `flutter
+analyze` passando depois da mudança. Verificado de ponta a ponta de
+verdade via `flutter run -d web-server`: jogada de Fogo+Vento no Modo
+Treino disparou a sequência completa — pulso no atacante, flash de
+impacto tingindo o alvo no momento certo, HP caindo de 100 pra 80,
+indicador de turno migrando pro lado certo — sem nenhum erro no console.
