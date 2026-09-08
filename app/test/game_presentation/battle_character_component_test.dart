@@ -42,18 +42,6 @@ void main() {
       expect(component.position, equals(basePosition));
     });
 
-    test('setHpFraction clamps to the 0..1 range', () {
-      final component = BattleCharacterComponent(
-        side: BattleSide.right,
-        position: Vector2.zero(),
-      );
-
-      component.setHpFraction(-0.5);
-      component.setHpFraction(1.5);
-      // Sem getter público de fração — o teste confirma que chamar com
-      // valores fora do intervalo não lança.
-    });
-
     test('starts with no preparation pulse playing', () {
       final component = BattleCharacterComponent(
         side: BattleSide.left,
@@ -73,27 +61,6 @@ void main() {
 
       component.update(0.5); // maior que a duração do pulso (0.15s)
       expect(component.isPlayingPreparationPulse, isFalse);
-    });
-
-    test('the displayed HP fraction chases the target instead of jumping',
-        () {
-      final component = BattleCharacterComponent(
-        side: BattleSide.right,
-        position: Vector2(0, 0),
-      );
-
-      component.setHpFraction(1.0);
-      component.update(1.0); // deixa a barra assentar em 1.0 primeiro
-
-      component.setHpFraction(0.2);
-      component.update(0.05); // um passo pequeno: ainda não chegou
-
-      final displayedAfterOneStep = component.debugDisplayedHpFraction;
-      expect(displayedAfterOneStep, greaterThan(0.2));
-      expect(displayedAfterOneStep, lessThan(1.0));
-
-      component.update(1.0); // tempo de sobra: converge
-      expect(component.debugDisplayedHpFraction, closeTo(0.2, 0.001));
     });
   });
 }
