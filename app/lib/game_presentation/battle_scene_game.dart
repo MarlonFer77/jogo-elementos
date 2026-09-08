@@ -1,7 +1,9 @@
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 
+import '../game_domain/attack_event.dart';
 import '../game_domain/battle_scene_view.dart';
+import 'attack_sequence_player.dart';
 import 'battle_character_component.dart';
 
 /// Se [currentHp] deve ser tratado como dano em relação a [previousHp].
@@ -23,6 +25,8 @@ class BattleSceneGame extends FlameGame {
 
   int? _lastLeftHp;
   int? _lastRightHp;
+  int? _lastPlayedSequenceId;
+  AttackSequencePlayer? _activeSequence;
   BattleSceneView? _pendingView;
 
   @override
@@ -80,14 +84,43 @@ class BattleSceneGame extends FlameGame {
     left.setActiveTurn(view.isLeftTurn);
     right.setActiveTurn(!view.isLeftTurn);
 
-    if (didTakeDamage(previousHp: _lastLeftHp, currentHp: view.leftCurrentHp)) {
-      left.playHitEffect();
-    }
-    if (didTakeDamage(previousHp: _lastRightHp, currentHp: view.rightCurrentHp)) {
-      right.playHitEffect();
+    final attack = view.lastAttack;
+    if (attack != null && attack.sequenceId != _lastPlayedSequenceId) {
+      _lastPlayedSequenceId = attack.sequenceId;
+      _playAttackSequence(attack);
+    } else if (didTakeDamage(previousHp: _lastLeftHp, currentHp: view.leftCurrentHp) ||
+        didTakeDamage(previousHp: _lastRightHp, currentHp: view.rightCurrentHp)) {
+      // Fallback defensivo: HP caiu mas nenhum AttackEvent chegou (não
+      // deveria acontecer — só combinação causa dano, e toda combinação
+      // vira AttackEvent nas telas). Mantém pelo menos o flash simples de
+      // antes em vez de dano silencioso.
+      if (didTakeDamage(previousHp: _lastLeftHp, currentHp: view.leftCurrentHp)) {
+        left.playHitEffect();
+      }
+      if (didTakeDamage(previousHp: _lastRightHp, currentHp: view.rightCurrentHp)) {
+        right.playHitEffect();
+      }
     }
 
     _lastLeftHp = view.leftCurrentHp;
     _lastRightHp = view.rightCurrentHp;
+  }
+
+  void _playAttackSequence(AttackEvent event) {
+    final left = _left!;
+    final right = _right!;
+    final attacker = event.attackerIsLeft ? left : right;
+    final target = event.attackerIsLeft ? right : left;
+
+    _activeSequence?.removeFromParent();
+    final sequence = AttackSequencePlayer(
+      event: event,
+      attacker: attacker,
+      target: target,
+      attackerPosition: attacker.position - Vector2(0, 40),
+      targetPosition: target.position - Vector2(0, 40),
+    );
+    _activeSequence = sequence;
+    add(sequence);
   }
 }
