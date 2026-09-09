@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:app/game_domain/multiplayer_client.dart';
 import 'package:app/game_domain/multiplayer_match.dart';
+import 'package:app/game_presentation/pixel_menu_button.dart';
 import 'package:app/ui/multiplayer_battle_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -95,8 +96,8 @@ void main() {
       await tester.pump();
 
       // Play button is disabled: it's not beto's turn.
-      final playButton = tester.widget<ElevatedButton>(
-        find.widgetWithText(ElevatedButton, 'Jogar'),
+      final playButton = tester.widget<PixelMenuButton>(
+        find.widgetWithText(PixelMenuButton, 'Jogar'),
       );
       expect(playButton.onPressed, isNull);
 

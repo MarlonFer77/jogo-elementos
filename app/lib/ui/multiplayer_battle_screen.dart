@@ -11,6 +11,10 @@ import '../game_domain/multiplayer_exception.dart';
 import '../game_domain/multiplayer_match.dart';
 import '../game_domain/skill_tree_catalog.dart';
 import '../game_presentation/battle_scene_widget.dart';
+import '../game_presentation/pixel_arena_background.dart';
+import '../game_presentation/pixel_content_panel.dart';
+import '../game_presentation/pixel_menu_button.dart';
+import '../game_presentation/pixel_outlined_text.dart';
 
 /// The multiplayer battle itself — reachable only after
 /// [MultiplayerLobbyScreen] created or joined a match. Polls the backend on
@@ -221,32 +225,42 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Partida ${_match.matchId ?? ""}'),
-        actions: [
-          if (_match.isInProgress)
-            IconButton(
-              icon: const Icon(Icons.auto_awesome),
-              tooltip: 'Habilidades',
-              onPressed: _openSkillTree,
+    return Stack(
+      children: [
+        Positioned.fill(child: CustomPaint(painter: ArenaBackdropPainter())),
+        Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: PixelOutlinedText('Partida ${_match.matchId ?? ""}', fontSize: 20),
+            actions: [
+              if (_match.isInProgress)
+                IconButton(
+                  icon: const Icon(Icons.auto_awesome),
+                  tooltip: 'Habilidades',
+                  onPressed: _openSkillTree,
+                ),
+            ],
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: PixelContentPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_match.isWaitingForOpponent)
+                    ..._buildWaiting(context)
+                  else if (_match.isFinished)
+                    ..._buildGameOver(context)
+                  else
+                    ..._buildBattle(context),
+                ],
+              ),
             ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_match.isWaitingForOpponent)
-              ..._buildWaiting(context)
-            else if (_match.isFinished)
-              ..._buildGameOver(context)
-            else
-              ..._buildBattle(context),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -268,9 +282,9 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
         style: Theme.of(context).textTheme.titleLarge,
       ),
       const SizedBox(height: 16),
-      ElevatedButton(
+      PixelMenuButton(
+        label: 'Revanche',
         onPressed: _startingRematch ? null : _startRematch,
-        child: const Text('Revanche'),
       ),
       const SizedBox(height: 8),
       const Text(
@@ -335,9 +349,9 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
         ],
       ),
       const SizedBox(height: 16),
-      ElevatedButton(
+      PixelMenuButton(
+        label: 'Jogar',
         onPressed: (_match.isMyTurn && _selectedIds.isNotEmpty) ? _playTurn : null,
-        child: const Text('Jogar'),
       ),
       if (_error != null)
         Padding(
