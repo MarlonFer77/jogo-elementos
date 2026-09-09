@@ -372,6 +372,9 @@ uma tarefa nova terminar revelando um gap novo.
 - Arena de batalha em pixel art (Bloco 2 da direção de produto): HUD estilo
   jogo de luta no topo, personagens em sprite pixel art (grade de cores em
   código), fundo procedural — Modo Treino e Multiplayer (DECISION-032)
+- Tela inicial de verdade (Bloco 3 da direção de produto): título com
+  contorno, personagens pixel art de frente, botões blocudos pro Treino/
+  Multiplayer — substitui o placeholder antigo (DECISION-033)
 
 # BLOCKED
 

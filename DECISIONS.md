@@ -952,3 +952,46 @@ disparou a sequência de ataque normalmente sobre o novo visual, HP e
 indicador de turno corretos) e no Multiplayer (duas abas, "Você"/
 "Oponente" no HUD, indicador de turno correto) — sem nenhum erro no
 console nos dois casos.
+
+## DECISION-033
+Data: 2026-09-09
+Decisão: tela inicial de verdade (Bloco 3 da direção de produto) —
+substitui a `HomeScreen` placeholder (lista crua dos 10 elementos, o
+próprio código já dizia "Placeholder screen... Real screens... come in
+later tasks") por uma tela de título estilo jogo de luta: fundo/
+personagens pixel art reaproveitados da batalha, título com contorno,
+dois botões blocudos pro Treino/Multiplayer.
+Passos: `PixelArenaBackground` teve o desenho extraído pra uma função
+pura `drawArenaBackdrop` (Flame e a tela inicial compartilham a mesma
+fonte de verdade pro céu/chão). Novo `TrainerSpriteImage` reaproveita
+`drawPixelGrid` fora do Flame, via `CustomPainter` puro (sem game loop,
+decoração estática). Novo `PixelMenuButton`, mesmo espírito visual do
+`BattleHudWidget`. O título usa `TextStyle.shadows` (vários `Shadow`
+deslocados sem blur) pra simular contorno grosso, sem fonte nova. A
+lista dos 10 elementos saiu de cena — elementos continuam sendo a
+identidade do jogo dentro da batalha, não precisam de vitrine própria na
+Home.
+Motivo: Bloco 3 da nova direção de produto (game feel) — a Home era
+literalmente o único lugar do app ainda sem nenhuma identidade visual,
+sendo a primeira tela que o jogador vê.
+Problema real encontrado na verificação manual: `PixelMenuButton`
+renderizava preto sólido (texto invisível) com a estrutura inicial
+`Material > InkWell > Container(decorado)` — a cor do `Material` não
+aparecia. Corrigido trocando por um único `Container` decorado (cor,
+borda, sombra no mesmo `BoxDecoration`) com `GestureDetector` — sem
+ambiguidade de qual camada pinta o quê. Separadamente, a primeira
+tentativa de verificar visualmente deu falso negativo: o
+`flutter run -d web-server` já estava no ar de uma verificação anterior
+e um simples reload de página não recompila Dart alterado (só reflete
+mudanças com o servidor reiniciado ou hot reload de verdade) — reiniciar
+o servidor foi necessário pra ver a correção de fato.
+Consequência: nenhuma lacuna nova — Treino/Multiplayer/Lobby/Skill Tree
+continuam com o visual Material padrão (fora de escopo deste bloco,
+prioridade "UI/UX" mais ampla fica pra um bloco futuro).
+Testes: suíte completa do app (`flutter test`, 92 testes) e `flutter
+analyze` passando depois da mudança. Verificado de ponta a ponta de
+verdade via `flutter run -d web-server` (servidor reiniciado pra
+garantir código atual): tela inicial renderizando título/personagens/
+botões corretamente (batendo com o mockup aprovado), navegação pros dois
+modos funcionando, cena de batalha do Bloco 2 continuando intacta —
+sem erro no console.
