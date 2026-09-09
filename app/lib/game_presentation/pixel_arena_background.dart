@@ -2,28 +2,34 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
-/// Fundo da arena: poucos blocos de cor sólida (céu, linha de horizonte,
-/// chão) desenhados em código — sem imagem nenhuma, pra combinar com os
-/// personagens em pixel art. Ver
+const _sky = Color(0xFF8FD3E8);
+const _ground = Color(0xFF7CC576);
+const _horizonLine = Color(0xFF5FA857);
+
+/// Desenha o "backdrop" da arena (céu, linha de horizonte, chão) em
+/// [canvas], ocupando [size]. Compartilhado entre [PixelArenaBackground]
+/// (Flame, cena de batalha) e a decoração de fundo da tela inicial — ver
+/// docs/superpowers/specs/2026-09-09-home-title-screen-design.md.
+void drawArenaBackdrop(Canvas canvas, Size size) {
+  final horizon = size.height * 0.62;
+
+  canvas.drawRect(Rect.fromLTWH(0, 0, size.width, horizon), Paint()..color = _sky);
+  canvas.drawRect(
+    Rect.fromLTWH(0, horizon, size.width, size.height - horizon),
+    Paint()..color = _ground,
+  );
+  canvas.drawRect(
+    Rect.fromLTWH(0, horizon, size.width, 4),
+    Paint()..color = _horizonLine,
+  );
+}
+
+/// Fundo da arena de batalha (Flame) — ver
 /// docs/superpowers/specs/2026-09-08-pixel-battle-arena-design.md.
 class PixelArenaBackground extends PositionComponent {
-  static const _sky = Color(0xFF8FD3E8);
-  static const _ground = Color(0xFF7CC576);
-  static const _horizonLine = Color(0xFF5FA857);
-
   @override
   void render(Canvas canvas) {
     super.render(canvas);
-    final horizon = size.y * 0.62;
-
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.x, horizon), Paint()..color = _sky);
-    canvas.drawRect(
-      Rect.fromLTWH(0, horizon, size.x, size.y - horizon),
-      Paint()..color = _ground,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(0, horizon, size.x, 4),
-      Paint()..color = _horizonLine,
-    );
+    drawArenaBackdrop(canvas, Size(size.x, size.y));
   }
 }
