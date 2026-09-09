@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../game_presentation/pixel_arena_background.dart';
 import '../game_presentation/pixel_menu_button.dart';
+import '../game_presentation/pixel_outlined_text.dart';
 import '../game_presentation/trainer_sprite_image.dart';
 import 'multiplayer_lobby_screen.dart';
 import 'training_screen.dart';
@@ -27,7 +28,7 @@ class HomeScreen extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _title(),
+                    const PixelOutlinedText('ELEMENTOS'),
                     const SizedBox(height: 8),
                     const Text(
                       'BATALHAS 1V1 POR COMBINAÇÃO',
@@ -87,25 +88,6 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _title() {
-    const shadowColor = Color(0xFF2B2B2B);
-    return Text(
-      'ELEMENTOS',
-      style: TextStyle(
-        fontFamily: 'monospace',
-        fontWeight: FontWeight.bold,
-        fontSize: 40,
-        letterSpacing: 4,
-        color: const Color(0xFFF4F4E4),
-        shadows: [
-          for (final dx in [-2.0, 2.0])
-            for (final dy in [-2.0, 2.0]) Shadow(offset: Offset(dx, dy), color: shadowColor),
-          const Shadow(offset: Offset(3, 3), color: shadowColor),
         ],
       ),
     );
