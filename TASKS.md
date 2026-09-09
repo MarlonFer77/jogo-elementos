@@ -40,6 +40,9 @@ uma tarefa nova terminar revelando um gap novo.
 - Livro de Descobertas sem tela própria (só o contador no Modo Treino)
 - Sistema de build do Modo Treino simplificado (um slot só, tudo
   desbloqueado se aplica sempre — DECISION-018)
+- Chips de elemento (`FilterChip`), campos de texto e o modal de Skill
+  Tree continuam Material padrão — candidato a um bloco futuro de
+  "feedback visual" mais focado (DECISION-034)
 - Sem iOS — precisa de um Mac, indisponível (DECISION-010). Android agora
   tem APK de verdade (ver DECISION-029), mas só compila via GitHub
   Actions — o Gradle não roda localmente nesta máquina (mesma limitação
@@ -375,6 +378,9 @@ uma tarefa nova terminar revelando um gap novo.
 - Tela inicial de verdade (Bloco 3 da direção de produto): título com
   contorno, personagens pixel art de frente, botões blocudos pro Treino/
   Multiplayer — substitui o placeholder antigo (DECISION-033)
+- Consistência visual pixel art (Bloco 4 da direção de produto): Treino,
+  Lobby e batalha Multiplayer ganham o mesmo fundo/título/botões da Home,
+  sem mudar lógica nem texto (DECISION-034)
 
 # BLOCKED
 

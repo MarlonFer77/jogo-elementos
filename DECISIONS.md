@@ -995,3 +995,34 @@ garantir código atual): tela inicial renderizando título/personagens/
 botões corretamente (batendo com o mockup aprovado), navegação pros dois
 modos funcionando, cena de batalha do Bloco 2 continuando intacta —
 sem erro no console.
+
+## DECISION-034
+Data: 2026-09-09
+Decisão: consistência visual pixel art (Bloco 4 da direção de produto) —
+`TrainingScreen`, `MultiplayerLobbyScreen` e `MultiplayerBattleScreen`
+ganham o mesmo fundo/título/botões da Home (DECISION-033), fechando o
+choque visual entre a Home e as telas de jogo. Nenhuma lógica, regra ou
+texto visível mudou — só o widget por trás de cada elemento.
+Passos: `ArenaBackdropPainter` (antes privada da Home) virou pública,
+reaproveitada nas três telas via `Stack` + `Scaffold` transparente (mesmo
+padrão da Home). Novo `PixelOutlinedText` (título com contorno,
+parametrizado) e `PixelContentPanel` (painel "cartão" que mantém o
+conteúdo existente — texto, chips, campos — legível por cima do fundo
+colorido). `PixelMenuButton` ganhou suporte a `onPressed` nulo (estado
+desabilitado, opacidade reduzida) pra poder substituir todo `ElevatedButton`/
+`OutlinedButton` de ação principal: "Jogar" (Treino e Multiplayer), "Nova
+partida", "Criar partida", "Entrar com código", "Reconectar", "Revanche".
+Motivo: Bloco 4 da nova direção de produto (game feel) — a Home (Bloco 3)
+deixou evidente que sair dela pras telas de jogo era um tombo visual pro
+Material puro; "sem mexer na lógica" foi pedido explícito do usuário.
+Consequência (lacuna conhecida, não esquecida): `FilterChip`, `TextField`
+e o conteúdo do modal de Skill Tree continuam Material padrão — fora de
+escopo deste bloco, ficam pra um bloco futuro de "feedback visual" mais
+focado nesses elementos especificamente.
+Testes: suíte completa do app (`flutter test`, 96 testes) e `flutter
+analyze` passando depois da mudança. Verificado de ponta a ponta de
+verdade via `flutter run -d web-server` (servidor reiniciado, não só
+recarregado): Modo Treino (jogada de Fogo+Vento de verdade, botão
+desabilitando/habilitando corretamente), Lobby e criação de partida real
+no Multiplayer, todos com fundo/título/botões consistentes com a Home —
+sem erro no console.
