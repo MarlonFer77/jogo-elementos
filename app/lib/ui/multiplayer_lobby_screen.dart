@@ -4,6 +4,10 @@ import '../game_domain/multiplayer_client.dart';
 import '../game_domain/multiplayer_config.dart';
 import '../game_domain/multiplayer_exception.dart';
 import '../game_domain/multiplayer_match.dart';
+import '../game_presentation/pixel_arena_background.dart';
+import '../game_presentation/pixel_content_panel.dart';
+import '../game_presentation/pixel_menu_button.dart';
+import '../game_presentation/pixel_outlined_text.dart';
 import 'multiplayer_battle_screen.dart';
 
 /// Entry point for Multiplayer (seção 11): create a match and share the
@@ -100,49 +104,62 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Multiplayer')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(labelText: 'Seu nome'),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loading ? null : _create,
-              child: const Text('Criar partida'),
-            ),
-            const Divider(height: 32),
-            TextField(
-              controller: _codeController,
-              decoration: const InputDecoration(labelText: 'Código da partida'),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: [
-                ElevatedButton(
-                  onPressed: _loading ? null : _join,
-                  child: const Text('Entrar com código'),
-                ),
-                OutlinedButton(
-                  onPressed: _loading ? null : _reconnect,
-                  child: const Text('Reconectar'),
-                ),
-              ],
-            ),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: Text(_error!, style: const TextStyle(color: Colors.red)),
+    return Stack(
+      children: [
+        Positioned.fill(child: CustomPaint(painter: ArenaBackdropPainter())),
+        Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: const PixelOutlinedText('Multiplayer', fontSize: 20),
+          ),
+          body: Padding(
+            padding: const EdgeInsets.all(16),
+            child: PixelContentPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(labelText: 'Seu nome'),
+                  ),
+                  const SizedBox(height: 16),
+                  PixelMenuButton(
+                    label: 'Criar partida',
+                    primary: true,
+                    onPressed: _loading ? null : _create,
+                  ),
+                  const Divider(height: 32),
+                  TextField(
+                    controller: _codeController,
+                    decoration: const InputDecoration(labelText: 'Código da partida'),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      PixelMenuButton(
+                        label: 'Entrar com código',
+                        onPressed: _loading ? null : _join,
+                      ),
+                      PixelMenuButton(
+                        label: 'Reconectar',
+                        onPressed: _loading ? null : _reconnect,
+                      ),
+                    ],
+                  ),
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: Text(_error!, style: const TextStyle(color: Colors.red)),
+                    ),
+                ],
               ),
-          ],
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 }
