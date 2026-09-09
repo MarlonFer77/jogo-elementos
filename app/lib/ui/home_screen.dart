@@ -19,7 +19,7 @@ class HomeScreen extends StatelessWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          CustomPaint(painter: _BackdropPainter()),
+          CustomPaint(painter: ArenaBackdropPainter()),
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -110,12 +110,4 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-class _BackdropPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) => drawArenaBackdrop(canvas, size);
-
-  @override
-  bool shouldRepaint(covariant _BackdropPainter oldDelegate) => false;
 }

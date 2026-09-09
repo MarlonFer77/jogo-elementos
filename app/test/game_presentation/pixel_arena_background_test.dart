@@ -12,4 +12,9 @@ void main() {
       returnsNormally,
     );
   });
+
+  test('ArenaBackdropPainter never requests a repaint', () {
+    final painter = ArenaBackdropPainter();
+    expect(painter.shouldRepaint(painter), isFalse);
+  });
 }

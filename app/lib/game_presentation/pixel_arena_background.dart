@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flame/components.dart';
+import 'package:flutter/rendering.dart' show CustomPainter;
 
 const _sky = Color(0xFF8FD3E8);
 const _ground = Color(0xFF7CC576);
@@ -22,6 +23,18 @@ void drawArenaBackdrop(Canvas canvas, Size size) {
     Rect.fromLTWH(0, horizon, size.width, 4),
     Paint()..color = _horizonLine,
   );
+}
+
+/// `CustomPainter` que desenha [drawArenaBackdrop] — reaproveitado como
+/// fundo de qualquer tela Flutter fora do Flame (Home, Treino,
+/// Multiplayer). Ver
+/// docs/superpowers/specs/2026-09-09-screens-visual-consistency-design.md.
+class ArenaBackdropPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) => drawArenaBackdrop(canvas, size);
+
+  @override
+  bool shouldRepaint(covariant ArenaBackdropPainter oldDelegate) => false;
 }
 
 /// Fundo da arena de batalha (Flame) — ver
