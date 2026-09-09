@@ -11,7 +11,7 @@ void main() {
     (WidgetTester tester) async {
       await tester.pumpWidget(const GameApp());
 
-      await tester.tap(find.byIcon(Icons.school));
+      await tester.tap(find.text('MODO TREINO'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
@@ -40,7 +40,7 @@ void main() {
       (WidgetTester tester) async {
     await tester.pumpWidget(const GameApp());
 
-    await tester.tap(find.byIcon(Icons.school));
+    await tester.tap(find.text('MODO TREINO'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
@@ -56,7 +56,7 @@ void main() {
     (WidgetTester tester) async {
       await tester.pumpWidget(const GameApp());
 
-      await tester.tap(find.byIcon(Icons.school));
+      await tester.tap(find.text('MODO TREINO'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
