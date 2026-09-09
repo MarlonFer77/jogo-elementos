@@ -22,4 +22,16 @@ void main() {
 
     expect(tapped, isTrue);
   });
+
+  testWidgets('does not throw and stays inert when onPressed is null',
+      (tester) async {
+    await tester.pumpWidget(const MaterialApp(
+      home: Scaffold(body: PixelMenuButton(label: 'Jogar', onPressed: null)),
+    ));
+
+    expect(find.text('Jogar'), findsOneWidget);
+
+    await tester.tap(find.text('Jogar'));
+    await tester.pump();
+  });
 }
