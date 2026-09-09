@@ -1,4 +1,5 @@
 import 'package:app/game_domain/training_match.dart';
+import 'package:app/game_presentation/pixel_menu_button.dart';
 import 'package:app/main.dart';
 import 'package:app/ui/training_screen.dart';
 import 'package:flutter/material.dart';
@@ -44,8 +45,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    final button = tester.widget<ElevatedButton>(
-      find.widgetWithText(ElevatedButton, 'Jogar'),
+    final button = tester.widget<PixelMenuButton>(
+      find.widgetWithText(PixelMenuButton, 'Jogar'),
     );
     expect(button.onPressed, isNull);
   });

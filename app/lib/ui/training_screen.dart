@@ -5,6 +5,10 @@ import '../game_domain/battle_scene_view.dart';
 import '../game_domain/element_catalog.dart';
 import '../game_domain/training_match.dart';
 import '../game_presentation/battle_scene_widget.dart';
+import '../game_presentation/pixel_arena_background.dart';
+import '../game_presentation/pixel_content_panel.dart';
+import '../game_presentation/pixel_menu_button.dart';
+import '../game_presentation/pixel_outlined_text.dart';
 
 /// Modo treino: batalha local, offline, hotseat — os dois lados jogados no
 /// mesmo aparelho. Sem backend, sem multiplayer, sem IA. Cada jogador pode
@@ -147,75 +151,85 @@ class _TrainingScreenState extends State<TrainingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Modo Treino'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.auto_awesome),
-            tooltip: 'Habilidades',
-            onPressed: _openSkillTree,
+    return Stack(
+      children: [
+        Positioned.fill(child: CustomPaint(painter: ArenaBackdropPainter())),
+        Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: const PixelOutlinedText('Modo Treino', fontSize: 20),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.auto_awesome),
+                tooltip: 'Habilidades',
+                onPressed: _openSkillTree,
+              ),
+            ],
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            BattleSceneWidget(
-              view: BattleSceneView(
-                leftCurrentHp: _match.playerACurrentHp,
-                leftMaxHp: _match.playerAMaxHp,
-                rightCurrentHp: _match.playerBCurrentHp,
-                rightMaxHp: _match.playerBMaxHp,
-                isLeftTurn: _match.isPlayerATurn,
-                lastAttack: _pendingAttack,
-                leftLabel: 'Jogador A',
-                rightLabel: 'Jogador B',
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: PixelContentPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  BattleSceneWidget(
+                    view: BattleSceneView(
+                      leftCurrentHp: _match.playerACurrentHp,
+                      leftMaxHp: _match.playerAMaxHp,
+                      rightCurrentHp: _match.playerBCurrentHp,
+                      rightMaxHp: _match.playerBMaxHp,
+                      isLeftTurn: _match.isPlayerATurn,
+                      lastAttack: _pendingAttack,
+                      leftLabel: 'Jogador A',
+                      rightLabel: 'Jogador B',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Vez de: ${_match.currentTurnName}',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 4),
+                  Text('Jogador A: ${_statusSummary(_match.playerAStatusNames)}'),
+                  Text('Jogador B: ${_statusSummary(_match.playerBStatusNames)}'),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Descobertas: ${_match.discoveredCount}/${_match.totalCombinationsCount}',
+                  ),
+                  if (_match.lastTriggeredCombinationName != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        'Última combinação: ${_match.lastTriggeredCombinationName}',
+                      ),
+                    ),
+                  if (_match.lastAppliedStatusNames.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        'Efeitos aplicados: ${_match.lastAppliedStatusNames.join(", ")}',
+                      ),
+                    ),
+                  if (_match.activeFieldEffectNames.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        'Campo: ${_match.activeFieldEffectNames.join(", ")}',
+                      ),
+                    ),
+                  const Divider(height: 32),
+                  if (_match.isOver)
+                    ..._buildGameOver(context)
+                  else
+                    ..._buildPlayForm(context),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Vez de: ${_match.currentTurnName}',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 4),
-            Text('Jogador A: ${_statusSummary(_match.playerAStatusNames)}'),
-            Text('Jogador B: ${_statusSummary(_match.playerBStatusNames)}'),
-            const SizedBox(height: 4),
-            Text(
-              'Descobertas: ${_match.discoveredCount}/${_match.totalCombinationsCount}',
-            ),
-            if (_match.lastTriggeredCombinationName != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  'Última combinação: ${_match.lastTriggeredCombinationName}',
-                ),
-              ),
-            if (_match.lastAppliedStatusNames.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  'Efeitos aplicados: ${_match.lastAppliedStatusNames.join(", ")}',
-                ),
-              ),
-            if (_match.activeFieldEffectNames.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  'Campo: ${_match.activeFieldEffectNames.join(", ")}',
-                ),
-              ),
-            const Divider(height: 32),
-            if (_match.isOver)
-              ..._buildGameOver(context)
-            else
-              ..._buildPlayForm(context),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -226,9 +240,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
         style: Theme.of(context).textTheme.titleLarge,
       ),
       const SizedBox(height: 16),
-      ElevatedButton(
+      PixelMenuButton(
+        label: 'Nova partida',
         onPressed: _startNewMatch,
-        child: const Text('Nova partida'),
       ),
     ];
   }
@@ -255,9 +269,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
         ],
       ),
       const SizedBox(height: 16),
-      ElevatedButton(
+      PixelMenuButton(
+        label: 'Jogar',
         onPressed: _selectedIds.isEmpty ? null : _playTurn,
-        child: const Text('Jogar'),
       ),
       if (_error != null)
         Padding(
