@@ -96,6 +96,11 @@ class TrainingMatch {
   List<SkillNodeOption> get availableSkillNodesForCurrentPlayer =>
       _currentProgress.availableNodes.map(skillNodeOptionFrom).toList();
 
+  /// Ids dos nós que o jogador da vez atual já desbloqueou — usado pela
+  /// tela de Skill Tree visual (Bloco 7) pra saber o estado de cada nó da
+  /// árvore inteira, não só os disponíveis agora.
+  List<String> get unlockedNodeIdsForCurrentPlayer => _currentProgress.unlockedNodeIds;
+
   /// Names of the mutations/combination modifiers/HP bonuses the current
   /// player has already unlocked — shown so they can see their build
   /// taking shape.

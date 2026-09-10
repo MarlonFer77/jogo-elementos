@@ -108,6 +108,16 @@ void main() {
       // Jogador B hasn't unlocked anything yet.
       expect(match.unlockedGrantNamesForCurrentPlayer, isEmpty);
     });
+
+    test('unlockedNodeIdsForCurrentPlayer reflects what the current player has unlocked', () {
+      final match = TrainingMatch();
+
+      expect(match.unlockedNodeIdsForCurrentPlayer, isEmpty);
+
+      match.unlockSkillForCurrentPlayer('ember_mastery');
+
+      expect(match.unlockedNodeIdsForCurrentPlayer, ['ember_mastery']);
+    });
   });
 
   group('HP and victory', () {
