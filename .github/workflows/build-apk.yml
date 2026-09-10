@@ -18,6 +18,20 @@ jobs:
         with:
           channel: stable
 
+      # Runners are efêmeros — sem isso, o Gradle gera um keystore de debug
+      # novo (chave aleatória) a cada execução, e cada APK fica com uma
+      # assinatura diferente do anterior. Isso quebra qualquer instalação
+      # "por cima" de uma versão já instalada (Android recusa update com
+      # assinatura diferente) — ver DECISION-039. Cache fixa a mesma chave
+      # entre execuções: a primeira execução depois deste passo gera o
+      # keystore normalmente e o salva; toda execução seguinte reaproveita
+      # o mesmo arquivo, então os APKs passam a ter assinatura estável.
+      - name: Cache Android debug keystore
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: android-debug-keystore-v1
+
       - name: flutter pub get
         working-directory: app
         run: flutter pub get

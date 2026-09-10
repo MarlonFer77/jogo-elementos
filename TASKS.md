@@ -404,6 +404,10 @@ uma tarefa nova terminar revelando um gap novo.
   por uma árvore completa — travados/disponíveis/desbloqueados juntos,
   ícone por nó, 5 branches lado a lado roláveis, painel de detalhe ao
   tocar um nó (DECISION-038)
+- Assinatura estável do APK: workflow de build passa a cachear o keystore
+  de debug entre execuções, em vez de gerar um novo a cada build —
+  corrige atualização in-place falhando com "app não instalado"
+  (DECISION-039)
 
 # BLOCKED
 

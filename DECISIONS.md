@@ -1204,3 +1204,37 @@ completa no Multiplayer (contra o backend real) e do bônus de HP
 imediato (Treino de Vitalidade) ficou pro usuário confirmar depois, já
 coberta pelos testes automatizados de widget (`skill_tree_screen_test.dart`,
 `multiplayer_battle_screen_test.dart`).
+
+## DECISION-039
+Data: 2026-09-10
+Decisão: assinatura estável do APK — `.github/workflows/build-apk.yml`
+passa a cachear `~/.android/debug.keystore` (`actions/cache`, chave fixa
+`android-debug-keystore-v1`) entre execuções, em vez de deixar o Gradle
+gerar um keystore de debug novo (chave aleatória) a cada build.
+Problema encontrado: o usuário testou a checagem obrigatória de
+atualização (DECISION-037) de verdade num Android — apareceu a tela de
+"Atualização necessária", abriu o navegador, baixou o APK novo, mas o
+Android recusou instalar com "app não instalado". Diagnóstico: o runner
+do GitHub Actions é efêmero, sem nenhum keystore de debug persistido —
+toda build gerava uma chave nova, então nenhum dos APKs publicados até
+agora (v0.1.0 a v0.10.0) tem a mesma assinatura que o anterior, e o
+Android recusa instalar por cima de uma assinatura diferente (proteção de
+segurança padrão do sistema).
+Impacto: qualquer tentativa de atualizar um APK já instalado por cima de
+outro, até agora, falhava sempre — não é específico da checagem de
+atualização em si, é um problema do processo de build que só ficou
+visível quando alguém tentou de verdade uma atualização in-place pela
+primeira vez.
+Alternativa considerada e descartada: commitar um keystore de debug fixo
+direto no repositório — funcionaria igual, mas cache é mais simples de
+reverter/trocar se algo der errado, sem deixar um arquivo binário extra
+versionado.
+Consequência: a partir do primeiro APK gerado depois deste ajuste, a
+assinatura fica estável — atualizações in-place devem funcionar dali em
+diante. Quem já tem uma versão anterior instalada (qualquer uma até
+v0.10.0) precisa desinstalar e instalar do zero mais uma vez; depois
+disso, atualizar por cima deve funcionar.
+Testes: não há teste automatizado pra assinatura de build (é
+configuração de CI, fora do escopo de `flutter test`) — validação é
+gerar um APK novo e confirmar manualmente que instala por cima do
+anterior sem erro.
