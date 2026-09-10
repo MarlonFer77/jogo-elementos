@@ -9,7 +9,6 @@ import '../game_domain/detect_opponent_attack.dart';
 import '../game_domain/element_catalog.dart';
 import '../game_domain/multiplayer_exception.dart';
 import '../game_domain/multiplayer_match.dart';
-import '../game_domain/skill_tree_catalog.dart';
 import '../game_presentation/battle_scene_widget.dart';
 import '../game_presentation/pixel_arena_background.dart';
 import '../game_presentation/pixel_content_panel.dart';
@@ -18,6 +17,7 @@ import '../game_presentation/pixel_menu_button.dart';
 import '../game_presentation/pixel_outlined_text.dart';
 import '../game_presentation/pixel_page_route.dart';
 import '../game_presentation/pixel_sheet_panel.dart';
+import 'skill_tree_screen.dart';
 
 /// The multiplayer battle itself — reachable only after
 /// [MultiplayerLobbyScreen] created or joined a match. Polls the backend on
@@ -142,105 +142,21 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
     }
   }
 
-  void _openSkillTree() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            final canUnlockNow = _match.isInProgress && _match.isMyTurn;
-            final available = canUnlockNow
-                ? availableSkillNodeOptions(_match.unlockedNodeIdsForMe)
-                : const <SkillNodeOption>[];
-
-            return PixelSheetPanel(
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height * 0.6,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const PixelOutlinedText('Habilidades', fontSize: 18),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: !canUnlockNow
-                            ? const Text('Só dá pra desbloquear na sua vez.')
-                            : available.isEmpty
-                                ? const Text('Nada novo para desbloquear agora.')
-                                : ListView(
-                                    children: [
-                                      for (final node in available)
-                                        Container(
-                                          margin: const EdgeInsets.only(bottom: 8),
-                                          padding: const EdgeInsets.all(12),
-                                          decoration: BoxDecoration(
-                                            border: Border.all(
-                                              color: const Color(0xFF2B2B2B),
-                                              width: 3,
-                                            ),
-                                            borderRadius: BorderRadius.circular(4),
-                                            color: const Color(0xFFF4F4E4),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      '[${node.branch}] ${node.name}',
-                                                      style: const TextStyle(
-                                                        fontWeight: FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                    Text(node.description),
-                                                  ],
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              PixelMenuButton(
-                                                label: 'Desbloquear',
-                                                onPressed: () async {
-                                                  try {
-                                                    await _match.unlockSkill(node.id);
-                                                    setSheetState(() {});
-                                                    setState(() {});
-                                                  } on MultiplayerException catch (e) {
-                                                    if (!context.mounted) return;
-                                                    ScaffoldMessenger.of(context)
-                                                        .showSnackBar(
-                                                      SnackBar(content: Text(e.message)),
-                                                    );
-                                                  }
-                                                },
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                      ),
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: PixelMenuButton(
-                          label: 'Fechar',
-                          onPressed: () => Navigator.of(context).pop(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
+  Future<void> _openSkillTree() async {
+    await Navigator.of(context).push(pixelSlideRoute((_) => SkillTreeScreen(
+      title: 'Habilidades',
+      unlockedNodeIds: _match.unlockedNodeIdsForMe,
+      canUnlockNow: _match.isInProgress && _match.isMyTurn,
+      onUnlock: (nodeId) async {
+        try {
+          await _match.unlockSkill(nodeId);
+          return null;
+        } on MultiplayerException catch (e) {
+          return e.message;
+        }
       },
-    );
+    )));
+    setState(() {});
   }
 
   void _toggleElement(String id) {

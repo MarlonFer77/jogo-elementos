@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:app/game_domain/multiplayer_client.dart';
 import 'package:app/game_domain/multiplayer_match.dart';
 import 'package:app/game_presentation/pixel_menu_button.dart';
+import 'package:app/game_presentation/skill_tree_layout.dart';
+import 'package:app/game_presentation/skill_tree_node_widget.dart';
 import 'package:app/ui/multiplayer_battle_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -254,16 +256,35 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      expect(find.text('[fogo] Maestria da Brasa'), findsOneWidget);
+      expect(
+        tester.widget<SkillTreeNodeWidget>(
+          find.widgetWithText(SkillTreeNodeWidget, 'Maestria da Brasa'),
+        ).state,
+        SkillTreeNodeState.available,
+      );
 
-      await tester.tap(find.text('Desbloquear').first);
+      await tester.tap(find.text('Maestria da Brasa'));
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.text('Desbloquear'));
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
-      expect(find.text('[fogo] Maestria da Brasa'), findsNothing);
-      expect(find.text('[fogo] Caminho do Incêndio'), findsOneWidget);
+      expect(
+        tester.widget<SkillTreeNodeWidget>(
+          find.widgetWithText(SkillTreeNodeWidget, 'Maestria da Brasa'),
+        ).state,
+        SkillTreeNodeState.unlocked,
+      );
+      expect(
+        tester.widget<SkillTreeNodeWidget>(
+          find.widgetWithText(SkillTreeNodeWidget, 'Caminho do Incêndio'),
+        ).state,
+        SkillTreeNodeState.available,
+      );
 
-      await tester.tap(find.text('Fechar'));
+      await tester.tap(find.byType(BackButton));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pumpWidget(const SizedBox()); // dispose the poll Timer
