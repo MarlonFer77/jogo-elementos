@@ -44,6 +44,9 @@ uma tarefa nova terminar revelando um gap novo.
   tem APK de verdade (ver DECISION-029), mas só compila via GitHub
   Actions — o Gradle não roda localmente nesta máquina (mesma limitação
   de rede da JVM da DECISION-015)
+- Checagem de atualização (DECISION-037) nunca testada rodando de verdade
+  num Android — esta máquina só compila via GitHub Actions. Validado só
+  via teste de widget com `isAndroid` forçado
 
 **Multiplayer (cliente)**
 - A modal de Habilidades não escuta o polling por trás — se a vez mudar
@@ -387,6 +390,11 @@ uma tarefa nova terminar revelando um gap novo.
   toque, transição de tela em slide de baixo pra cima, e a lista de
   elementos virando um painel (`PixelSheetPanel`) em vez de ficar sempre
   visível — resolve a rolagem em Treino e Multiplayer (DECISION-036)
+- Checagem obrigatória de atualização: `UpdateChecker` consulta a API do
+  GitHub Releases, `UpdateGateScreen` vira a raiz do app e bloqueia o jogo
+  inteiro se existir versão mais nova (fail-open em erro de rede,
+  checagem só em Android) — acaba com o aviso manual de "tem APK novo"
+  pro amigo (DECISION-037)
 
 # BLOCKED
 

@@ -1103,3 +1103,56 @@ com a sequência de ataque do Bloco 1 ainda funcionando (dano real
 100→80 HP), transição em slide entre Home/Treino/Multiplayer/Lobby, criação
 de partida real no Multiplayer contra o backend no Render — sem nenhuma
 exceção não tratada no console (só o ruído pré-existente do dev server).
+
+## DECISION-037
+Data: 2026-09-10
+Decisão: checagem obrigatória de atualização — o app consulta a API
+pública do GitHub Releases ao abrir (só em Android) e bloqueia o jogo
+inteiro, Treino incluso, se existir uma versão mais nova publicada. Acaba
+com o processo manual de avisar cada amigo que existe um APK novo pra
+baixar.
+Passos: `UpdateChecker` (`game_domain`) chama
+`GET /repos/MarlonFer77/jogo-elementos/releases/latest` (header
+`User-Agent` obrigatório, senão a API do GitHub devolve 403), compara a
+tag da release com a versão instalada (`isNewerVersion`, comparação pura
+de `major.minor.patch`) e devolve um `UpdateCheckResult`. Qualquer falha
+(sem rede, timeout, resposta inesperada) devolve "está atualizado" —
+fail-open, nunca bloqueia por problema de rede transitório. Nova
+`UpdateGateScreen` vira a raiz do app (`main.dart`), no lugar da
+`HomeScreen` direta: mostra "Verificando atualizações..." enquanto checa,
+a Home se estiver tudo certo, ou uma tela bloqueante "Atualização
+necessária" com um botão que abre o link de download no navegador
+(`url_launcher`) — sem forma de pular. Web/Windows (só desenvolvimento,
+nunca distribuídos) pulam a checagem inteira. Duas dependências novas:
+`package_info_plus` (lê a versão instalada de verdade) e `url_launcher`
+(abre o navegador).
+Motivo: pedido direto do usuário — cansativo reenviar o link do APK pro
+amigo toda vez que sai uma versão nova; o app agora se anuncia sozinho.
+Dois achados reais durante a implementação, não previstos no plano:
+(1) `PixelMenuButton` com `width: 280` fixo (mesmo padrão da Home) estoura
+("RenderFlex overflow") com o label "Baixar atualização", mais longo que
+os outros — corrigido deixando o botão sem largura fixa, do jeito que
+"Jogar"/"Escolher elementos" já são usados em outras telas. (2) em teste
+de widget, `tester.pump()` **sem duração** não avança o relógio falso o
+suficiente pra disparar um `Future.delayed(Duration.zero)` — precisa de
+`tester.pump(const Duration(milliseconds: 1))` (ou qualquer duração > 0)
+pra isso resolver de verdade; documentado como lição nova, mesma categoria
+da proibição de `pumpAndSettle()` com animação infinita (Bloco 6) — aliás
+essa proibição se confirmou aqui na prática: `pumpAndSettle()` nos testes
+de `UpdateGateScreen` travou (timeout) porque o estado "atualizado"
+mostra a `HomeScreen`, que desde o Bloco 6 tem idle infinito.
+Consequência/processo novo: a partir de agora, toda vez que eu gerar e
+publicar um APK novo preciso **também** atualizar o campo `version:` do
+`app/pubspec.yaml` pra bater com a tag da release (ex: tag `v0.9.0` →
+`version: 0.9.0+9`) — é esse campo que vira o `versionName` real
+instalado, que o `package_info_plus` lê em runtime. Sem esse passo, o app
+nunca vai se reconhecer como desatualizado. `pubspec.yaml` está em
+`1.0.0+1` ainda — a próxima geração de APK precisa vir com esse bump.
+Lacuna conhecida: esta máquina não roda Android de verdade (só compila via
+GitHub Actions), então a validação ficou limitada aos testes de widget com
+`isAndroid: true` forçado — nunca visto rodando de verdade num aparelho
+Android aqui. Confirmação manual pendente do usuário depois do próximo APK.
+Testes: suíte completa do app (`flutter test`, 117 testes) e `flutter
+analyze` passando. Verificado no navegador (Web, servidor reiniciado do
+zero): Home abre direto sem travar em "Verificando atualizações..."
+(checagem pulada fora do Android), sem exceções no console.
