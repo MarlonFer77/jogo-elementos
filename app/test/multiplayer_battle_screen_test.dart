@@ -87,13 +87,12 @@ void main() {
       expect(find.text('Oponente'), findsOneWidget);
       expect(find.textContaining('100/100 HP'), findsNWidgets(2));
 
-      // beto plays out of turn (ana's turn) — the backend mock above only
-      // answers /turns with a state where it's ana's turn again, mimicking
-      // ana having just played fire+wind against beto.
-      await tester.tap(find.text('🔥 Fogo'));
-      await tester.pump();
-      await tester.tap(find.text('🌪️ Vento'));
-      await tester.pump();
+      // beto can't even open the element picker out of turn (ana's turn) —
+      // "Escolher elementos" is disabled, same as "Jogar".
+      final pickerButton = tester.widget<PixelMenuButton>(
+        find.widgetWithText(PixelMenuButton, 'Escolher elementos'),
+      );
+      expect(pickerButton.onPressed, isNull);
 
       // Play button is disabled: it's not beto's turn.
       final playButton = tester.widget<PixelMenuButton>(
