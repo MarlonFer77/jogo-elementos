@@ -13,8 +13,10 @@ import '../game_domain/skill_tree_catalog.dart';
 import '../game_presentation/battle_scene_widget.dart';
 import '../game_presentation/pixel_arena_background.dart';
 import '../game_presentation/pixel_content_panel.dart';
+import '../game_presentation/pixel_element_chip.dart';
 import '../game_presentation/pixel_menu_button.dart';
 import '../game_presentation/pixel_outlined_text.dart';
+import '../game_presentation/pixel_sheet_panel.dart';
 
 /// The multiplayer battle itself — reachable only after
 /// [MultiplayerLobbyScreen] created or joined a match. Polls the backend on
@@ -143,6 +145,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
@@ -151,59 +154,85 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
                 ? availableSkillNodeOptions(_match.unlockedNodeIdsForMe)
                 : const <SkillNodeOption>[];
 
-            return SizedBox(
-              height: MediaQuery.of(context).size.height * 0.6,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Habilidades',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: !canUnlockNow
-                          ? const Text('Só dá pra desbloquear na sua vez.')
-                          : available.isEmpty
-                              ? const Text('Nada novo para desbloquear agora.')
-                              : ListView(
-                                  children: [
-                                    for (final node in available)
-                                      ListTile(
-                                        title: Text(
-                                          '[${node.branch}] ${node.name}',
+            return PixelSheetPanel(
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height * 0.6,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const PixelOutlinedText('Habilidades', fontSize: 18),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: !canUnlockNow
+                            ? const Text('Só dá pra desbloquear na sua vez.')
+                            : available.isEmpty
+                                ? const Text('Nada novo para desbloquear agora.')
+                                : ListView(
+                                    children: [
+                                      for (final node in available)
+                                        Container(
+                                          margin: const EdgeInsets.only(bottom: 8),
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            border: Border.all(
+                                              color: const Color(0xFF2B2B2B),
+                                              width: 3,
+                                            ),
+                                            borderRadius: BorderRadius.circular(4),
+                                            color: const Color(0xFFF4F4E4),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      '[${node.branch}] ${node.name}',
+                                                      style: const TextStyle(
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                    Text(node.description),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              PixelMenuButton(
+                                                label: 'Desbloquear',
+                                                onPressed: () async {
+                                                  try {
+                                                    await _match.unlockSkill(node.id);
+                                                    setSheetState(() {});
+                                                    setState(() {});
+                                                  } on MultiplayerException catch (e) {
+                                                    if (!context.mounted) return;
+                                                    ScaffoldMessenger.of(context)
+                                                        .showSnackBar(
+                                                      SnackBar(content: Text(e.message)),
+                                                    );
+                                                  }
+                                                },
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                        subtitle: Text(node.description),
-                                        trailing: TextButton(
-                                          onPressed: () async {
-                                            try {
-                                              await _match.unlockSkill(node.id);
-                                              setSheetState(() {});
-                                              setState(() {});
-                                            } on MultiplayerException catch (e) {
-                                              if (!context.mounted) return;
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(content: Text(e.message)),
-                                              );
-                                            }
-                                          },
-                                          child: const Text('Desbloquear'),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                    ),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Fechar'),
+                                    ],
+                                  ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: PixelMenuButton(
+                          label: 'Fechar',
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -339,12 +368,10 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
         runSpacing: 8,
         children: [
           for (final element in elements)
-            FilterChip(
-              label: Text('${element.symbol} ${element.name}'),
+            PixelElementChip(
+              label: '${element.symbol} ${element.name}',
               selected: _selectedIds.contains(element.id),
-              onSelected: _match.isMyTurn
-                  ? (_) => _toggleElement(element.id)
-                  : null,
+              onTap: _match.isMyTurn ? () => _toggleElement(element.id) : null,
             ),
         ],
       ),
