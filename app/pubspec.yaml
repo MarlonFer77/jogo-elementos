@@ -39,6 +39,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   flame: ^1.38.2
   http: ^1.2.2
+  package_info_plus: ^10.2.1
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
