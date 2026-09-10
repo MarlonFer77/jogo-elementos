@@ -8,6 +8,7 @@ import '../game_presentation/pixel_arena_background.dart';
 import '../game_presentation/pixel_content_panel.dart';
 import '../game_presentation/pixel_menu_button.dart';
 import '../game_presentation/pixel_outlined_text.dart';
+import '../game_presentation/pixel_text_field.dart';
 import 'multiplayer_battle_screen.dart';
 
 /// Entry point for Multiplayer (seção 11): create a match and share the
@@ -120,10 +121,7 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(labelText: 'Seu nome'),
-                  ),
+                  PixelTextField(controller: _nameController, label: 'Seu nome'),
                   const SizedBox(height: 16),
                   PixelMenuButton(
                     label: 'Criar partida',
@@ -131,9 +129,9 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
                     onPressed: _loading ? null : _create,
                   ),
                   const Divider(height: 32),
-                  TextField(
+                  PixelTextField(
                     controller: _codeController,
-                    decoration: const InputDecoration(labelText: 'Código da partida'),
+                    label: 'Código da partida',
                   ),
                   const SizedBox(height: 8),
                   Wrap(
