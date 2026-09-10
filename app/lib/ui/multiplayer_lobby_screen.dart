@@ -8,6 +8,7 @@ import '../game_presentation/pixel_arena_background.dart';
 import '../game_presentation/pixel_content_panel.dart';
 import '../game_presentation/pixel_menu_button.dart';
 import '../game_presentation/pixel_outlined_text.dart';
+import '../game_presentation/pixel_page_route.dart';
 import '../game_presentation/pixel_text_field.dart';
 import 'multiplayer_battle_screen.dart';
 
@@ -94,7 +95,7 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
       await action();
       if (!mounted) return;
       await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => MultiplayerBattleScreen(match: match)),
+        pixelSlideRoute((_) => MultiplayerBattleScreen(match: match)),
       );
     } on MultiplayerException catch (e) {
       setState(() => _error = e.message);

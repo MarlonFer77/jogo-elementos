@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../game_presentation/pixel_arena_background.dart';
 import '../game_presentation/pixel_menu_button.dart';
 import '../game_presentation/pixel_outlined_text.dart';
+import '../game_presentation/pixel_page_route.dart';
 import '../game_presentation/trainer_sprite_image.dart';
 import 'multiplayer_lobby_screen.dart';
 import 'training_screen.dart';
@@ -66,7 +67,7 @@ class HomeScreen extends StatelessWidget {
                         primary: true,
                         onPressed: () {
                           Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const TrainingScreen()),
+                            pixelSlideRoute((_) => const TrainingScreen()),
                           );
                         },
                       ),
@@ -78,7 +79,7 @@ class HomeScreen extends StatelessWidget {
                         label: 'MULTIPLAYER',
                         onPressed: () {
                           Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const MultiplayerLobbyScreen()),
+                            pixelSlideRoute((_) => const MultiplayerLobbyScreen()),
                           );
                         },
                       ),

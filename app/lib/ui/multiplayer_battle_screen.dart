@@ -16,6 +16,7 @@ import '../game_presentation/pixel_content_panel.dart';
 import '../game_presentation/pixel_element_chip.dart';
 import '../game_presentation/pixel_menu_button.dart';
 import '../game_presentation/pixel_outlined_text.dart';
+import '../game_presentation/pixel_page_route.dart';
 import '../game_presentation/pixel_sheet_panel.dart';
 
 /// The multiplayer battle itself — reachable only after
@@ -132,7 +133,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
       final rematch = await _match.startRematch();
       if (!mounted) return;
       await Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => MultiplayerBattleScreen(match: rematch)),
+        pixelSlideRoute((_) => MultiplayerBattleScreen(match: rematch)),
       );
     } on MultiplayerException catch (e) {
       setState(() => _error = e.message);
