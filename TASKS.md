@@ -44,9 +44,10 @@ uma tarefa nova terminar revelando um gap novo.
   tem APK de verdade (ver DECISION-029), mas só compila via GitHub
   Actions — o Gradle não roda localmente nesta máquina (mesma limitação
   de rede da JVM da DECISION-015)
-- Checagem de atualização (DECISION-037) nunca testada rodando de verdade
-  num Android — esta máquina só compila via GitHub Actions. Validado só
-  via teste de widget com `isAndroid` forçado
+- Checagem de atualização (DECISION-037) e download in-app (DECISION-040)
+  nunca testados rodando de verdade num Android — esta máquina só compila
+  via GitHub Actions. Validado só via teste de widget com `isAndroid`/
+  `startDownload` forçados
 - Layout da Skill Tree visual (DECISION-038) assume que cada branch é
   uma cadeia linear (`orderBranchNodes`) — se um nó ganhar 2+
   pré-requisitos ou 2+ nós dependendo dele no futuro, o layout continua
@@ -408,6 +409,10 @@ uma tarefa nova terminar revelando um gap novo.
   de debug entre execuções, em vez de gerar um novo a cada build —
   corrige atualização in-place falhando com "app não instalado"
   (DECISION-039)
+- Download de atualização dentro do app: `UpdateGateScreen` baixa o APK
+  com barra de progresso (pacote `ota_update`) e abre o instalador do
+  Android sozinho, substituindo o "abrir navegador" — erro mostra
+  "Tentar de novo", sem fallback pro navegador (DECISION-040)
 
 # BLOCKED
 

@@ -1238,3 +1238,37 @@ Testes: não há teste automatizado pra assinatura de build (é
 configuração de CI, fora do escopo de `flutter test`) — validação é
 gerar um APK novo e confirmar manualmente que instala por cima do
 anterior sem erro.
+
+## DECISION-040
+Data: 2026-09-10
+Decisão: download de atualização dentro do app — o botão "Baixar
+atualização" (DECISION-037) deixa de abrir o navegador e passa a baixar o
+APK dentro do próprio app, com barra de progresso, terminando em abrir o
+instalador nativo do Android automaticamente. Substitui completamente o
+mecanismo de `url_launcher` (removido das dependências).
+Passos: pacote `ota_update` (v7.1.0) — `OtaUpdate().execute(url,
+destinationFilename: 'app-release.apk')` devolve um `Stream<OtaEvent>`
+(`status`/`value`), escutado por `UpdateGateScreen` pra dirigir um novo
+sub-estado (`_DownloadState`: idle/downloading/installing/error). Android
+ganhou duas permissões (`WRITE_EXTERNAL_STORAGE`,
+`REQUEST_INSTALL_PACKAGES`) e um `FileProvider`/`receiver` — configuração
+documentada pelo próprio pacote, sem inventar nada na mão. Falha em
+qualquer ponto (download ou instalação) mostra uma mensagem + botão
+"Tentar de novo", que reinicia o download do zero (sem fallback pro
+navegador, decisão do usuário). API do pacote confirmada lendo o
+código-fonte real (`~/.pub-cache`) antes de escrever o plano, não por
+suposição.
+Motivo: o usuário testou a checagem de atualização (DECISION-037) de
+verdade e esperava um download com barra de progresso dentro do app, não
+precisar sair pro navegador — pedido explícito depois de ver o
+comportamento anterior ao vivo.
+Consequência: nenhuma lacuna nova conhecida. Depende da DECISION-039
+(assinatura estável do APK) já estar em vigor pra realmente funcionar
+"atualizar por cima" — sem ela, o download novo funcionaria mas a
+instalação ainda falharia com "app não instalado".
+Testes: suíte completa do app (`flutter test`, 134 testes) e `flutter
+analyze` passando. Sem validação real em Android nesta máquina (só
+compila via GitHub Actions) — fica pra confirmação manual do usuário no
+próximo APK: baixar dentro do app, ver a barra de progresso andar, o
+instalador abrir sozinho, e a instalação por cima da versão anterior
+funcionar sem erro.
