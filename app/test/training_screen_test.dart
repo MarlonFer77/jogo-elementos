@@ -11,6 +11,7 @@ void main() {
     'passes the turn to Jogador B',
     (WidgetTester tester) async {
       await tester.pumpWidget(const GameApp());
+      await tester.pump(const Duration(milliseconds: 1)); // resolve o Future.delayed da checagem de atualização
 
       await tester.tap(find.text('MODO TREINO'));
       await tester.pump();
@@ -48,6 +49,7 @@ void main() {
   testWidgets('the play button is disabled until an element is selected',
       (WidgetTester tester) async {
     await tester.pumpWidget(const GameApp());
+    await tester.pump(const Duration(milliseconds: 1)); // resolve o Future.delayed da checagem de atualização
 
     await tester.tap(find.text('MODO TREINO'));
     await tester.pump();
@@ -64,6 +66,7 @@ void main() {
     'next action',
     (WidgetTester tester) async {
       await tester.pumpWidget(const GameApp());
+      await tester.pump(const Duration(milliseconds: 1)); // resolve o Future.delayed da checagem de atualização
 
       await tester.tap(find.text('MODO TREINO'));
       await tester.pump();

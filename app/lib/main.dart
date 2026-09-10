@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'ui/home_screen.dart';
+import 'ui/update_gate_screen.dart';
 
 void main() {
   runApp(const GameApp());
@@ -17,7 +17,7 @@ class GameApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),
+      home: const UpdateGateScreen(),
     );
   }
 }
