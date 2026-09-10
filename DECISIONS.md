@@ -1156,3 +1156,51 @@ Testes: suíte completa do app (`flutter test`, 117 testes) e `flutter
 analyze` passando. Verificado no navegador (Web, servidor reiniciado do
 zero): Home abre direto sem travar em "Verificando atualizações..."
 (checagem pulada fora do Android), sem exceções no console.
+
+## DECISION-038
+Data: 2026-09-10
+Decisão: Skill Tree visual (Bloco 7 da direção de produto) — o botão
+"Habilidades" (Treino e Multiplayer) passa a abrir uma tela cheia com a
+árvore inteira (travados/disponíveis/desbloqueados juntos, ícone por nó,
+5 branches lado a lado roláveis horizontalmente) em vez do modal com só
+os "disponíveis agora". Uma única `SkillTreeScreen` substitui as duas
+implementações quase idênticas que existiam antes.
+Passos: `SkillTreeNodeOption`/`allSkillTreeNodes`/`skillTreeBranchDisplayName`
+novos em `game_domain/skill_tree_catalog.dart` (ícone por nó — emoji,
+mesmo espírito do symbol de `ElementOption` — e nome de exibição por
+branch), sem tocar `battle_engine`/backend. `TrainingMatch` ganhou
+`unlockedNodeIdsForCurrentPlayer` (só tinha os "disponíveis agora" antes).
+Layout puro (`orderBranchNodes`/`skillTreeNodeState`, testáveis sem
+Flutter) assume que cada branch é uma cadeia linear — cobre 100% do
+conteúdo real hoje; se um nó ganhar 2+ pré-requisitos/filhos no futuro,
+ainda produz uma ordem topológica válida, só não desenha ramificação
+visual (limitação conhecida). Cada branch vira uma coluna própria —
+nenhuma raiz falsa inventada pra unificar visualmente. Tocar qualquer nó
+(`SkillTreeNodeWidget`, círculo com ícone) abre um painel de detalhe
+(`PixelSheetPanel`) com nome/descrição e, dependendo do estado, os
+pré-requisitos que faltam, o botão "Desbloquear", ou o aviso de que só dá
+pra desbloquear na própria vez. Mudança de UX deliberada: a árvore
+inteira agora fica visível a qualquer momento no Multiplayer, mesmo fora
+da vez — só a ação de desbloquear continua condicionada a isso (antes,
+fora da vez, nem a lista aparecia).
+Motivo: Bloco 7 da nova direção de produto (game feel) — o usuário trouxe
+uma imagem de referência de árvore de habilidades visual; decidido em
+brainstorming não inventar uma raiz falsa (os dados reais não têm uma
+raiz compartilhada entre as 5 branches) e usar tela cheia em vez de
+continuar no painel que sobe de baixo.
+Consequência: nenhuma lacuna nova conhecida além da já documentada
+(layout assume cadeia linear, registrada no BACKLOG).
+`SkillNodeOption`/`skillNodeOptionFrom`/`availableSkillNodeOptions`
+(código antigo) continuam existindo, sem uso depois deste bloco — não
+removidos, fora de escopo.
+Testes: suíte completa do app (`flutter test`, 133 testes) e `flutter
+analyze` passando. Verificado de ponta a ponta de verdade via `flutter
+run -d web-server` (servidor reiniciado, não só recarregado): árvore
+completa visível no Modo Treino (5 branches, nós travados com opacidade
+reduzida), nó "Maestria da Brasa" desbloqueado de verdade pelo painel de
+detalhe (virou dourado, "Caminho do Incêndio" saiu do travado), voltar
+pra tela de batalha funcionando, zero exceções no console. Verificação
+completa no Multiplayer (contra o backend real) e do bônus de HP
+imediato (Treino de Vitalidade) ficou pro usuário confirmar depois, já
+coberta pelos testes automatizados de widget (`skill_tree_screen_test.dart`,
+`multiplayer_battle_screen_test.dart`).

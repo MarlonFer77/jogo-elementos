@@ -47,6 +47,10 @@ uma tarefa nova terminar revelando um gap novo.
 - Checagem de atualização (DECISION-037) nunca testada rodando de verdade
   num Android — esta máquina só compila via GitHub Actions. Validado só
   via teste de widget com `isAndroid` forçado
+- Layout da Skill Tree visual (DECISION-038) assume que cada branch é
+  uma cadeia linear (`orderBranchNodes`) — se um nó ganhar 2+
+  pré-requisitos ou 2+ nós dependendo dele no futuro, o layout continua
+  correto logicamente mas não desenha a ramificação visualmente
 
 **Multiplayer (cliente)**
 - A modal de Habilidades não escuta o polling por trás — se a vez mudar
@@ -395,6 +399,11 @@ uma tarefa nova terminar revelando um gap novo.
   inteiro se existir versão mais nova (fail-open em erro de rede,
   checagem só em Android) — acaba com o aviso manual de "tem APK novo"
   pro amigo (DECISION-037)
+- Skill Tree visual (Bloco 7 da direção de produto): `SkillTreeScreen`
+  única (Treino e Multiplayer) substitui o modal de "disponíveis agora"
+  por uma árvore completa — travados/disponíveis/desbloqueados juntos,
+  ícone por nó, 5 branches lado a lado roláveis, painel de detalhe ao
+  tocar um nó (DECISION-038)
 
 # BLOCKED
 
