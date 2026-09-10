@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:app/game_domain/update_checker.dart';
 import 'package:app/ui/home_screen.dart';
 import 'package:app/ui/update_gate_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ota_update/ota_update.dart';
 
 class _FakeUpdateChecker implements UpdateChecker {
   _FakeUpdateChecker(this._result);
@@ -53,9 +56,9 @@ void main() {
   });
 
   testWidgets(
-      'shows the update-required screen and opens the download link when '
-      'an update is available', (tester) async {
-    Uri? openedUri;
+      'shows a progress bar while downloading, then switches to the '
+      'installing message', (tester) async {
+    final controller = StreamController<OtaEvent>();
     await tester.pumpWidget(MaterialApp(
       home: UpdateGateScreen(
         isAndroid: true,
@@ -66,7 +69,10 @@ void main() {
             downloadUrl: 'https://example.com/app-release.apk',
           ),
         ),
-        launchUrl: (uri) async => openedUri = uri,
+        startDownload: (url) {
+          expect(url, 'https://example.com/app-release.apk');
+          return controller.stream;
+        },
       ),
     ));
     await tester.pump(const Duration(milliseconds: 1));
@@ -78,6 +84,54 @@ void main() {
     await tester.tap(find.text('Baixar atualização'));
     await tester.pump();
 
-    expect(openedUri, Uri.parse('https://example.com/app-release.apk'));
+    controller.add(OtaEvent(OtaStatus.DOWNLOADING, '45'));
+    await tester.pump(const Duration(milliseconds: 1));
+
+    expect(find.text('Baixando... 45%'), findsOneWidget);
+
+    controller.add(OtaEvent(OtaStatus.INSTALLATION_DONE, null));
+    await tester.pump(const Duration(milliseconds: 1));
+
+    expect(find.text('Abrindo instalador...'), findsOneWidget);
+
+    await controller.close();
+  });
+
+  testWidgets('shows an error and a retry button when the download fails',
+      (tester) async {
+    var attempts = 0;
+    await tester.pumpWidget(MaterialApp(
+      home: UpdateGateScreen(
+        isAndroid: true,
+        currentVersion: '0.8.0',
+        updateChecker: _FakeUpdateChecker(
+          const UpdateCheckResult.updateAvailable(
+            latestVersion: '0.9.0',
+            downloadUrl: 'https://example.com/app-release.apk',
+          ),
+        ),
+        startDownload: (url) {
+          attempts++;
+          return Stream<OtaEvent>.value(
+            OtaEvent(OtaStatus.DOWNLOAD_ERROR, 'sem conexão'),
+          );
+        },
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 1));
+
+    await tester.tap(find.text('Baixar atualização'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Falha ao baixar a atualização.'), findsOneWidget);
+    expect(find.text('Tentar de novo'), findsOneWidget);
+    expect(attempts, 1);
+
+    await tester.tap(find.text('Tentar de novo'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(attempts, 2);
   });
 }
