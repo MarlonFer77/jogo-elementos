@@ -34,4 +34,31 @@ void main() {
     await tester.tap(find.text('Jogar'));
     await tester.pump();
   });
+
+  testWidgets(
+      'shows a pressed-in offset while held down, and releases it back',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: PixelMenuButton(label: 'Jogar', onPressed: () {}),
+      ),
+    ));
+
+    final gesture =
+        await tester.startGesture(tester.getCenter(find.text('Jogar')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+
+    final pressed =
+        tester.widget<AnimatedContainer>(find.byType(AnimatedContainer));
+    expect(pressed.transform, Matrix4.translationValues(3, 3, 0));
+
+    await gesture.up();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+
+    final released =
+        tester.widget<AnimatedContainer>(find.byType(AnimatedContainer));
+    expect(released.transform, Matrix4.translationValues(0, 0, 0));
+  });
 }
