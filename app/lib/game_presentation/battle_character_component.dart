@@ -26,9 +26,12 @@ class BattleCharacterComponent extends PositionComponent {
 
   static const double _hitEffectDuration = 0.3;
   static const double _prepPulseDuration = 0.15;
+  static const double _idleBobAmplitude = 2.0;
+  static const double _idleBobPeriodSeconds = 1.6;
 
   double _hitEffectRemaining = 0;
   double _prepPulseRemaining = 0;
+  double _idleTime = 0;
 
   /// Se o flash/shake de dano está tocando agora.
   bool get isPlayingHitEffect => _hitEffectRemaining > 0;
@@ -51,13 +54,17 @@ class BattleCharacterComponent extends PositionComponent {
   @override
   void update(double dt) {
     super.update(dt);
+    _idleTime += dt;
+    final idleBobY = math.sin(_idleTime / _idleBobPeriodSeconds * 2 * math.pi) *
+        _idleBobAmplitude;
+
     if (_hitEffectRemaining <= 0) {
-      position.setFrom(_basePosition);
+      position.setValues(_basePosition.x, _basePosition.y + idleBobY);
     } else {
       _hitEffectRemaining = (_hitEffectRemaining - dt).clamp(0, _hitEffectDuration);
       final progress = _hitEffectRemaining / _hitEffectDuration;
       final shakeX = math.sin(progress * math.pi * 6) * 4 * progress;
-      position.setValues(_basePosition.x + shakeX, _basePosition.y);
+      position.setValues(_basePosition.x + shakeX, _basePosition.y + idleBobY);
     }
 
     if (_prepPulseRemaining > 0) {
