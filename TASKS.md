@@ -382,6 +382,11 @@ uma tarefa nova terminar revelando um gap novo.
   produto): `PixelElementChip`, `PixelTextField` e `PixelSheetPanel` novos,
   substituindo `FilterChip`/`TextField`/conteúdo cru do modal de Skill Tree
   em Treino e Multiplayer, sem mudar lógica nem texto (DECISION-035)
+- Animações + painel de seleção de elementos (Bloco 6 da direção de
+  produto): idle nos sprites (Home e batalha), botões/chips afundando ao
+  toque, transição de tela em slide de baixo pra cima, e a lista de
+  elementos virando um painel (`PixelSheetPanel`) em vez de ficar sempre
+  visível — resolve a rolagem em Treino e Multiplayer (DECISION-036)
 
 # BLOCKED
 

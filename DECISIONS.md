@@ -1056,3 +1056,50 @@ analyze` passando. Verificado de ponta a ponta de verdade via `flutter run
 seleção de elemento (chip dourado/creme) e desbloqueio real de habilidade
 pelo painel novo, Lobby com campos restilizados e criação de partida real
 contra o backend no Render, zero erros no console.
+
+## DECISION-036
+Data: 2026-09-10
+Decisão: animações (Bloco 6 da direção de produto) — sprites com idle
+(balanço vertical sutil na Home e na cena de batalha), botões/chips
+afundando ao toque, transição de tela em slide de baixo pra cima — mais a
+lista de elementos saindo do corpo da tela e virando um painel que sobe de
+baixo (`PixelSheetPanel`, mesmo do Bloco 5), resolvendo a rolagem que a
+lista sempre visível causava em Treino e Multiplayer.
+Passos: `TrainerSpriteImage` e `BattleCharacterComponent` ganharam um
+deslocamento senoidal em Y (2px de amplitude, ciclo de 1.6s) — o primeiro
+via `AnimationController`/`AnimatedBuilder`, o segundo somado direto no
+`update()` do componente Flame, sem conflitar com o shake de dano (só X) ou
+o pulso de preparação (só escala) que já existiam. `PixelMenuButton` e
+`PixelElementChip` viraram `StatefulWidget`, com `AnimatedContainer`
+reagindo a `onTapDown`/`onTapUp`/`onTapCancel` (sombra some, conteúdo
+desloca 3px). Novo `pixelSlideRoute` (`PageRouteBuilder` com
+`SlideTransition`, 300ms) substitui `MaterialPageRoute` nas 4 navegações
+principais. `TrainingScreen`/`MultiplayerBattleScreen` ganharam
+`_openElementPicker`/`_selectedElementsSummary` — a lista de chips agora só
+aparece dentro do painel, aberto por um botão "Escolher elementos"
+(desabilitado fora da vez no Multiplayer, mesma condição que os chips já
+tinham); a tela principal mostra só o resumo do que foi escolhido.
+Motivo: Bloco 6 da nova direção de produto (game feel) — "animações" era o
+próximo item sem bloco dedicado na ordem de prioridade; o painel de
+elementos entrou no mesmo bloco por resolver, com a mesma peça visual
+(painel subindo), um problema de UX real apontado pelo usuário (rolagem
+causada pela lista de elementos sempre visível).
+Consequência: nenhuma lacuna nova conhecida. Testes que montam
+`TrainerSpriteImage`/`HomeScreen` agora precisam descartar o
+`AnimationController` explicitamente no final (`pumpWidget(SizedBox())`) —
+documentado como constraint pra blocos futuros que tocam essas telas.
+Achado à parte (não é regressão deste bloco): `flutter run -d web-server`
+sempre gerou uma quantidade grande de erros 404 no console, presentes já
+no carregamento inicial da página antes de qualquer interação — ruído do
+servidor de desenvolvimento (DWDS buscando arquivos-fonte pra
+debug/source-map), não afeta a aplicação. Confirmado comparando console
+logo após reload, sem nenhuma interação, com o mesmo padrão.
+Testes: suíte completa do app (`flutter test`, 104 testes) e `flutter
+analyze` passando. Verificado de ponta a ponta de verdade via `flutter run
+-d web-server` (servidor reiniciado, não só recarregado): idle nos
+personagens da Home e da batalha, "afundar" ao segurar um botão, painel de
+elementos abrindo/fechando com seleção e confirmação reais, jogada completa
+com a sequência de ataque do Bloco 1 ainda funcionando (dano real
+100→80 HP), transição em slide entre Home/Treino/Multiplayer/Lobby, criação
+de partida real no Multiplayer contra o backend no Render — sem nenhuma
+exceção não tratada no console (só o ruído pré-existente do dev server).
