@@ -1026,3 +1026,33 @@ recarregado): Modo Treino (jogada de Fogo+Vento de verdade, botão
 desabilitando/habilitando corretamente), Lobby e criação de partida real
 no Multiplayer, todos com fundo/título/botões consistentes com a Home —
 sem erro no console.
+
+## DECISION-035
+Data: 2026-09-10
+Decisão: feedback visual em pixel art pros chips de elemento, campos de
+texto e modal de Skill Tree (Bloco 5 da direção de produto) — fecha o gap
+documentado desde o Bloco 4 (DECISION-034). Nenhuma lógica, regra ou texto
+visível mudou — só o widget por trás de cada elemento.
+Passos: três componentes novos em `game_presentation/` —
+`PixelElementChip` (substitui `FilterChip`, preenchimento dourado quando
+selecionado/creme quando não, opacidade reduzida quando `onTap` é nulo),
+`PixelTextField` (substitui `TextField` cru na Lobby, mesma borda/fundo dos
+outros componentes, `TextField` real por dentro pra não quebrar os testes
+existentes) e `PixelSheetPanel` (envolve o conteúdo do modal de Skill Tree
+num painel com cantos superiores arredondados, pra parecer um painel de
+jogo subindo em vez de um bottom sheet branco genérico). Dentro do modal, o
+título virou `PixelOutlinedText`, cada nó desbloqueável ganhou um cartão
+com borda pixel art (era `ListTile`), e "Desbloquear"/"Fechar" viraram
+`PixelMenuButton` (eram `TextButton`).
+Motivo: Bloco 5 da nova direção de produto (game feel) — esses três
+elementos eram justamente os mais interagidos durante uma partida (seleção
+de elemento, desbloqueio de habilidade) e o gap ficou documentado
+explicitamente no BACKLOG desde a DECISION-034.
+Consequência: nenhuma lacuna nova conhecida — o gap de "feedback visual"
+Material padrão apontado na DECISION-034 está fechado.
+Testes: suíte completa do app (`flutter test`, 100 testes) e `flutter
+analyze` passando. Verificado de ponta a ponta de verdade via `flutter run
+-d web-server` (servidor reiniciado, não só recarregado): Modo Treino com
+seleção de elemento (chip dourado/creme) e desbloqueio real de habilidade
+pelo painel novo, Lobby com campos restilizados e criação de partida real
+contra o backend no Render, zero erros no console.
