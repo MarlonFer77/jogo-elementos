@@ -15,5 +15,7 @@ void main() {
       ),
     );
     expect(find.byType(TrainerSpriteImage), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox()); // dispose the idle AnimationController
   });
 }

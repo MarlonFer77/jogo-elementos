@@ -11,6 +11,8 @@ void main() {
     expect(find.text('ELEMENTOS'), findsOneWidget);
     expect(find.text('MODO TREINO'), findsOneWidget);
     expect(find.text('MULTIPLAYER'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox()); // dispose the idle AnimationControllers
   });
 
   testWidgets('MODO TREINO navigates to TrainingScreen', (tester) async {
@@ -21,6 +23,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.byType(TrainingScreen), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox()); // dispose the idle AnimationControllers
   });
 
   testWidgets('MULTIPLAYER navigates to MultiplayerLobbyScreen',
@@ -32,5 +36,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.byType(MultiplayerLobbyScreen), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox()); // dispose the idle AnimationControllers
   });
 }
