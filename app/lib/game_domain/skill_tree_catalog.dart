@@ -36,3 +36,68 @@ List<SkillNodeOption> availableSkillNodeOptions(List<String> unlockedNodeIds) {
   final progress = SkillProgress(defaultSkillTree, unlockedNodeIds: unlockedNodeIds);
   return progress.availableNodes.map(skillNodeOptionFrom).toList();
 }
+
+/// Um nó da Skill Tree com tudo que a árvore visual precisa pra desenhar
+/// (Bloco 7) — inclui `prerequisites` e um `icon` (emoji), diferente de
+/// [SkillNodeOption] que só carrega o necessário pra listar "disponíveis
+/// agora".
+class SkillTreeNodeOption {
+  final String id;
+  final String name;
+  final String description;
+  final String branch;
+  final List<String> prerequisites;
+  final String icon;
+
+  const SkillTreeNodeOption({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.branch,
+    required this.prerequisites,
+    required this.icon,
+  });
+}
+
+const _skillTreeNodeIcons = {
+  'ember_mastery': '🔥',
+  'wildfire_path': '🌋',
+  'unstable_core_training': '🎯',
+  'fragment_strikes': '💥',
+  'elemental_insight': '🌊',
+  'elemental_mastery': '⚡',
+  'vitality_training': '❤️',
+  'guard_training': '🛡️',
+};
+
+/// Todos os nós de `defaultSkillTree`, com ícone — base pra tela de
+/// Skill Tree visual (Bloco 7), que precisa mostrar travados/disponíveis/
+/// desbloqueados juntos, não só os disponíveis agora.
+List<SkillTreeNodeOption> allSkillTreeNodes() {
+  return defaultSkillTree.nodes
+      .map((node) => SkillTreeNodeOption(
+            id: node.id,
+            name: node.name,
+            description: node.description,
+            branch: node.branch,
+            prerequisites: node.prerequisites,
+            icon: _skillTreeNodeIcons[node.id] ?? '❔',
+          ))
+      .toList();
+}
+
+const _skillTreeBranchDisplayNames = {
+  'fogo': 'Fogo',
+  'precisao': 'Precisão',
+  'elemental': 'Elemental',
+  'vitalidade': 'Vitalidade',
+  'defesa': 'Defesa',
+};
+
+/// Nome de exibição de uma branch (ex: `'precisao'` -> `'Precisão'`) —
+/// cai pra devolver a própria string se a branch não estiver no mapa
+/// (nunca deveria acontecer com `defaultSkillTree` hoje, mas evita
+/// quebrar silenciosamente se uma branch nova for adicionada sem
+/// atualizar este mapa).
+String skillTreeBranchDisplayName(String branch) =>
+    _skillTreeBranchDisplayNames[branch] ?? branch;
