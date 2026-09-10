@@ -18,10 +18,18 @@ void main() {
 
       expect(find.text('Vez de: Jogador A'), findsOneWidget);
 
+      await tester.tap(find.text('Escolher elementos'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
       await tester.tap(find.text('🔥 Fogo'));
       await tester.pump();
       await tester.tap(find.text('🌪️ Vento'));
       await tester.pump();
+
+      await tester.tap(find.text('Confirmar'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
       await tester.ensureVisible(find.text('Jogar'));
       await tester.tap(find.text('Jogar'));
@@ -72,8 +80,17 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
+      await tester.tap(find.text('Escolher elementos'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
       await tester.tap(find.text('🔥 Fogo'));
       await tester.pump();
+
+      await tester.tap(find.text('Confirmar'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
       await tester.ensureVisible(find.text('Jogar'));
       await tester.tap(find.text('Jogar'));
       await tester.pump();

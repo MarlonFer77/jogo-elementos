@@ -282,22 +282,11 @@ class _TrainingScreenState extends State<TrainingScreen> {
     final elements = const ElementCatalog().all();
 
     return [
-      Text(
-        'Escolha de 1 a 3 elementos:',
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
+      Text(_selectedElementsSummary(elements)),
       const SizedBox(height: 8),
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          for (final element in elements)
-            PixelElementChip(
-              label: '${element.symbol} ${element.name}',
-              selected: _selectedIds.contains(element.id),
-              onTap: () => _toggleElement(element.id),
-            ),
-        ],
+      PixelMenuButton(
+        label: 'Escolher elementos',
+        onPressed: () => _openElementPicker(elements),
       ),
       const SizedBox(height: 16),
       PixelMenuButton(
@@ -313,6 +302,65 @@ class _TrainingScreenState extends State<TrainingScreen> {
           ),
         ),
     ];
+  }
+
+  String _selectedElementsSummary(List<ElementOption> elements) {
+    final selected = elements.where((e) => _selectedIds.contains(e.id));
+    if (selected.isEmpty) return 'Nenhum elemento escolhido';
+    return 'Elementos: ${selected.map((e) => '${e.symbol} ${e.name}').join(', ')}';
+  }
+
+  void _openElementPicker(List<ElementOption> elements) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return PixelSheetPanel(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const PixelOutlinedText(
+                      'Escolha de 1 a 3 elementos',
+                      fontSize: 18,
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final element in elements)
+                          PixelElementChip(
+                            label: '${element.symbol} ${element.name}',
+                            selected: _selectedIds.contains(element.id),
+                            onTap: () {
+                              _toggleElement(element.id);
+                              setSheetState(() {});
+                            },
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: PixelMenuButton(
+                        label: 'Confirmar',
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   String _statusSummary(List<String> statusNames) {
