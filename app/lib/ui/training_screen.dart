@@ -10,7 +10,9 @@ import '../game_presentation/pixel_content_panel.dart';
 import '../game_presentation/pixel_element_chip.dart';
 import '../game_presentation/pixel_menu_button.dart';
 import '../game_presentation/pixel_outlined_text.dart';
+import '../game_presentation/pixel_page_route.dart';
 import '../game_presentation/pixel_sheet_panel.dart';
+import 'skill_tree_screen.dart';
 
 /// Modo treino: batalha local, offline, hotseat — os dois lados jogados no
 /// mesmo aparelho. Sem backend, sem multiplayer, sem IA. Cada jogador pode
@@ -84,100 +86,21 @@ class _TrainingScreenState extends State<TrainingScreen> {
     });
   }
 
-  void _openSkillTree() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            final available = _match.availableSkillNodesForCurrentPlayer;
-            // Fixed height + Expanded list, so "Fechar" always stays at a
-            // predictable spot regardless of how many nodes are available
-            // (the list scrolls internally instead of pushing it off).
-            return PixelSheetPanel(
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height * 0.6,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      PixelOutlinedText(
-                        'Habilidades de ${_match.currentTurnName}',
-                        fontSize: 18,
-                      ),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: available.isEmpty
-                            ? const Text('Nada novo para desbloquear agora.')
-                            : ListView(
-                                children: [
-                                  for (final node in available)
-                                    Container(
-                                      margin: const EdgeInsets.only(bottom: 8),
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        border: Border.all(
-                                          color: const Color(0xFF2B2B2B),
-                                          width: 3,
-                                        ),
-                                        borderRadius: BorderRadius.circular(4),
-                                        color: const Color(0xFFF4F4E4),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  '[${node.branch}] ${node.name}',
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                Text(node.description),
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          PixelMenuButton(
-                                            label: 'Desbloquear',
-                                            onPressed: () {
-                                              setState(() {
-                                                _match.unlockSkillForCurrentPlayer(
-                                                  node.id,
-                                                );
-                                              });
-                                              setSheetState(() {});
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                ],
-                              ),
-                      ),
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: PixelMenuButton(
-                          label: 'Fechar',
-                          onPressed: () => Navigator.of(context).pop(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
+  Future<void> _openSkillTree() async {
+    await Navigator.of(context).push(pixelSlideRoute((_) => SkillTreeScreen(
+      title: 'Habilidades de ${_match.currentTurnName}',
+      unlockedNodeIds: _match.unlockedNodeIdsForCurrentPlayer,
+      canUnlockNow: true,
+      onUnlock: (nodeId) async {
+        try {
+          _match.unlockSkillForCurrentPlayer(nodeId);
+          return null;
+        } on StateError catch (e) {
+          return e.message;
+        }
       },
-    );
+    )));
+    setState(() {});
   }
 
   @override

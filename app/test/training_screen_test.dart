@@ -76,10 +76,15 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      await tester.tap(find.text('Desbloquear').first);
+      await tester.tap(find.text('Maestria da Brasa'));
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
-      await tester.tap(find.text('Fechar'));
+      await tester.tap(find.text('Desbloquear'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.byType(BackButton));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
