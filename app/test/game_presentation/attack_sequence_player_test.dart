@@ -1,6 +1,7 @@
 import 'package:app/game_domain/attack_event.dart';
 import 'package:app/game_presentation/attack_sequence_player.dart';
 import 'package:app/game_presentation/battle_character_component.dart';
+import 'package:app/game_presentation/sfx_player.dart';
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -69,5 +70,27 @@ void main() {
     final player = _buildPlayer();
     player.update(2.0); // bem mais que o total — não deve travar num passo
     expect(player.isFinished, isTrue);
+  });
+
+  test('plays the cast sound at the start of the preparation step', () {
+    final playedPaths = <String>[];
+    sfxPlayer = SfxPlayer(play: playedPaths.add);
+    addTearDown(() => sfxPlayer = SfxPlayer());
+
+    final player = _buildPlayer();
+    player.update(0.01);
+
+    expect(playedPaths, contains('cast.ogg'));
+  });
+
+  test('plays the impact sound when the impact step resolves', () {
+    final playedPaths = <String>[];
+    sfxPlayer = SfxPlayer(play: playedPaths.add);
+    addTearDown(() => sfxPlayer = SfxPlayer());
+
+    final player = _buildPlayer();
+    player.update(0.56);
+
+    expect(playedPaths, contains('impact.ogg'));
   });
 }

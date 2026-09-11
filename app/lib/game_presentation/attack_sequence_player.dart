@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../game_domain/attack_event.dart';
 import 'battle_character_component.dart';
 import 'element_visuals.dart';
+import 'sfx_player.dart';
 
 enum _AttackStep { preparation, elementalEffect, impact, damage, stateApplied, done }
 
@@ -86,6 +87,7 @@ class AttackSequencePlayer extends Component {
       if (_step == _AttackStep.preparation && !_preparationStarted) {
         _preparationStarted = true;
         attacker.playPreparationPulse();
+        sfxPlayer.play(SfxId.cast);
       }
 
       final timeLeftInStep = _stepDuration - _stepElapsed;
@@ -99,6 +101,7 @@ class AttackSequencePlayer extends Component {
         _step = _nextStep(_step);
         if (wasStep == _AttackStep.impact) {
           target.playHitEffect();
+          sfxPlayer.play(SfxId.impact);
         }
       }
     }
