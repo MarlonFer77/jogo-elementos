@@ -12,6 +12,7 @@ import '../game_presentation/pixel_menu_button.dart';
 import '../game_presentation/pixel_outlined_text.dart';
 import '../game_presentation/pixel_page_route.dart';
 import '../game_presentation/pixel_sheet_panel.dart';
+import '../game_presentation/sfx_player.dart';
 import 'skill_tree_screen.dart';
 
 /// Modo treino: batalha local, offline, hotseat — os dois lados jogados no
@@ -71,6 +72,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
             damage: damage,
             appliedStatusNames: appliedStatus,
           );
+        }
+        if (_match.isOver) {
+          sfxPlayer.play(SfxId.victory);
         }
       } on ArgumentError {
         _error = 'Jogada inválida.';
