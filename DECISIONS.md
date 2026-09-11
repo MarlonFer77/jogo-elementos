@@ -1272,3 +1272,23 @@ compila via GitHub Actions) — fica pra confirmação manual do usuário no
 próximo APK: baixar dentro do app, ver a barra de progresso andar, o
 instalador abrir sozinho, e a instalação por cima da versão anterior
 funcionar sem erro.
+
+## DECISION-041
+Data: 2026-09-11
+Decisão: habilitar "core library desugaring" no Gradle do módulo `app`
+(`app/android/app/build.gradle.kts`) — `compileOptions.isCoreLibraryDesugaringEnabled
+= true` + dependência `coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")`.
+Problema encontrado: a primeira build de APK depois da DECISION-040
+(pacote `ota_update`) falhou no GitHub Actions com "Dependency
+':ota_update' requires core library desugaring to be enabled for :app" —
+o próprio `flutter analyze`/`flutter test` local não pega esse tipo de
+erro (é validado só na hora de compilar de verdade pro Android, que só
+acontece via GitHub Actions nesta máquina).
+Motivo: a documentação do `ota_update` já mencionava "requer
+compatibilidade Java 8" mas o passo concreto de habilitar desugaring no
+Gradle não tinha sido replicado no projeto — só apareceu como erro na
+build real.
+Consequência: nenhuma outra dependência do projeto precisa disso hoje —
+mudança isolada ao `ota_update`.
+Testes: nenhum automatizado (configuração de build). Validação: a
+próxima build do GitHub Actions precisa terminar com sucesso.
