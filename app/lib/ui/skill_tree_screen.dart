@@ -6,6 +6,7 @@ import '../game_presentation/pixel_content_panel.dart';
 import '../game_presentation/pixel_menu_button.dart';
 import '../game_presentation/pixel_outlined_text.dart';
 import '../game_presentation/pixel_sheet_panel.dart';
+import '../game_presentation/sfx_player.dart';
 import '../game_presentation/skill_tree_layout.dart';
 import '../game_presentation/skill_tree_node_widget.dart';
 
@@ -115,6 +116,7 @@ class _SkillTreeScreenState extends State<SkillTreeScreen> {
                         return;
                       }
                       setState(() => _unlockedNodeIds = [..._unlockedNodeIds, node.id]);
+                      sfxPlayer.play(SfxId.unlock);
                       if (!sheetContext.mounted) return;
                       Navigator.of(sheetContext).pop();
                     },

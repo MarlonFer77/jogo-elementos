@@ -27,15 +27,14 @@ class SfxPlayer {
     // `FlameAudio.play` acessa bindings de plataforma (platform channels)
     // durante a preparação do player; em contexto sem binding
     // inicializado (ex: `flutter test` fora de `testWidgets`) essa falha
-    // escapa do try/catch normal e do `.catchError` do Future, porque
-    // surge de dentro da configuração de um listener de stream, não do
-    // corpo `async` em si. `runZonedGuarded` é a única forma de garantir
-    // que nenhum erro de áudio, síncrono ou assíncrono, derruba o app —
-    // ou o teste.
+    // escapa de um try/catch normal, porque surge de dentro da
+    // configuração de um listener de stream, não do corpo `async` em si.
+    // `runZonedGuarded` é a única forma de garantir que nenhum erro de
+    // áudio, síncrono ou assíncrono, derruba o app — ou o teste.
     runZonedGuarded(() {
       // ignore: discarded_futures
-      FlameAudio.play(path).catchError((_) {});
-    }, (_, __) {});
+      FlameAudio.play(path);
+    }, (_, _) {});
   }
 
   void play(SfxId id) => _play(_paths[id]!);
