@@ -1,5 +1,6 @@
 import 'package:app/game_domain/attack_event.dart';
 import 'package:app/game_domain/battle_scene_view.dart';
+import 'package:app/game_domain/effect_badge_view.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -58,5 +59,29 @@ void main() {
     );
     expect(withLabels.leftLabel, 'Jogador A');
     expect(withLabels.rightLabel, 'Jogador B');
+  });
+
+  test('leftStatuses/rightStatuses/fieldEffects default to empty and can '
+      'be set', () {
+    const withoutBadges = BattleSceneView(
+      leftCurrentHp: 100, leftMaxHp: 100,
+      rightCurrentHp: 100, rightMaxHp: 100,
+      isLeftTurn: true,
+    );
+    expect(withoutBadges.leftStatuses, isEmpty);
+    expect(withoutBadges.rightStatuses, isEmpty);
+    expect(withoutBadges.fieldEffects, isEmpty);
+
+    const withBadges = BattleSceneView(
+      leftCurrentHp: 100, leftMaxHp: 100,
+      rightCurrentHp: 100, rightMaxHp: 100,
+      isLeftTurn: true,
+      leftStatuses: [EffectBadgeView(id: 'burn', remainingTurns: 2)],
+      rightStatuses: [EffectBadgeView(id: 'shield')],
+      fieldEffects: [EffectBadgeView(id: 'ignited_storm')],
+    );
+    expect(withBadges.leftStatuses, [const EffectBadgeView(id: 'burn', remainingTurns: 2)]);
+    expect(withBadges.rightStatuses, [const EffectBadgeView(id: 'shield')]);
+    expect(withBadges.fieldEffects, [const EffectBadgeView(id: 'ignited_storm')]);
   });
 }

@@ -1,4 +1,5 @@
 import 'attack_event.dart';
+import 'effect_badge_view.dart';
 
 /// Read-only view of what the battle scene should show: a fraction of HP
 /// per side and whose turn it is. Game Presentation (Flame) nunca toca em
@@ -14,6 +15,9 @@ class BattleSceneView {
   final AttackEvent? lastAttack;
   final String leftLabel;
   final String rightLabel;
+  final List<EffectBadgeView> leftStatuses;
+  final List<EffectBadgeView> rightStatuses;
+  final List<EffectBadgeView> fieldEffects;
 
   const BattleSceneView({
     required this.leftCurrentHp,
@@ -24,5 +28,8 @@ class BattleSceneView {
     this.lastAttack,
     this.leftLabel = 'Esquerda',
     this.rightLabel = 'Direita',
+    this.leftStatuses = const [],
+    this.rightStatuses = const [],
+    this.fieldEffects = const [],
   });
 }
