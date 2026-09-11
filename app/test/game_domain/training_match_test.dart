@@ -1,3 +1,4 @@
+import 'package:app/game_domain/effect_badge_view.dart';
 import 'package:app/game_domain/training_match.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -198,5 +199,30 @@ void main() {
 
     match.playElementIds(['wind']);
     expect(match.turnsPlayed, 2);
+  });
+
+  test('activeFieldEffectBadges resolves id and remainingTurns from a '
+      'triggered combination', () {
+    final match = TrainingMatch();
+    match.playElementIds(['fire', 'wind']); // Tempestade Ígnea
+
+    expect(
+      match.activeFieldEffectBadges,
+      [const EffectBadgeView(id: 'ignited_storm', remainingTurns: null)],
+    );
+  });
+
+  test('playerAActiveStatuses/playerBActiveStatuses resolve id and '
+      'remainingTurns from an applied mutation status', () {
+    final match = TrainingMatch();
+    match.unlockSkillForCurrentPlayer('ember_mastery'); // Jogador A
+
+    match.playElementIds(['fire']); // aplica Queimadura em Jogador B
+
+    expect(match.playerAActiveStatuses, isEmpty);
+    expect(
+      match.playerBActiveStatuses,
+      [const EffectBadgeView(id: 'burn', remainingTurns: 2)],
+    );
   });
 }

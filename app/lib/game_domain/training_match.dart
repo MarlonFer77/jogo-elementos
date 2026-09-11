@@ -1,5 +1,6 @@
 import 'package:battle_engine/battle_engine.dart';
 
+import 'effect_badge_view.dart';
 import 'skill_tree_catalog.dart';
 
 /// A local, offline 1v1 match where the same device controls both sides —
@@ -65,6 +66,20 @@ class TrainingMatch {
 
   List<String> get playerBStatusNames =>
       _state.statusesOf(_playerB).map((s) => s.effect.name).toList();
+
+  List<EffectBadgeView> get playerAActiveStatuses => _state
+      .statusesOf(_playerA)
+      .map((s) => EffectBadgeView(id: s.effect.id, remainingTurns: s.turnsRemaining))
+      .toList();
+
+  List<EffectBadgeView> get playerBActiveStatuses => _state
+      .statusesOf(_playerB)
+      .map((s) => EffectBadgeView(id: s.effect.id, remainingTurns: s.turnsRemaining))
+      .toList();
+
+  List<EffectBadgeView> get activeFieldEffectBadges => _state.activeFieldEffects
+      .map((effect) => EffectBadgeView(id: effect.id, remainingTurns: effect.duration))
+      .toList();
 
   int get playerAMaxHp => _state.hpOf(_playerA).max;
 
