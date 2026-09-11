@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'sfx_player.dart';
+
 class PixelMenuButton extends StatefulWidget {
   const PixelMenuButton({
     super.key,
@@ -24,6 +26,11 @@ class _PixelMenuButtonState extends State<PixelMenuButton> {
     setState(() => _pressed = value);
   }
 
+  void _handleTap() {
+    sfxPlayer.play(SfxId.tap);
+    widget.onPressed?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEnabled = widget.onPressed != null;
@@ -33,7 +40,7 @@ class _PixelMenuButtonState extends State<PixelMenuButton> {
         onTapDown: (_) => _setPressed(true),
         onTapUp: (_) => _setPressed(false),
         onTapCancel: () => _setPressed(false),
-        onTap: widget.onPressed,
+        onTap: isEnabled ? _handleTap : null,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 80),
           transform: Matrix4.translationValues(
