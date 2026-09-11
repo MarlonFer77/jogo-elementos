@@ -17,6 +17,7 @@ import '../game_presentation/pixel_menu_button.dart';
 import '../game_presentation/pixel_outlined_text.dart';
 import '../game_presentation/pixel_page_route.dart';
 import '../game_presentation/pixel_sheet_panel.dart';
+import '../game_presentation/sfx_player.dart';
 import 'skill_tree_screen.dart';
 
 /// The multiplayer battle itself — reachable only after
@@ -49,6 +50,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
   AttackEvent? _pendingAttack;
   int _attackSequenceCounter = 0;
   Set<String> _previousFieldEffectIds = {};
+  bool _playedGameOverSound = false;
 
   MultiplayerMatch get _match => widget.match;
 
@@ -92,6 +94,14 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
           }
         }
       });
+      _maybePlayGameOverSound();
+    }
+  }
+
+  void _maybePlayGameOverSound() {
+    if (_match.isFinished && !_playedGameOverSound) {
+      _playedGameOverSound = true;
+      sfxPlayer.play(_match.amIWinner ? SfxId.victory : SfxId.defeat);
     }
   }
 
@@ -119,6 +129,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
         }
         _previousFieldEffectIds = _match.activeFieldEffectIds.toSet();
       });
+      _maybePlayGameOverSound();
     } catch (_) {
       setState(() => _error = _match.lastError ?? 'Jogada inválida.');
     }
