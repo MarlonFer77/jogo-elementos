@@ -1373,3 +1373,46 @@ APKs baixados confirmou o mesmo certificado SHA-256
 (`ec257adaebff1cc...`) nos dois — só depois disso a v0.13.0 foi
 publicada. Confirmação final (instalar por cima de verdade no Android)
 ainda depende do usuário testar no próprio celular.
+
+## DECISION-044
+Data: 2026-09-11
+Decisão: badges de status ativo por jogador (Queimadura, Escudo...) e
+efeito de campo (Tempestade Ígnea, Lava...) na cena de batalha — Bloco 9
+da "Direção de produto" ("efeitos"), substituindo o texto cru
+("Jogador A: Escudo") por um círculo colorido com ícone (emoji) e,
+quando o efeito tem duração contada em turnos, um número pequeno com os
+turnos restantes. `EffectBadgeView` (novo, `game_domain`) é o dado
+puro; `status_visuals.dart` (novo, `game_presentation`) mapeia
+id→ícone/cor pros 11 status de `StatusEffects` (mesmo os 9 ainda
+inertes hoje) + fallback genérico pra efeito de campo sem entrada
+dedicada. `BattleSceneView`/`BattleHudWidget` ganharam os campos/badges;
+`TrainingMatch`/`MultiplayerMatch` ganharam os getters que os produzem.
+Estilo do badge (círculo colorido simples, não a família pixel art dos
+outros componentes) escolhido pelo usuário no companheiro visual de
+brainstorming.
+Descoberta importante: o backend do Multiplayer já mandava
+`combatantStatuses` (status ativos por jogador) na resposta de
+`GET /matches/:id` desde a DECISION-024 — o cliente Flutter nunca tinha
+parseado esse campo. Este bloco não precisou de nenhuma mudança de
+backend, só adicionar `RemoteActiveStatus`/`RemoteBattleState.combatantStatuses`
+no parse do cliente.
+Motivo: "efeitos" era o próximo item sem bloco dedicado na ordem de
+prioridade do CLAUDE.md, e a apresentação de status/campo ativo era só
+texto cru — gap de game feel já registrado no BACKLOG (a parte
+"Multiplayer não recebe estados ativos do backend" estava desatualizada,
+corrigida por esta descoberta).
+Consequência: nenhuma lacuna nova conhecida. Fora de escopo (registrado
+no BACKLOG): animação nos badges, tooltip/descrição ao tocar, ícone
+dedicado por combinação futura (cai no fallback ✨ até alguém adicionar).
+Testes: suíte completa do app (`flutter test`, 158 testes) e `flutter
+analyze` passando. Verificado manualmente via `flutter run -d
+web-server`: jogar Fogo+Vento no Treino mostrou o badge de campo
+(Tempestade Ígnea) no lugar certo, entre os dois painéis do HUD, sem
+erro no console — a resolução exata do emoji não foi possível conferir
+a olho nesse preview (escala pequena do navegador embutido), mas está
+coberta pelo teste de widget de `battle_hud_widget_test.dart`
+(`find.text('🌪️')`). Badge de status (Queimadura) e a árvore de
+habilidades não foram clicados manualmente nesta sessão (mesma
+limitação do Bloco 8 pra localizar o ícone de Habilidades no preview
+web) — coberto pelas suítes de `TrainingMatch`/`MultiplayerMatch`/
+`BattleHudWidget`.

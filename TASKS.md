@@ -64,6 +64,13 @@ uma tarefa nova terminar revelando um gap novo.
   não foram ouvidos manualmente nesta sessão (ícone de Habilidades não
   localizado a tempo no preview web) — só a lógica que decide quando
   tocar foi verificada (suítes de tela passando)
+- Animação nos badges de status/campo (Bloco 9, DECISION-044) — fica
+  pra um bloco futuro de polimento, se quiser
+- Tooltip/descrição ao tocar num badge de status/campo (Bloco 9,
+  DECISION-044) — não pedido, YAGNI
+- Ícone dedicado por combinação futura sem entrada em
+  `status_visuals.dart` (Bloco 9, DECISION-044) — cai no fallback (✨)
+  até alguém adicionar
 
 **Multiplayer (cliente)**
 - A modal de Habilidades não escuta o polling por trás — se a vez mudar
@@ -75,9 +82,6 @@ uma tarefa nova terminar revelando um gap novo.
   backend
 - `CombinationCatalog` precisa sincronizar manualmente toda vez que
   `default_combinations.dart` ganhar uma combinação nova
-- Cena de batalha visual não mostra ícone de Escudo/Queimadura — o
-  Multiplayer não recebe estados ativos por jogador do backend hoje
-  (DECISION-030)
 
 **Produção / deploy**
 - Backend implantado no Render (free tier) — ver DECISION-028. APK
@@ -433,6 +437,11 @@ uma tarefa nova terminar revelando um gap novo.
   ataque disparado, impacto, habilidade desbloqueada, vitória (Treino) e
   vitória/derrota (Multiplayer). Só efeitos sonoros — sem música de fundo
   nem botão de mutar (DECISION-042)
+- Badges de status ativo/efeito de campo (Bloco 9 da direção de
+  produto): círculo colorido com ícone e turnos restantes na cena de
+  batalha, substituindo o texto cru — Treino e Multiplayer, sem mudar
+  battle_engine/backend (o Multiplayer já recebia `combatantStatuses`
+  do backend, só o cliente nunca parseava) (DECISION-044)
 
 # BLOCKED
 
