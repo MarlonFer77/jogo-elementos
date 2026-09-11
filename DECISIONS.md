@@ -1292,3 +1292,42 @@ Consequência: nenhuma outra dependência do projeto precisa disso hoje —
 mudança isolada ao `ota_update`.
 Testes: nenhum automatizado (configuração de build). Validação: a
 próxima build do GitHub Actions precisa terminar com sucesso.
+
+## DECISION-042
+Data: 2026-09-11
+Decisão: primeiro som do jogo — Bloco 8 (áudio) da "Direção de produto".
+Pacote `flame_audio` (v2.12.2) + `SfxPlayer`
+(`game_presentation/sfx_player.dart`), uma instância global mutável
+(`sfxPlayer`) que envolve `FlameAudio.play` com `runZonedGuarded` — som
+nunca derruba o app nem quebra teste, mesmo sem binding de plataforma
+inicializado (ex: `flutter test` fora de `testWidgets`, onde o erro de
+platform channel escapa de um try/catch comum). É a única variável
+global mutável do código-base, de propósito: só assim `PixelMenuButton`
+e `PixelElementChip` conseguem trocar por uma instância com `play`
+injetado nos próprios testes, sem mudar a API pública de nenhum widget.
+6 sons CC0 (Kenney, via `raw.githubusercontent.com/Calinou/kenney-ui-audio`
+e `gamesounds.xyz`) cobrem: toque de botão/chip, ataque disparado,
+impacto, habilidade desbloqueada, vitória (Treino) e vitória/derrota
+(Multiplayer, com flag `_playedGameOverSound` pra tocar só uma vez).
+Escopo explícito: só efeitos sonoros. Sem música de fundo (loop/fade/
+mixagem — complexidade própria, fica pra bloco futuro) e sem botão de
+mutar/desmutar (não existe tela de configurações ainda — registrado no
+BACKLOG).
+Motivo: "áudio" era o próximo item sem bloco dedicado na ordem de
+prioridade do CLAUDE.md, e o jogo não tinha nenhum som até aqui — gap
+grande de game feel pra um jogo de batalha.
+Consequência: os 6 sons foram escolhidos por nome/categoria/tamanho dos
+pacotes CC0, não por audição (Claude não consegue ouvir áudio) — o
+usuário pode precisar trocar algum arquivo depois de ouvir no app de
+verdade; troca é só substituir o arquivo em `assets/audio/`, sem mudar
+código.
+Testes: suíte completa do app (`flutter test`, 142 testes) e `flutter
+analyze` passando. Verificado manualmente via `flutter run -d
+web-server`: toque de botão, cast e impacto de ataque confirmados
+carregando (`tap.wav`/`cast.ogg`/`impact.ogg`, 200/206 no navegador) sem
+erro no console. Som de unlock/vitória/derrota não foram clicados
+manualmente nesta sessão (ícone de habilidades não localizado a tempo no
+preview web), mas a lógica que decide quando tocar (`_match.isOver`,
+`_match.isFinished`/`_match.amIWinner`) já é coberta pelas suítes de
+`TrainingScreen`/`MultiplayerBattleScreen`/`SkillTreeScreen`, que
+continuam passando sem mudança de contagem.

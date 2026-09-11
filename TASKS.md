@@ -52,6 +52,14 @@ uma tarefa nova terminar revelando um gap novo.
   uma cadeia linear (`orderBranchNodes`) — se um nó ganhar 2+
   pré-requisitos ou 2+ nós dependendo dele no futuro, o layout continua
   correto logicamente mas não desenha a ramificação visualmente
+- Botão de mutar/desmutar os efeitos sonoros (Bloco 8, DECISION-042) —
+  precisa de uma tela de configurações, que ainda não existe
+- Música de fundo (Bloco 8, DECISION-042) — loop/fade/mixagem é
+  complexidade própria, fora do escopo do bloco de áudio já feito
+- Sons de habilidade desbloqueada/vitória/derrota (Bloco 8, DECISION-042)
+  não foram ouvidos manualmente nesta sessão (ícone de Habilidades não
+  localizado a tempo no preview web) — só a lógica que decide quando
+  tocar foi verificada (suítes de tela passando)
 
 **Multiplayer (cliente)**
 - A modal de Habilidades não escuta o polling por trás — se a vez mudar
@@ -413,6 +421,14 @@ uma tarefa nova terminar revelando um gap novo.
   com barra de progresso (pacote `ota_update`) e abre o instalador do
   Android sozinho, substituindo o "abrir navegador" — erro mostra
   "Tentar de novo", sem fallback pro navegador (DECISION-040)
+- Core library desugaring habilitado no Gradle do app — exigido pelo
+  `ota_update`, descoberto só numa build real via GitHub Actions
+  (DECISION-041)
+- Efeitos sonoros (Bloco 8 da direção de produto): primeiro som do jogo —
+  `SfxPlayer`/`flame_audio`, 6 sons CC0 cobrindo toque de botão/chip,
+  ataque disparado, impacto, habilidade desbloqueada, vitória (Treino) e
+  vitória/derrota (Multiplayer). Só efeitos sonoros — sem música de fundo
+  nem botão de mutar (DECISION-042)
 
 # BLOCKED
 
