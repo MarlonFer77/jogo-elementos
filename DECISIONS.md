@@ -1365,7 +1365,11 @@ desinstalar+instalar manual, dessa vez da v0.13.0 (primeira com o cache
 de verdade funcionando) — depois dela, updates in-app devem funcionar
 de verdade pela primeira vez.
 Testes: nenhum automatizado (configuração de build/CI). Validação: dois
-builds seguidos do workflow corrigido, comparando
-`apksigner verify --print-certs` dos dois APKs — certificados idênticos
-confirma que o cache está pegando de verdade antes de publicar a
-v0.13.0.
+builds seguidos do workflow corrigido — o primeiro deu cache miss ("Cache
+not found for input keys: android-debug-keystore-v2") e salvou o
+keystore novo; o segundo deu cache hit ("Cache restored from key:
+android-debug-keystore-v2"). `apksigner verify --print-certs` nos dois
+APKs baixados confirmou o mesmo certificado SHA-256
+(`ec257adaebff1cc...`) nos dois — só depois disso a v0.13.0 foi
+publicada. Confirmação final (instalar por cima de verdade no Android)
+ainda depende do usuário testar no próprio celular.
