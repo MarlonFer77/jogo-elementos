@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:app/game_domain/effect_badge_view.dart';
 import 'package:app/game_domain/multiplayer_client.dart';
 import 'package:app/game_domain/multiplayer_exception.dart';
 import 'package:app/game_domain/multiplayer_match.dart';
@@ -50,6 +51,14 @@ class _FakeBackend {
         'hp': <String, dynamic>{
           match['playerAId'] as String: {'max': 100, 'current': 100},
           match['playerBId'] as String: {'max': 100, 'current': 100},
+        },
+        'combatantStatuses': <String, dynamic>{
+          match['playerAId'] as String: <dynamic>[
+            {'effectId': 'burn', 'turnsRemaining': 2, 'damagePerTick': 8},
+          ],
+          match['playerBId'] as String: <dynamic>[
+            {'effectId': 'shield', 'turnsRemaining': null, 'damagePerTick': 0},
+          ],
         },
         'winner': null,
       };
@@ -174,6 +183,39 @@ void main() {
     expect(guest.isMyTurn, isFalse); // ana (host) plays first
     expect(guest.opponentCurrentHp, 100);
     expect(guest.myCurrentHp, 100);
+  });
+
+  test('myActiveStatuses/opponentActiveStatuses resolve id and '
+      'remainingTurns from combatantStatuses', () async {
+    final backend = _FakeBackend();
+    final ana = MultiplayerMatch(
+      client: MultiplayerClient(baseUrl: 'http://x', httpClient: backend.asClient()),
+      localPlayerId: 'ana',
+    );
+    await ana.create();
+    final beto = MultiplayerMatch(
+      client: MultiplayerClient(baseUrl: 'http://x', httpClient: backend.asClient()),
+      localPlayerId: 'beto',
+    );
+    await beto.join(ana.matchId!);
+    await ana.refresh();
+
+    expect(
+      ana.myActiveStatuses,
+      [const EffectBadgeView(id: 'burn', remainingTurns: 2)],
+    );
+    expect(
+      ana.opponentActiveStatuses,
+      [const EffectBadgeView(id: 'shield', remainingTurns: null)],
+    );
+    expect(
+      beto.myActiveStatuses,
+      [const EffectBadgeView(id: 'shield', remainingTurns: null)],
+    );
+    expect(
+      beto.opponentActiveStatuses,
+      [const EffectBadgeView(id: 'burn', remainingTurns: 2)],
+    );
   });
 
   test('a full match: repeated combo damage decides a winner for both sides',

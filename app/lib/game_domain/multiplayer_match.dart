@@ -1,3 +1,4 @@
+import 'effect_badge_view.dart';
 import 'multiplayer_client.dart';
 import 'multiplayer_exception.dart';
 import 'multiplayer_models.dart';
@@ -55,6 +56,24 @@ class MultiplayerMatch {
 
   List<String> get activeFieldEffectIds =>
       _match?.state?.activeFieldEffects.map((e) => e.id).toList() ?? const [];
+
+  List<EffectBadgeView> _statusesOf(String? playerId) {
+    if (playerId == null) return const [];
+    final statuses = _match?.state?.combatantStatuses[playerId] ?? const [];
+    return statuses
+        .map((s) => EffectBadgeView(id: s.effectId, remainingTurns: s.turnsRemaining))
+        .toList();
+  }
+
+  List<EffectBadgeView> get myActiveStatuses => _statusesOf(localPlayerId);
+
+  List<EffectBadgeView> get opponentActiveStatuses => _statusesOf(_opponentId);
+
+  List<EffectBadgeView> get activeFieldEffectBadges =>
+      _match?.state?.activeFieldEffects
+          .map((e) => EffectBadgeView(id: e.id, remainingTurns: e.duration))
+          .toList() ??
+      const [];
 
   /// Skill Tree node ids [localPlayerId] has unlocked in this match — ids
   /// only, same reasoning as elsewhere in this class (no `battle_engine`

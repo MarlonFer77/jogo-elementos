@@ -40,12 +40,27 @@ class RemoteHpPool {
   }
 }
 
+class RemoteActiveStatus {
+  final String effectId;
+  final int? turnsRemaining;
+
+  const RemoteActiveStatus({required this.effectId, this.turnsRemaining});
+
+  factory RemoteActiveStatus.fromJson(Map<String, dynamic> json) {
+    return RemoteActiveStatus(
+      effectId: json['effectId'] as String,
+      turnsRemaining: json['turnsRemaining'] as int?,
+    );
+  }
+}
+
 class RemoteBattleState {
   final String playerAId;
   final String playerBId;
   final String currentTurnId;
   final List<RemoteFieldEffect> activeFieldEffects;
   final Map<String, RemoteHpPool> hp;
+  final Map<String, List<RemoteActiveStatus>> combatantStatuses;
   final String? winner;
 
   const RemoteBattleState({
@@ -54,10 +69,12 @@ class RemoteBattleState {
     required this.currentTurnId,
     required this.activeFieldEffects,
     required this.hp,
+    this.combatantStatuses = const {},
     this.winner,
   });
 
   factory RemoteBattleState.fromJson(Map<String, dynamic> json) {
+    final combatantStatusesJson = json['combatantStatuses'] as Map<String, dynamic>?;
     return RemoteBattleState(
       playerAId: json['playerAId'] as String,
       playerBId: json['playerBId'] as String,
@@ -68,6 +85,16 @@ class RemoteBattleState {
       hp: (json['hp'] as Map<String, dynamic>).map(
         (id, pool) => MapEntry(id, RemoteHpPool.fromJson(pool as Map<String, dynamic>)),
       ),
+      combatantStatuses: combatantStatusesJson == null
+          ? const {}
+          : combatantStatusesJson.map(
+              (id, statuses) => MapEntry(
+                id,
+                (statuses as List)
+                    .map((s) => RemoteActiveStatus.fromJson(s as Map<String, dynamic>))
+                    .toList(),
+              ),
+            ),
       winner: json['winner'] as String?,
     );
   }
