@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../game_domain/battle_scene_view.dart';
+import '../game_domain/effect_badge_view.dart';
+import 'status_visuals.dart';
 
 /// Painel de HP fixo no topo da cena, estilo jogo de luta: nome + barra de
-/// HP de cada lado, com o lado ativo destacado (borda + seta). Flutter
+/// HP de cada lado, com o lado ativo destacado (borda + seta), e badges
+/// de status ativo por jogador / efeito de campo (Bloco 9 — ver
+/// docs/superpowers/specs/2026-09-11-effect-badges-design.md). Flutter
 /// puro (não Canvas do Flame) — ver
 /// docs/superpowers/specs/2026-09-08-pixel-battle-arena-design.md.
 class BattleHudWidget extends StatelessWidget {
@@ -15,28 +19,49 @@ class BattleHudWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
         children: [
-          Expanded(
-            child: _HudPanel(
-              label: view.leftLabel,
-              currentHp: view.leftCurrentHp,
-              maxHp: view.leftMaxHp,
-              isActive: view.isLeftTurn,
-              alignEnd: false,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _HudPanel(
+                  label: view.leftLabel,
+                  currentHp: view.leftCurrentHp,
+                  maxHp: view.leftMaxHp,
+                  isActive: view.isLeftTurn,
+                  alignEnd: false,
+                  statuses: view.leftStatuses,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _HudPanel(
+                  label: view.rightLabel,
+                  currentHp: view.rightCurrentHp,
+                  maxHp: view.rightMaxHp,
+                  isActive: !view.isLeftTurn,
+                  alignEnd: true,
+                  statuses: view.rightStatuses,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _HudPanel(
-              label: view.rightLabel,
-              currentHp: view.rightCurrentHp,
-              maxHp: view.rightMaxHp,
-              isActive: !view.isLeftTurn,
-              alignEnd: true,
+          if (view.fieldEffects.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 4,
+              children: [
+                for (final badge in view.fieldEffects)
+                  _EffectBadge(
+                    icon: fieldEffectIcon(badge.id),
+                    color: const Color(0xFFCFD8DC),
+                    remainingTurns: badge.remainingTurns,
+                  ),
+              ],
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -50,6 +75,7 @@ class _HudPanel extends StatelessWidget {
     required this.maxHp,
     required this.isActive,
     required this.alignEnd,
+    required this.statuses,
   });
 
   final String label;
@@ -57,6 +83,7 @@ class _HudPanel extends StatelessWidget {
   final int maxHp;
   final bool isActive;
   final bool alignEnd;
+  final List<EffectBadgeView> statuses;
 
   Widget _buildNameRow() {
     final arrow = Text(
@@ -126,6 +153,68 @@ class _HudPanel extends StatelessWidget {
             '$currentHp/$maxHp HP',
             style: const TextStyle(fontSize: 10, color: Color(0xFF555555)),
           ),
+          if (statuses.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 4,
+              alignment: alignEnd ? WrapAlignment.end : WrapAlignment.start,
+              children: [
+                for (final badge in statuses)
+                  _EffectBadge(
+                    icon: statusIcon(badge.id),
+                    color: statusColor(badge.id),
+                    remainingTurns: badge.remainingTurns,
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _EffectBadge extends StatelessWidget {
+  const _EffectBadge({required this.icon, required this.color, this.remainingTurns});
+
+  final String icon;
+  final Color color;
+  final int? remainingTurns;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 18,
+      height: 18,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 18,
+            height: 18,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            alignment: Alignment.center,
+            child: Text(icon, style: const TextStyle(fontSize: 10)),
+          ),
+          if (remainingTurns != null)
+            Positioned(
+              bottom: -2,
+              right: -2,
+              child: Container(
+                width: 10,
+                height: 10,
+                decoration: const BoxDecoration(color: Color(0xFF20242B), shape: BoxShape.circle),
+                alignment: Alignment.center,
+                child: Text(
+                  '$remainingTurns',
+                  style: const TextStyle(
+                    fontSize: 7,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
