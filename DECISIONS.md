@@ -1331,3 +1331,41 @@ preview web), mas a lógica que decide quando tocar (`_match.isOver`,
 `_match.isFinished`/`_match.amIWinner`) já é coberta pelas suítes de
 `TrainingScreen`/`MultiplayerBattleScreen`/`SkillTreeScreen`, que
 continuam passando sem mudança de contagem.
+
+## DECISION-043
+Data: 2026-09-11
+Decisão: corrigir o caminho cacheado do keystore de debug em
+`.github/workflows/build-apk.yml` — de `~/.android/debug.keystore` pra
+`~/.config/.android/debug.keystore` (chave do cache também trocada pra
+`android-debug-keystore-v2`, já que a v1 nunca guardou nada de útil).
+Problema encontrado: o usuário testou a atualização in-app de v0.11.0
+pra v0.12.0 de verdade num Android — baixou, o instalador abriu, mas deu
+"app não instalado" de novo, mesmo depois da DECISION-039 (cache do
+keystore) supostamente já estar em vigor. Comparando os certificados de
+assinatura dos dois APKs publicados
+(`apksigner verify --print-certs`) confirmou que v0.11.0 e v0.12.0 têm
+SHA-256 diferentes — o cache nunca funcionou. Investigando o log do
+workflow: o passo "Post Cache Android debug keystore" reportava
+"Path Validation Error: Path(s) specified in the action for caching
+do(es) not exist" no fim de toda build — ou seja, `flutter build apk`
+nunca escreveu nada em `~/.android/debug.keystore`. Um passo de debug
+temporário (`find / -xdev -iname debug.keystore`) confirmou o caminho
+real usado por esta versão do toolchain Gradle/AGP:
+`/home/runner/.config/.android/debug.keystore` (dentro de `.config/`,
+não direto em `~/.android/`).
+Motivo: a DECISION-039 assumiu o caminho "clássico" documentado do
+keystore de debug do Android sem verificar de verdade onde o Gradle
+escrevia no runner — o mesmo tipo de suposição que já tinha causado a
+DECISION-041 (desugaring), só que dessa vez o build passava e só falhava
+de verdade na instalação no celular, não na CI.
+Consequência: toda versão publicada entre v0.9.0 e v0.12.0 tem uma
+assinatura diferente uma da outra — nenhuma delas instala "por cima" de
+nenhuma outra. O celular do usuário precisa de mais um
+desinstalar+instalar manual, dessa vez da v0.13.0 (primeira com o cache
+de verdade funcionando) — depois dela, updates in-app devem funcionar
+de verdade pela primeira vez.
+Testes: nenhum automatizado (configuração de build/CI). Validação: dois
+builds seguidos do workflow corrigido, comparando
+`apksigner verify --print-certs` dos dois APKs — certificados idênticos
+confirma que o cache está pegando de verdade antes de publicar a
+v0.13.0.

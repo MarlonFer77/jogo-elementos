@@ -26,11 +26,17 @@ jobs:
       # entre execuções: a primeira execução depois deste passo gera o
       # keystore normalmente e o salva; toda execução seguinte reaproveita
       # o mesmo arquivo, então os APKs passam a ter assinatura estável.
+      # O caminho real (confirmado rodando `find` de verdade no runner,
+      # ver DECISION-043) é `~/.config/.android/debug.keystore`, não
+      # `~/.android/debug.keystore` — a v0.9.0/v0.9.10/v0.11.0/v0.12.0
+      # cacheavam um caminho que o Gradle nunca escreve nesta toolchain,
+      # então o cache nunca pegava e cada build continuava gerando uma
+      # assinatura nova.
       - name: Cache Android debug keystore
         uses: actions/cache@v4
         with:
-          path: ~/.android/debug.keystore
-          key: android-debug-keystore-v1
+          path: ~/.config/.android/debug.keystore
+          key: android-debug-keystore-v2
 
       - name: flutter pub get
         working-directory: app
@@ -39,12 +45,6 @@ jobs:
       - name: flutter build apk --release
         working-directory: app
         run: flutter build apk --release
-
-      - name: DEBUG - locate the real debug keystore
-        run: |
-          echo "HOME=$HOME"
-          ls -la ~/.android/ 2>&1 || echo "~/.android does not exist"
-          find / -xdev -iname "debug.keystore" 2>/dev/null
 
       - uses: actions/upload-artifact@v4
         with:
