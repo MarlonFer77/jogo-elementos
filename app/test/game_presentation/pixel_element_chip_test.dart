@@ -1,4 +1,5 @@
 import 'package:app/game_presentation/pixel_element_chip.dart';
+import 'package:app/game_presentation/sfx_player.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -66,5 +67,43 @@ void main() {
     final released =
         tester.widget<AnimatedContainer>(find.byType(AnimatedContainer));
     expect(released.transform, Matrix4.translationValues(0, 0, 0));
+  });
+
+  testWidgets('plays a tap sound when tapped while enabled', (tester) async {
+    final playedPaths = <String>[];
+    sfxPlayer = SfxPlayer(play: playedPaths.add);
+    addTearDown(() => sfxPlayer = SfxPlayer());
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: PixelElementChip(
+          label: '🔥 Fogo',
+          selected: false,
+          onTap: () {},
+        ),
+      ),
+    ));
+
+    await tester.tap(find.text('🔥 Fogo'));
+    await tester.pump();
+
+    expect(playedPaths, ['tap.wav']);
+  });
+
+  testWidgets('does not play a sound when disabled', (tester) async {
+    final playedPaths = <String>[];
+    sfxPlayer = SfxPlayer(play: playedPaths.add);
+    addTearDown(() => sfxPlayer = SfxPlayer());
+
+    await tester.pumpWidget(const MaterialApp(
+      home: Scaffold(
+        body: PixelElementChip(label: '🔥 Fogo', selected: false, onTap: null),
+      ),
+    ));
+
+    await tester.tap(find.text('🔥 Fogo'));
+    await tester.pump();
+
+    expect(playedPaths, isEmpty);
   });
 }

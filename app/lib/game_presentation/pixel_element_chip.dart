@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'sfx_player.dart';
+
 class PixelElementChip extends StatefulWidget {
   const PixelElementChip({
     super.key,
@@ -24,6 +26,11 @@ class _PixelElementChipState extends State<PixelElementChip> {
     setState(() => _pressed = value);
   }
 
+  void _handleTap() {
+    sfxPlayer.play(SfxId.tap);
+    widget.onTap?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEnabled = widget.onTap != null;
@@ -33,7 +40,7 @@ class _PixelElementChipState extends State<PixelElementChip> {
         onTapDown: (_) => _setPressed(true),
         onTapUp: (_) => _setPressed(false),
         onTapCancel: () => _setPressed(false),
-        onTap: widget.onTap,
+        onTap: isEnabled ? _handleTap : null,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 80),
           transform: Matrix4.translationValues(
