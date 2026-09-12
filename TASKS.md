@@ -44,14 +44,6 @@ uma tarefa nova terminar revelando um gap novo.
   tem APK de verdade (ver DECISION-029), mas só compila via GitHub
   Actions — o Gradle não roda localmente nesta máquina (mesma limitação
   de rede da JVM da DECISION-015)
-- Checagem de atualização (DECISION-037) e download in-app (DECISION-040)
-  nunca completados com sucesso rodando de verdade num Android — esta
-  máquina só compila via GitHub Actions, validado só via teste de widget
-  com `isAndroid`/`startDownload` forçados. Duas tentativas reais do
-  usuário (v0.11.0→v0.12.0) falharam com "app não instalado" por causa
-  do cache de keystore nunca ter funcionado de verdade (ver DECISION-043,
-  corrigido e confirmado com certificados idênticos entre builds — falta
-  só a confirmação final do usuário instalando a v0.13.0 por cima)
 - Layout da Skill Tree visual (DECISION-038) assume que cada branch é
   uma cadeia linear (`orderBranchNodes`) — se um nó ganhar 2+
   pré-requisitos ou 2+ nós dependendo dele no futuro, o layout continua
