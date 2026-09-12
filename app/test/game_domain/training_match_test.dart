@@ -1,5 +1,6 @@
 import 'package:app/game_domain/effect_badge_view.dart';
 import 'package:app/game_domain/training_match.dart';
+import 'package:battle_engine/battle_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -224,5 +225,70 @@ void main() {
       match.playerBActiveStatuses,
       [const EffectBadgeView(id: 'burn', remainingTurns: 2)],
     );
+  });
+
+  test('a player seeded with Treino de Vitalidade already unlocked starts '
+      'with 120 HP, not 100', () {
+    final match = TrainingMatch(
+      initialProgressA: SkillProgress(defaultSkillTree, unlockedNodeIds: ['vitality_training']),
+    );
+
+    expect(match.playerAMaxHp, equals(120));
+    expect(match.playerACurrentHp, equals(120));
+    expect(match.playerBMaxHp, equals(100));
+  });
+
+  test('a player seeded with Maestria da Brasa already unlocked applies '
+      'Queimadura on the first action, no need to unlock again', () {
+    final match = TrainingMatch(
+      initialProgressA: SkillProgress(defaultSkillTree, unlockedNodeIds: ['ember_mastery']),
+    );
+
+    match.playElementIds(['fire']);
+
+    expect(match.lastAppliedStatusNames, contains('Queimadura'));
+  });
+
+  test('unlockedNodeIdsForPlayerA/B and discoveredCombinationIds reflect '
+      'real state', () {
+    final match = TrainingMatch();
+    match.unlockSkillForCurrentPlayer('ember_mastery'); // Jogador A
+    match.playElementIds(['fire', 'wind']); // Jogador A, Tempestade Ígnea
+
+    expect(match.unlockedNodeIdsForPlayerA, ['ember_mastery']);
+    expect(match.unlockedNodeIdsForPlayerB, isEmpty);
+    expect(match.discoveredCombinationIds, ['ignited_storm']);
+  });
+
+  group('fromPersistedProgress', () {
+    test('seeds both players\' Skill Tree and the shared Discovery Book '
+        'from raw ids', () {
+      final match = TrainingMatch.fromPersistedProgress(
+        unlockedNodeIdsA: ['ember_mastery'],
+        unlockedNodeIdsB: ['vitality_training'],
+        discoveredCombinationIds: ['ignited_storm'],
+      );
+
+      expect(match.unlockedNodeIdsForPlayerA, ['ember_mastery']);
+      expect(match.unlockedNodeIdsForPlayerB, ['vitality_training']);
+      expect(match.discoveredCombinationIds, ['ignited_storm']);
+      expect(match.playerBMaxHp, equals(120)); // Vitalidade já aplicada
+    });
+  });
+
+  group('startNewBattleKeepingProgress', () {
+    test('resets HP/turn/campo but keeps Skill Tree and Discovery Book', () {
+      final match = TrainingMatch();
+      match.unlockSkillForCurrentPlayer('vitality_training'); // Jogador A
+      match.playElementIds(['fire', 'wind']); // Jogador A, descobre Tempestade Ígnea
+
+      final rematch = match.startNewBattleKeepingProgress();
+
+      expect(rematch.playerAMaxHp, equals(120)); // Vitalidade mantida
+      expect(rematch.playerACurrentHp, equals(120)); // batalha nova, HP cheio
+      expect(rematch.currentTurnName, equals('Jogador A')); // turno resetado
+      expect(rematch.activeFieldEffectNames, isEmpty); // campo resetado
+      expect(rematch.discoveredCombinationIds, ['ignited_storm']); // mantido
+    });
   });
 }

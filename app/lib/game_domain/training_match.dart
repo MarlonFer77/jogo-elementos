@@ -31,20 +31,64 @@ class TrainingMatch {
     TurnEngine(defaultCombinationBook),
   );
 
-  BattleState _state = BattleState.start(
-    playerA: _playerA,
-    playerB: _playerB,
-    playerAMaxHp: _baseMaxHp,
-    playerBMaxHp: _baseMaxHp,
-  );
-  DiscoveryBook _discoveryBook = DiscoveryBook();
-
-  SkillProgress _progressA = SkillProgress(defaultSkillTree);
-  SkillProgress _progressB = SkillProgress(defaultSkillTree);
+  late BattleState _state;
+  late DiscoveryBook _discoveryBook;
+  late SkillProgress _progressA;
+  late SkillProgress _progressB;
 
   String? _lastTriggeredCombinationName;
   List<String> _lastAppliedStatusNames = [];
   int _turnsPlayed = 0;
+
+  /// [initialProgressA]/[initialProgressB]/[initialDiscoveryBook] seedam
+  /// uma partida já com progresso de uma partida anterior (Bloco 10 —
+  /// persistência local do Modo Treino) — default vazio, mesmo
+  /// comportamento de sempre quando não passados. O HP inicial já soma
+  /// o bônus de qualquer `MaxHpBonus` que o progresso inicial conceda
+  /// (ex: Treino de Vitalidade), não só quando desbloqueado ao vivo
+  /// durante a partida.
+  TrainingMatch({
+    SkillProgress? initialProgressA,
+    SkillProgress? initialProgressB,
+    DiscoveryBook? initialDiscoveryBook,
+  }) {
+    _progressA = initialProgressA ?? SkillProgress(defaultSkillTree);
+    _progressB = initialProgressB ?? SkillProgress(defaultSkillTree);
+    _discoveryBook = initialDiscoveryBook ?? DiscoveryBook();
+    _state = BattleState.start(
+      playerA: _playerA,
+      playerB: _playerB,
+      playerAMaxHp: _baseMaxHp + _progressA.grantedMaxHpBonus,
+      playerBMaxHp: _baseMaxHp + _progressB.grantedMaxHpBonus,
+    );
+  }
+
+  /// Monta uma partida a partir de progresso persistido em disco (ids
+  /// crus, sem nenhum tipo do `battle_engine`) — usado por
+  /// `TrainingScreen` ao abrir a tela, mantendo a regra de que a UI
+  /// nunca precisa nomear um tipo do `battle_engine` (DECISION-011/017).
+  factory TrainingMatch.fromPersistedProgress({
+    required List<String> unlockedNodeIdsA,
+    required List<String> unlockedNodeIdsB,
+    required List<String> discoveredCombinationIds,
+  }) {
+    return TrainingMatch(
+      initialProgressA: SkillProgress(defaultSkillTree, unlockedNodeIds: unlockedNodeIdsA),
+      initialProgressB: SkillProgress(defaultSkillTree, unlockedNodeIds: unlockedNodeIdsB),
+      initialDiscoveryBook: DiscoveryBook(discoveredCombinationIds: discoveredCombinationIds.toSet()),
+    );
+  }
+
+  /// Começa uma batalha nova preservando Skill Tree/Descobertas desta
+  /// partida — usado por "Nova partida" (Bloco 10): reseta HP/turno/
+  /// campo, mas não a progressão.
+  TrainingMatch startNewBattleKeepingProgress() {
+    return TrainingMatch(
+      initialProgressA: _progressA,
+      initialProgressB: _progressB,
+      initialDiscoveryBook: _discoveryBook,
+    );
+  }
 
   int get turnsPlayed => _turnsPlayed;
 
@@ -80,6 +124,13 @@ class TrainingMatch {
   List<EffectBadgeView> get activeFieldEffectBadges => _state.activeFieldEffects
       .map((effect) => EffectBadgeView(id: effect.id, remainingTurns: effect.duration))
       .toList();
+
+  List<String> get unlockedNodeIdsForPlayerA => _progressA.unlockedNodeIds;
+
+  List<String> get unlockedNodeIdsForPlayerB => _progressB.unlockedNodeIds;
+
+  List<String> get discoveredCombinationIds =>
+      _discoveryBook.discoveredCombinationIds.toList();
 
   int get playerAMaxHp => _state.hpOf(_playerA).max;
 
