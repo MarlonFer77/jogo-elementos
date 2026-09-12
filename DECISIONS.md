@@ -1416,3 +1416,44 @@ habilidades não foram clicados manualmente nesta sessão (mesma
 limitação do Bloco 8 pra localizar o ícone de Habilidades no preview
 web) — coberto pelas suítes de `TrainingMatch`/`MultiplayerMatch`/
 `BattleHudWidget`.
+
+## DECISION-045
+Data: 2026-09-12
+Decisão: progressão persistente no Modo Treino (Bloco 10, "progressão")
+— Skill Tree (por Jogador A/Jogador B) e Livro de Descobertas
+(compartilhado, mesmo comportamento de sempre dentro de uma partida)
+passam a sobreviver a "Nova partida" e a fechar/reabrir o app, via
+`shared_preferences` (novo pacote), local ao aparelho, sem rede, sem
+custo. `TrainingMatch` ganhou `fromPersistedProgress` (monta a partida
+a partir de ids crus persistidos) e `startNewBattleKeepingProgress`
+(reseta HP/turno/campo mas mantém progresso) em vez da UI montar
+`SkillProgress`/`DiscoveryBook` diretamente — mantém a regra de que
+`training_screen.dart` nunca nomeia um tipo do `battle_engine`
+(DECISION-011/017), ajuste descoberto revisando o código real antes de
+escrever o plano. Detalhe corrigido de passagem: o HP inicial de uma
+partida seedada com progresso já soma `grantedMaxHpBonus` do progresso
+inicial (ex: Treino de Vitalidade já desbloqueado dá 120 HP desde a
+primeira batalha, não só quando desbloqueado ao vivo).
+Este é o primeiro de dois blocos de progressão decididos com o usuário
+— o segundo (Bloco 11, Multiplayer: Skill Tree persistente + Livro de
+Descobertas novo no backend via Firestore) foi separado por depender
+de credenciais reais do Firebase e ter escopo bem maior. Nessa mesma
+conversa, o usuário criou o projeto Firebase real (`elements-1173d`,
+ver `.firebaserc`) e já criou o Firestore no console — confirmado
+rodando `firebase deploy --only firestore:rules` de verdade contra o
+projeto (substituindo o `demo-jogo-elementos` fake da DECISION-015).
+Motivo: "progressão" era o próximo item sem bloco dedicado na ordem de
+prioridade do CLAUDE.md — hoje nada sobrevivia a fechar o app (Skill
+Tree/Descobertas recriados do zero a cada `TrainingMatch`).
+Consequência: nenhuma lacuna nova conhecida pro Treino. Bloco 11
+(Multiplayer) ainda depende de gerar a credencial de serviço do
+Firebase (Admin SDK) antes de poder implementar — próximo passo.
+Testes: suíte completa do app (`flutter test`, 169 testes) e `flutter
+analyze` passando. Verificado manualmente via `flutter run -d
+web-server` (persistência real via `localStorage` do navegador):
+descobrir Tempestade Ígnea, recarregar a página do zero (nova sessão
+Flutter), "Descobertas: 1/3" continuou depois do reload. Desbloqueio de
+Skill Tree não foi clicado manualmente (mesma limitação recorrente
+desta sessão pra localizar o ícone de Habilidades no preview web) —
+coberto pelo teste de widget novo (`training_screen_test.dart`,
+progresso pré-populado via `SharedPreferences.setMockInitialValues`).

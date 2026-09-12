@@ -74,6 +74,12 @@ uma tarefa nova terminar revelando um gap novo.
   backend
 - `CombinationCatalog` precisa sincronizar manualmente toda vez que
   `default_combinations.dart` ganhar uma combinação nova
+- Progressão persistente no Multiplayer (Bloco 11 da direção de
+  produto, decidido mas não iniciado): Skill Tree persistente + Livro
+  de Descobertas novo no backend (não existe nenhum hoje), via
+  Firestore. Projeto Firebase real já criado (`elements-1173d`,
+  DECISION-045) — falta gerar a credencial de serviço (Admin SDK) no
+  console e configurar no backend/Render antes de poder implementar
 
 **Produção / deploy**
 - Backend implantado no Render (free tier) — ver DECISION-028. APK
@@ -434,6 +440,10 @@ uma tarefa nova terminar revelando um gap novo.
   batalha, substituindo o texto cru — Treino e Multiplayer, sem mudar
   battle_engine/backend (o Multiplayer já recebia `combatantStatuses`
   do backend, só o cliente nunca parseava) (DECISION-044)
+- Progressão persistente do Modo Treino (Bloco 10 da direção de
+  produto): Skill Tree (por Jogador A/Jogador B) e Livro de Descobertas
+  (compartilhado) sobrevivem a "Nova partida" e a fechar/reabrir o app,
+  via `shared_preferences` local ao aparelho (DECISION-045)
 
 # BLOCKED
 
