@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../game_domain/attack_event.dart';
 import '../game_domain/battle_scene_view.dart';
 import '../game_domain/element_catalog.dart';
 import '../game_domain/training_match.dart';
+import '../game_domain/training_progress_store.dart';
 import '../game_presentation/battle_scene_widget.dart';
 import '../game_presentation/pixel_arena_background.dart';
 import '../game_presentation/pixel_content_panel.dart';
@@ -32,10 +35,39 @@ class TrainingScreen extends StatefulWidget {
 }
 
 class _TrainingScreenState extends State<TrainingScreen> {
-  late TrainingMatch _match = widget._initialMatch ?? TrainingMatch();
+  final TrainingProgressStore _progressStore = TrainingProgressStore();
+  late TrainingMatch _match;
+  bool _loading = true;
   final Set<String> _selectedIds = {};
   String? _error;
   AttackEvent? _pendingAttack;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget._initialMatch;
+    if (initial != null) {
+      _match = initial;
+      _loading = false;
+    } else {
+      unawaited(_loadPersistedMatch());
+    }
+  }
+
+  Future<void> _loadPersistedMatch() async {
+    final unlockedA = await _progressStore.loadUnlockedNodeIds('a');
+    final unlockedB = await _progressStore.loadUnlockedNodeIds('b');
+    final discovered = await _progressStore.loadDiscoveredCombinationIds();
+    if (!mounted) return;
+    setState(() {
+      _match = TrainingMatch.fromPersistedProgress(
+        unlockedNodeIdsA: unlockedA,
+        unlockedNodeIdsB: unlockedB,
+        discoveredCombinationIds: discovered,
+      );
+      _loading = false;
+    });
+  }
 
   void _toggleElement(String id) {
     setState(() {
@@ -54,6 +86,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
       final wasPlayerATurn = _match.isPlayerATurn;
       final hpABefore = _match.playerACurrentHp;
       final hpBBefore = _match.playerBCurrentHp;
+      final discoveredCountBefore = _match.discoveredCombinationIds.length;
       try {
         _match.playElementIds(playedElementIds);
         _selectedIds.clear();
@@ -73,6 +106,11 @@ class _TrainingScreenState extends State<TrainingScreen> {
             appliedStatusNames: appliedStatus,
           );
         }
+        if (_match.discoveredCombinationIds.length != discoveredCountBefore) {
+          unawaited(
+            _progressStore.saveDiscoveredCombinationIds(_match.discoveredCombinationIds),
+          );
+        }
         if (_match.isOver) {
           sfxPlayer.play(SfxId.victory);
         }
@@ -84,7 +122,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
 
   void _startNewMatch() {
     setState(() {
-      _match = TrainingMatch();
+      _match = _match.startNewBattleKeepingProgress();
       _selectedIds.clear();
       _error = null;
     });
@@ -98,6 +136,11 @@ class _TrainingScreenState extends State<TrainingScreen> {
       onUnlock: (nodeId) async {
         try {
           _match.unlockSkillForCurrentPlayer(nodeId);
+          final slot = _match.isPlayerATurn ? 'a' : 'b';
+          final unlockedNodeIds = _match.isPlayerATurn
+              ? _match.unlockedNodeIdsForPlayerA
+              : _match.unlockedNodeIdsForPlayerB;
+          unawaited(_progressStore.saveUnlockedNodeIds(slot, unlockedNodeIds));
           return null;
         } on StateError catch (e) {
           return e.message;
@@ -109,6 +152,11 @@ class _TrainingScreenState extends State<TrainingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     return Stack(
       children: [
         Positioned.fill(child: CustomPaint(painter: ArenaBackdropPainter())),

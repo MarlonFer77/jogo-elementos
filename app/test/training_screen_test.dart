@@ -4,8 +4,13 @@ import 'package:app/main.dart';
 import 'package:app/ui/training_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets(
     'selecting fire and wind then playing triggers Tempestade Ígnea and '
     'passes the turn to Jogador B',
@@ -157,4 +162,27 @@ void main() {
     expect(find.text('Vez de: Jogador A'), findsOneWidget);
     expect(find.text('Jogar'), findsOneWidget);
   });
+
+  testWidgets(
+    'loads persisted Skill Tree progress before showing the play form',
+    (WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues({
+        'training_unlocked_a': ['ember_mastery'],
+      });
+
+      await tester.pumpWidget(const MaterialApp(home: TrainingScreen()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1));
+
+      await tester.tap(find.byIcon(Icons.auto_awesome));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.text('Caminho do Incêndio'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text('Desbloquear'), findsOneWidget);
+    },
+  );
 }
