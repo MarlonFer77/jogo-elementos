@@ -201,9 +201,6 @@ class _TrainingScreenState extends State<TrainingScreen> {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 4),
-                  Text('Jogador A: ${_statusSummary(_match.playerAStatusNames)}'),
-                  Text('Jogador B: ${_statusSummary(_match.playerBStatusNames)}'),
-                  const SizedBox(height: 4),
                   Text(
                     'Descobertas: ${_match.discoveredCount}/${_match.totalCombinationsCount}',
                   ),
@@ -219,13 +216,6 @@ class _TrainingScreenState extends State<TrainingScreen> {
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
                         'Efeitos aplicados: ${_match.lastAppliedStatusNames.join(", ")}',
-                      ),
-                    ),
-                  if (_match.activeFieldEffectNames.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        'Campo: ${_match.activeFieldEffectNames.join(", ")}',
                       ),
                     ),
                   const Divider(height: 32),
@@ -339,9 +329,5 @@ class _TrainingScreenState extends State<TrainingScreen> {
         );
       },
     );
-  }
-
-  String _statusSummary(List<String> statusNames) {
-    return statusNames.isEmpty ? 'sem estados' : statusNames.join(', ');
   }
 }

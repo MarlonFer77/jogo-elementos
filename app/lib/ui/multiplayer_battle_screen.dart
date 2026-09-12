@@ -257,7 +257,6 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
 
   List<Widget> _buildBattle(BuildContext context) {
     final elements = const ElementCatalog().all();
-    const combinationCatalog = CombinationCatalog();
 
     return [
       BattleSceneWidget(
@@ -280,14 +279,6 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
         _match.isMyTurn ? 'Sua vez' : 'Vez do oponente',
         style: Theme.of(context).textTheme.titleLarge,
       ),
-      const SizedBox(height: 4),
-      if (_match.activeFieldEffectIds.isNotEmpty)
-        Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(
-            'Campo: ${_match.activeFieldEffectIds.map((id) => combinationCatalog.byId(id)?.name ?? id).join(", ")}',
-          ),
-        ),
       const Divider(height: 32),
       Text(_selectedElementsSummary(elements)),
       const SizedBox(height: 8),

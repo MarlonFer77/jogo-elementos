@@ -112,7 +112,7 @@ void main() {
         find.text('Efeitos aplicados: Queimadura'),
         findsOneWidget,
       );
-      expect(find.textContaining('Jogador B: Queimadura'), findsOneWidget);
+      expect(find.text('🔥'), findsOneWidget); // badge de Queimadura em Jogador B
     },
   );
 
