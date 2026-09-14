@@ -49,4 +49,27 @@ void main() {
       );
     });
   });
+
+  group('turns played', () {
+    test('an empty slot returns 0', () async {
+      final store = TrainingProgressStore();
+      expect(await store.loadTurnsPlayed('a'), 0);
+    });
+
+    test('saves and reloads a slot', () async {
+      final store = TrainingProgressStore();
+      await store.saveTurnsPlayed('a', 7);
+
+      expect(await store.loadTurnsPlayed('a'), 7);
+    });
+
+    test('two slots are independent', () async {
+      final store = TrainingProgressStore();
+      await store.saveTurnsPlayed('a', 10);
+      await store.saveTurnsPlayed('b', 3);
+
+      expect(await store.loadTurnsPlayed('a'), 10);
+      expect(await store.loadTurnsPlayed('b'), 3);
+    });
+  });
 }
