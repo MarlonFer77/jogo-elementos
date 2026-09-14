@@ -21,6 +21,8 @@ export 'src/ap_pool.dart';
 export 'src/max_hp_bonus.dart';
 export 'src/max_hp_bonuses.dart';
 export 'src/skill_grant.dart';
+export 'src/element_unlock.dart';
+export 'src/element_unlocks.dart';
 export 'src/ability_effect.dart';
 export 'src/targeted_status.dart';
 export 'src/mutation.dart';
