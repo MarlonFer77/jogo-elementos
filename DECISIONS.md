@@ -1519,3 +1519,66 @@ jogador, mesma HP); carregar AP com jogadas de elemento sozinho e
 tentar o combo de novo funcionou — Tempestade Ígnea disparou, 20 de
 dano, pips de AP desceram refletindo o gasto (4 acumulados, 3 gastos, 1
 restante). Nenhum erro no console do navegador.
+
+## DECISION-047
+Data: 2026-09-14
+Decisão: elementos bloqueados no Modo Treino (Bloco 2b) — segundo dos
+quatro blocos combinados com o usuário junto do Bloco 2a
+(DECISION-046). Cada jogador (Jogador A e Jogador B, independentemente)
+escolhe **2 elementos iniciais**, uma vez só, na primeira vez que abre
+o Modo Treino, via `ElementStarterScreen` (nova, tela cheia bloqueante,
+mesmo padrão do `UpdateGateScreen`). Os outros 8 elementos começam
+bloqueados e se desbloqueiam via um novo tipo de `SkillGrant`
+(`ElementUnlock`/`ElementUnlocks`, `packages/battle_engine`), com uma
+nova branch "elementos" em `defaultSkillTree` (10 nós, sem
+pré-requisito entre si — o jogador escolhe livremente qual desbloquear
+a seguir). Diferente dos nós existentes (instantâneos assim que o
+pré-requisito é satisfeito), desbloquear um nó de elemento exige
+também um número crescente de turnos cumulativos jogados por aquele
+jogador: `(E-1) × 10`, `E` = quantos elementos esse jogador já tem
+(contando os 2 iniciais) — 10 turnos pro 3º elemento, 20 pro 4º, 30
+pro 5º. Esse contador é persistido (`TrainingProgressStore`, chave
+nova `training_turns_played_<slot>`) e não reseta em "Nova partida",
+mesma regra da Skill Tree/Livro de Descobertas.
+Só Modo Treino — Multiplayer aguarda o Bloco 11 (persistência real) pra
+não reintroduzir o problema que o Bloco 10 já resolveu só pro Treino.
+Nada neste bloco toca `BattleState`/`TurnEngine` (Dart) nem
+`backend/src/battle-rules/` (TypeScript) — o gate de turnos vive
+inteiramente em `TrainingMatch` (Game Domain), a única camada que
+conhece contagem cumulativa persistida entre partidas.
+`SkillTreeScreen` (compartilhada com o Multiplayer) ganhou um hook
+opcional `extraLockedHint` pra mostrar "Faltam N turnos." no lugar do
+botão "Desbloquear" — o Multiplayer nunca passa esse parâmetro, então
+seu comportamento fica inalterado.
+Descoberta durante o plano: a mesma classe de ripple do Bloco 2a se
+repetiu — quase todo teste existente de `TrainingMatch`/`TrainingScreen`
+jogava elementos partindo do pressuposto de que estavam sempre livres;
+corrigido semeando `initialProgressA`/`B` (ou `SharedPreferences` já
+com elementos escolhidos) em cada teste afetado, com um helper
+compartilhado (`_allElementsUnlocked()`) pros testes que não são
+especificamente sobre o novo bloqueio. Um bug real foi pego pelo
+próprio teste de onboarding, não pelo plano: `ElementStarterScreen` sem
+`Key` fazia o Flutter reaproveitar o mesmo `State` (e a seleção
+`_selectedIds`) entre a tela do Jogador A e a do Jogador B — corrigido
+com `key: ValueKey(_pendingOnboardingSlot)`.
+Motivo: sequência já combinada com o usuário desde o Bloco 2a — dar
+progressão real ao "quais elementos eu posso jogar", não só ao "quanto
+custa combinar".
+Consequência: nenhuma lacuna nova conhecida pro 2b. Blocos 2c (ataques
+equipáveis) e 2d (UI estilo Pokémon) continuam no BACKLOG, dependem de
+decisões de design próprias ainda não feitas.
+Testes: suíte completa de `battle_engine` (`dart analyze` limpo, `dart
+test`, 205 testes) e app (`flutter analyze` limpo, `flutter test`, 191
+testes) passando. Verificado manualmente via `flutter run -d
+web-server` (reinício completo do preview, sessão de navegador sem
+progresso salvo): a tela de escolha inicial apareceu pro Jogador A
+(Fogo+Vento escolhidos), depois pro Jogador B (Água+Raio, confirmando
+que os dois jogadores escolhem de forma independente — o bug do `Key`
+foi justamente pego aqui), só então o jogo normal apareceu; no picker
+de elementos, Fogo/Vento apareceram normais e Água (entre outros)
+apareceu com cadeado e não reagiu ao toque; jogar Fogo sozinho causou
+5 de dano e acendeu 1 pip de AP. Não foi possível clicar no ícone de
+Habilidades no preview web (mesma limitação recorrente desta sessão,
+já registrada nas DECISION-044/045) — a mensagem "Faltam N turnos."
+não foi conferida a olho, mas está coberta pelo teste de widget novo
+de `skill_tree_screen_test.dart`. Nenhum erro no console do navegador.

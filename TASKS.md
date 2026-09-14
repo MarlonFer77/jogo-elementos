@@ -63,9 +63,6 @@ uma tarefa nova terminar revelando um gap novo.
 - Ícone dedicado por combinação futura sem entrada em
   `status_visuals.dart` (Bloco 9, DECISION-044) — cai no fallback (✨)
   até alguém adicionar
-- Elementos começam bloqueados, com mecânica de desbloqueio (Bloco 2b,
-  decidido com o usuário junto do Bloco 2a/DECISION-046, ainda não
-  iniciado) — hoje todos os 10 elementos ficam livres desde o início
 - Combos disparados viram "ataques" permanentes desbloqueáveis, com
   janela de skills combinadas pra equipar/trocar, limite de 3 (Bloco
   2c, decidido junto do Bloco 2a, depende do 2b, ainda não iniciado)
@@ -461,6 +458,13 @@ uma tarefa nova terminar revelando um gap novo.
   Pips de AP no HUD de batalha (Treino e Multiplayer). Sincronizado em
   `battle_engine` (Dart) e `backend/src/battle-rules/` (TypeScript)
   (DECISION-046)
+- Elementos bloqueados no Modo Treino (Bloco 2b, sequência combinada
+  com o usuário desde o Bloco 2a): cada jogador escolhe 2 elementos
+  iniciais uma vez, os outros 8 desbloqueiam via nova branch
+  "elementos" na Skill Tree (`ElementUnlock`/`ElementUnlocks`), com
+  custo crescente em turnos cumulativos jogados ((E-1)×10) além do
+  pré-requisito de sempre. Só Modo Treino — Multiplayer aguarda o
+  Bloco 11 pra ter persistência real primeiro (DECISION-047)
 
 # BLOCKED
 
