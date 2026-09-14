@@ -4,6 +4,7 @@ import { createBattleState } from "../battle-rules/battle-state.js";
 import { defaultCombinationBook } from "../battle-rules/combination-book.js";
 import { TurnValidationError } from "../battle-rules/errors.js";
 import {
+  parseAp,
   parseCombatantStatuses,
   parseFieldEffect,
   parseHp,
@@ -51,6 +52,7 @@ function parseRequestBody(body: unknown) {
       currentTurnId: stateInput.currentTurnId,
       activeFieldEffects,
       hp: parseHp(stateInput.hp),
+      ap: parseAp(stateInput.ap),
       combatantStatuses: parseCombatantStatuses(stateInput.combatantStatuses),
       winner: (stateInput.winner as string | null | undefined) ?? null,
     }),

@@ -1,6 +1,6 @@
 import { isNonEmptyString } from "../http/validation.js";
 import { TurnValidationError } from "./errors.js";
-import type { ActiveStatus, FieldEffect, HpPool, TurnAction } from "./types.js";
+import type { ActiveStatus, ApPool, FieldEffect, HpPool, TurnAction } from "./types.js";
 
 export function parseFieldEffect(value: unknown): FieldEffect {
   if (typeof value !== "object" || value === null) {
@@ -54,6 +54,39 @@ export function parseHp(
   const entries = Object.entries(value as Record<string, unknown>);
   return Object.fromEntries(
     entries.map(([id, pool]) => [id, parseHpPool(pool)]),
+  );
+}
+
+export function parseApPool(value: unknown): ApPool {
+  if (typeof value !== "object" || value === null) {
+    throw new TurnValidationError("each AP pool must be an object");
+  }
+  const { max, current } = value as Record<string, unknown>;
+
+  if (typeof max !== "number") {
+    throw new TurnValidationError("AP pool max must be a number");
+  }
+  if (typeof current !== "number") {
+    throw new TurnValidationError("AP pool current must be a number");
+  }
+
+  return { max, current };
+}
+
+/** Parses the optional `state.ap` map sent by a stateless caller (see
+ * /battles/validate-turn) — keyed by combatant id, same shape
+ * createBattleState accepts. Returns undefined (letting createBattleState
+ * apply its own 5/0 default) when absent. */
+export function parseAp(
+  value: unknown,
+): Record<string, ApPool> | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "object" || value === null) {
+    throw new TurnValidationError("state.ap must be an object");
+  }
+  const entries = Object.entries(value as Record<string, unknown>);
+  return Object.fromEntries(
+    entries.map(([id, pool]) => [id, parseApPool(pool)]),
   );
 }
 

@@ -57,6 +57,13 @@ test(
       assert.equal(joined.status, "in_progress");
       assert.equal(joined.state?.currentTurnId, "ana");
 
+      // ana e beto precisam de 3 AP cada pra um combo de 2 — carrega
+      // primeiro com duas jogadas de elemento sozinho cada.
+      await postJson(`${baseUrl}/matches/${created.id}/turns`, { actorId: "ana", elementIds: ["fire"] });
+      await postJson(`${baseUrl}/matches/${created.id}/turns`, { actorId: "beto", elementIds: ["ice"] });
+      await postJson(`${baseUrl}/matches/${created.id}/turns`, { actorId: "ana", elementIds: ["fire"] });
+      await postJson(`${baseUrl}/matches/${created.id}/turns`, { actorId: "beto", elementIds: ["ice"] });
+
       const turnAResponse = await postJson(
         `${baseUrl}/matches/${created.id}/turns`,
         { actorId: "ana", elementIds: ["fire", "wind"] },

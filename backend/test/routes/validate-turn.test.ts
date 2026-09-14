@@ -41,6 +41,7 @@ function baseState() {
     playerBId: "b",
     currentTurnId: "a",
     activeFieldEffects: [] as unknown[],
+    ap: { a: { max: 5, current: 3 }, b: { max: 5, current: 3 } },
   };
 }
 
@@ -210,7 +211,7 @@ test("carries over a damage-over-time status and ticks it", async () => {
     const body = await readBody(response);
 
     assert.equal(response.status, 200);
-    assert.equal(body.state?.hp?.b?.current, 92);
+    assert.equal(body.state?.hp?.b?.current, 87); // 100 - 5 (basic) - 8 (DOT tick)
     assert.deepEqual(body.state?.combatantStatuses?.b, [
       { effectId: "burn", turnsRemaining: 1, damagePerTick: 8 },
     ]);

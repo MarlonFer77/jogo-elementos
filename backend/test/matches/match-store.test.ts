@@ -93,6 +93,14 @@ test("applyTurn resolves a combination and advances the turn", () => {
   const created = store.create("ana");
   store.join(created.id, "beto");
 
+  // ana precisa de 3 AP pra um combo de 2 — ela começa em 0, então
+  // carrega primeiro com duas jogadas de elemento sozinho (5 de dano
+  // básico cada, irrelevante pro que este teste verifica).
+  store.applyTurn(created.id, { actorId: "ana", elementIds: ["fire"] }, defaultCombinationBook);
+  store.applyTurn(created.id, { actorId: "beto", elementIds: ["ice"] }, defaultCombinationBook);
+  store.applyTurn(created.id, { actorId: "ana", elementIds: ["fire"] }, defaultCombinationBook);
+  store.applyTurn(created.id, { actorId: "beto", elementIds: ["ice"] }, defaultCombinationBook);
+
   const { match, result } = store.applyTurn(
     created.id,
     { actorId: "ana", elementIds: ["fire", "wind"] },
@@ -110,22 +118,16 @@ test("applyTurn marks the match finished once a winner is decided", () => {
   const created = store.create("ana");
   store.join(created.id, "beto");
 
-  let match = store.get(created.id);
-  for (let i = 0; i < 4; i++) {
-    match = store.applyTurn(
-      created.id,
-      { actorId: "ana", elementIds: ["fire", "wind"] },
-      defaultCombinationBook,
-    ).match;
-    match = store.applyTurn(
-      created.id,
-      { actorId: "beto", elementIds: ["ice"] },
-      defaultCombinationBook,
-    ).match;
+  // 5 de dano básico por jogada, sempre de graça — 20 acertos derrubam
+  // 100 HP. Isola "MatchStore marca finished", não a matemática de
+  // combo/AP (já coberta por turn-engine.test.ts).
+  for (let i = 0; i < 19; i++) {
+    store.applyTurn(created.id, { actorId: "ana", elementIds: ["fire"] }, defaultCombinationBook);
+    store.applyTurn(created.id, { actorId: "beto", elementIds: ["ice"] }, defaultCombinationBook);
   }
   const { match: finished, result } = store.applyTurn(
     created.id,
-    { actorId: "ana", elementIds: ["fire", "wind"] },
+    { actorId: "ana", elementIds: ["fire"] },
     defaultCombinationBook,
   );
 
@@ -138,23 +140,11 @@ test("applyTurn throws once the match is finished", () => {
   const created = store.create("ana");
   store.join(created.id, "beto");
 
-  for (let i = 0; i < 4; i++) {
-    store.applyTurn(
-      created.id,
-      { actorId: "ana", elementIds: ["fire", "wind"] },
-      defaultCombinationBook,
-    );
-    store.applyTurn(
-      created.id,
-      { actorId: "beto", elementIds: ["ice"] },
-      defaultCombinationBook,
-    );
+  for (let i = 0; i < 19; i++) {
+    store.applyTurn(created.id, { actorId: "ana", elementIds: ["fire"] }, defaultCombinationBook);
+    store.applyTurn(created.id, { actorId: "beto", elementIds: ["ice"] }, defaultCombinationBook);
   }
-  store.applyTurn(
-    created.id,
-    { actorId: "ana", elementIds: ["fire", "wind"] },
-    defaultCombinationBook,
-  );
+  store.applyTurn(created.id, { actorId: "ana", elementIds: ["fire"] }, defaultCombinationBook);
 
   assert.throws(
     () =>
@@ -273,6 +263,11 @@ test("applyTurn applies a granted combinationModifier to a triggered combo", () 
   const created = store.create("ana");
   store.join(created.id, "beto");
   store.unlockSkill(created.id, "ana", "elemental_insight"); // grants Propagação
+
+  store.applyTurn(created.id, { actorId: "ana", elementIds: ["fire"] }, defaultCombinationBook);
+  store.applyTurn(created.id, { actorId: "beto", elementIds: ["ice"] }, defaultCombinationBook);
+  store.applyTurn(created.id, { actorId: "ana", elementIds: ["fire"] }, defaultCombinationBook);
+  store.applyTurn(created.id, { actorId: "beto", elementIds: ["ice"] }, defaultCombinationBook);
 
   const { match } = store.applyTurn(
     created.id,

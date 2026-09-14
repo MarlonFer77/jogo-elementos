@@ -8,7 +8,12 @@ import { combustion, guard, wildfire } from "../../src/battle-rules/mutations.js
 import { useAbility } from "../../src/battle-rules/ability-engine.js";
 
 function startState() {
-  return createBattleState({ playerAId: "a", playerBId: "b", currentTurnId: "a" });
+  return createBattleState({
+    playerAId: "a",
+    playerBId: "b",
+    currentTurnId: "a",
+    ap: { a: { max: 5, current: 3 }, b: { max: 5, current: 3 } },
+  });
 }
 
 test("a mutation's status applies to the opponent, not the actor", () => {
