@@ -40,6 +40,13 @@ void main() {
         branch: 'vitalidade',
         grants: MaxHpBonuses.vitality,
       ),
+      SkillNode(
+        id: 'unlock_fire',
+        name: 'Fogo',
+        description: 'x',
+        branch: 'elementos',
+        grants: const ElementUnlock(id: 'unlock_fire', elementId: 'fire'),
+      ),
     ]);
   }
 
@@ -102,6 +109,7 @@ void main() {
           'unstable_core_training',
           'elemental_insight',
           'vitality_training',
+          'unlock_fire',
         }),
       );
     });
@@ -116,6 +124,7 @@ void main() {
           'unstable_core_training',
           'elemental_insight',
           'vitality_training',
+          'unlock_fire',
         }),
       );
     });
@@ -196,6 +205,24 @@ void main() {
     test('ignores nodes that grant a Mutation or CombinationModifier', () {
       final progress = SkillProgress(buildTree()).unlock('ember_mastery');
       expect(progress.grantedMaxHpBonus, equals(0));
+    });
+  });
+
+  group('SkillProgress.grantedElementIds', () {
+    test('is empty with nothing unlocked', () {
+      final progress = SkillProgress(buildTree());
+      expect(progress.grantedElementIds, isEmpty);
+    });
+
+    test('reflects an unlocked ElementUnlock node', () {
+      final progress = SkillProgress(buildTree()).unlock('unlock_fire');
+      expect(progress.grantedElementIds, equals(['fire']));
+    });
+
+    test('ignores nodes that grant a Mutation, CombinationModifier or '
+        'MaxHpBonus', () {
+      final progress = SkillProgress(buildTree()).unlock('ember_mastery');
+      expect(progress.grantedElementIds, isEmpty);
     });
   });
 }

@@ -1,4 +1,5 @@
 import 'combination_modifier.dart';
+import 'element_unlock.dart';
 import 'max_hp_bonus.dart';
 import 'mutation.dart';
 import 'skill_node.dart';
@@ -58,6 +59,14 @@ class SkillProgress {
   int get grantedMaxHpBonus {
     return _grantedOfType<MaxHpBonus>((grant) => grant.id)
         .fold<int>(0, (sum, bonus) => sum + bonus.bonus);
+  }
+
+  /// Element ids granted by unlocked nodes (nodes that grant something
+  /// else are skipped), in unlock order, deduplicated by id.
+  List<String> get grantedElementIds {
+    return _grantedOfType<ElementUnlock>((grant) => grant.id)
+        .map((grant) => grant.elementId)
+        .toList();
   }
 
   List<T> _grantedOfType<T>(String Function(T) idOf) {
