@@ -16,7 +16,7 @@ void main() {
 
   test('playing fire+wind triggers Tempestade Ígnea and passes the turn',
       () {
-    final match = TrainingMatch();
+    final match = TrainingMatch(initialApA: const ApPool(max: 5, current: 3));
 
     match.playElementIds(['fire', 'wind']);
 
@@ -27,7 +27,10 @@ void main() {
   });
 
   test('discovering the same combination twice does not double-count', () {
-    final match = TrainingMatch();
+    final match = TrainingMatch(
+      initialApA: const ApPool(max: 5, current: 3),
+      initialApB: const ApPool(max: 5, current: 3),
+    );
 
     match.playElementIds(['fire', 'wind']); // Jogador A
     match.playElementIds(['fire', 'wind']); // Jogador B, same combo
@@ -37,7 +40,7 @@ void main() {
 
   test('an unknown combination does not add a field effect but still '
       'passes the turn', () {
-    final match = TrainingMatch();
+    final match = TrainingMatch(initialApA: const ApPool(max: 5, current: 3));
 
     match.playElementIds(['ice', 'shadow']);
 
@@ -132,7 +135,7 @@ void main() {
     });
 
     test('a triggered combination reduces the opponent\'s current HP', () {
-      final match = TrainingMatch();
+      final match = TrainingMatch(initialApA: const ApPool(max: 5, current: 3));
       match.playElementIds(['fire', 'wind']); // Jogador A, 20 damage
       expect(match.playerBCurrentHp, equals(80));
     });
@@ -146,12 +149,14 @@ void main() {
     test('ends the match and names the winner once someone reaches 0 HP',
         () {
       final match = TrainingMatch();
-      // 5 hits of 20 damage from Jogador A defeat Jogador B (100 HP).
-      for (var i = 0; i < 4; i++) {
-        match.playElementIds(['fire', 'wind']); // Jogador A
-        match.playElementIds(['ice']); // Jogador B, no damage
+      // 5 basic damage per hit (single element, always free) — 20 hits
+      // defeat 100 HP. Jogador A acts first each round, so their 20th
+      // hit lands before Jogador B's 20th.
+      for (var i = 0; i < 19; i++) {
+        match.playElementIds(['fire']); // Jogador A
+        match.playElementIds(['ice']); // Jogador B
       }
-      match.playElementIds(['fire', 'wind']); // 5th hit: defeats Jogador B
+      match.playElementIds(['fire']); // Jogador A's 20th hit defeats Jogador B
 
       expect(match.isOver, isTrue);
       expect(match.winnerName, equals('Jogador A'));
@@ -170,7 +175,7 @@ void main() {
 
     test('a Vitalidade bonus unlocked mid-match does not affect prior '
         'damage taken', () {
-      final match = TrainingMatch();
+      final match = TrainingMatch(initialApA: const ApPool(max: 5, current: 3));
       match.playElementIds(['fire', 'wind']); // Jogador A hits B for 20
       // Now it's Jogador B's turn; they unlock Vitalidade for themselves.
       match.unlockSkillForCurrentPlayer('vitality_training');
@@ -204,7 +209,7 @@ void main() {
 
   test('activeFieldEffectBadges resolves id and remainingTurns from a '
       'triggered combination', () {
-    final match = TrainingMatch();
+    final match = TrainingMatch(initialApA: const ApPool(max: 5, current: 3));
     match.playElementIds(['fire', 'wind']); // Tempestade Ígnea
 
     expect(
@@ -251,7 +256,7 @@ void main() {
 
   test('unlockedNodeIdsForPlayerA/B and discoveredCombinationIds reflect '
       'real state', () {
-    final match = TrainingMatch();
+    final match = TrainingMatch(initialApA: const ApPool(max: 5, current: 3));
     match.unlockSkillForCurrentPlayer('ember_mastery'); // Jogador A
     match.playElementIds(['fire', 'wind']); // Jogador A, Tempestade Ígnea
 
@@ -278,7 +283,7 @@ void main() {
 
   group('startNewBattleKeepingProgress', () {
     test('resets HP/turn/campo but keeps Skill Tree and Discovery Book', () {
-      final match = TrainingMatch();
+      final match = TrainingMatch(initialApA: const ApPool(max: 5, current: 3));
       match.unlockSkillForCurrentPlayer('vitality_training'); // Jogador A
       match.playElementIds(['fire', 'wind']); // Jogador A, descobre Tempestade Ígnea
 
@@ -290,5 +295,17 @@ void main() {
       expect(rematch.activeFieldEffectNames, isEmpty); // campo resetado
       expect(rematch.discoveredCombinationIds, ['ignited_storm']); // mantido
     });
+  });
+
+  test('playerAAp/playerAApMax/playerBAp/playerBApMax reflect real state',
+      () {
+    final match = TrainingMatch();
+    expect(match.playerAAp, 0);
+    expect(match.playerAApMax, 5);
+
+    match.playElementIds(['fire']); // Jogador A regenera 1 AP no próprio turno
+
+    expect(match.playerAAp, 1);
+    expect(match.playerBAp, 0);
   });
 }

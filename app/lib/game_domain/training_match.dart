@@ -46,11 +46,15 @@ class TrainingMatch {
   /// comportamento de sempre quando não passados. O HP inicial já soma
   /// o bônus de qualquer `MaxHpBonus` que o progresso inicial conceda
   /// (ex: Treino de Vitalidade), não só quando desbloqueado ao vivo
-  /// durante a partida.
+  /// durante a partida. [initialApA]/[initialApB] existem só pra
+  /// conveniência de teste (Bloco 2a) — nenhum código de produção
+  /// precisa seedar AP, uma partida real sempre começa em 0.
   TrainingMatch({
     SkillProgress? initialProgressA,
     SkillProgress? initialProgressB,
     DiscoveryBook? initialDiscoveryBook,
+    ApPool? initialApA,
+    ApPool? initialApB,
   }) {
     _progressA = initialProgressA ?? SkillProgress(defaultSkillTree);
     _progressB = initialProgressB ?? SkillProgress(defaultSkillTree);
@@ -60,6 +64,10 @@ class TrainingMatch {
       playerB: _playerB,
       playerAMaxHp: _baseMaxHp + _progressA.grantedMaxHpBonus,
       playerBMaxHp: _baseMaxHp + _progressB.grantedMaxHpBonus,
+      ap: {
+        if (initialApA != null) _playerA: initialApA,
+        if (initialApB != null) _playerB: initialApB,
+      },
     );
   }
 
@@ -131,6 +139,11 @@ class TrainingMatch {
 
   List<String> get discoveredCombinationIds =>
       _discoveryBook.discoveredCombinationIds.toList();
+
+  int get playerAAp => _state.apOf(_playerA).current;
+  int get playerAApMax => _state.apOf(_playerA).max;
+  int get playerBAp => _state.apOf(_playerB).current;
+  int get playerBApMax => _state.apOf(_playerB).max;
 
   int get playerAMaxHp => _state.hpOf(_playerA).max;
 

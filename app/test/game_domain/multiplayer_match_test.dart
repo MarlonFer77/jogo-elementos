@@ -60,6 +60,10 @@ class _FakeBackend {
             {'effectId': 'shield', 'turnsRemaining': null, 'damagePerTick': 0},
           ],
         },
+        'ap': <String, dynamic>{
+          match['playerAId'] as String: {'max': 5, 'current': 3},
+          match['playerBId'] as String: {'max': 5, 'current': 1},
+        },
         'winner': null,
       };
       match['skillProgress'] = <String, dynamic>{
@@ -216,6 +220,28 @@ void main() {
       beto.opponentActiveStatuses,
       [const EffectBadgeView(id: 'burn', remainingTurns: 2)],
     );
+  });
+
+  test('myAp/myApMax/opponentAp/opponentApMax resolve from state.ap',
+      () async {
+    final backend = _FakeBackend();
+    final ana = MultiplayerMatch(
+      client: MultiplayerClient(baseUrl: 'http://x', httpClient: backend.asClient()),
+      localPlayerId: 'ana',
+    );
+    await ana.create();
+    final beto = MultiplayerMatch(
+      client: MultiplayerClient(baseUrl: 'http://x', httpClient: backend.asClient()),
+      localPlayerId: 'beto',
+    );
+    await beto.join(ana.matchId!);
+    await ana.refresh();
+
+    expect(ana.myAp, 3);
+    expect(ana.myApMax, 5);
+    expect(ana.opponentAp, 1);
+    expect(beto.myAp, 1);
+    expect(beto.opponentAp, 3);
   });
 
   test('a full match: repeated combo damage decides a winner for both sides',

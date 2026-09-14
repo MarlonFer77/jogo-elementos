@@ -75,6 +75,16 @@ class MultiplayerMatch {
           .toList() ??
       const [];
 
+  RemoteApPool? _apOf(String? playerId) {
+    if (playerId == null) return null;
+    return _match?.state?.ap[playerId];
+  }
+
+  int get myAp => _apOf(localPlayerId)?.current ?? 0;
+  int get myApMax => _apOf(localPlayerId)?.max ?? 5;
+  int get opponentAp => _apOf(_opponentId)?.current ?? 0;
+  int get opponentApMax => _apOf(_opponentId)?.max ?? 5;
+
   /// Skill Tree node ids [localPlayerId] has unlocked in this match — ids
   /// only, same reasoning as elsewhere in this class (no `battle_engine`
   /// type here; the UI maps ids to display info via
