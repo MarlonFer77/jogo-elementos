@@ -17,6 +17,7 @@ export 'src/status_effects.dart';
 export 'src/active_status.dart';
 export 'src/field_effect.dart';
 export 'src/hp_pool.dart';
+export 'src/ap_pool.dart';
 export 'src/max_hp_bonus.dart';
 export 'src/max_hp_bonuses.dart';
 export 'src/skill_grant.dart';
