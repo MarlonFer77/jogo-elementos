@@ -84,4 +84,27 @@ void main() {
     expect(withBadges.rightStatuses, [const EffectBadgeView(id: 'shield')]);
     expect(withBadges.fieldEffects, [const EffectBadgeView(id: 'ignited_storm')]);
   });
+
+  test('leftAp/leftApMax/rightAp/rightApMax default to 0/5 and can be set',
+      () {
+    const withoutAp = BattleSceneView(
+      leftCurrentHp: 100, leftMaxHp: 100,
+      rightCurrentHp: 100, rightMaxHp: 100,
+      isLeftTurn: true,
+    );
+    expect(withoutAp.leftAp, 0);
+    expect(withoutAp.leftApMax, 5);
+    expect(withoutAp.rightAp, 0);
+    expect(withoutAp.rightApMax, 5);
+
+    const withAp = BattleSceneView(
+      leftCurrentHp: 100, leftMaxHp: 100,
+      rightCurrentHp: 100, rightMaxHp: 100,
+      isLeftTurn: true,
+      leftAp: 3,
+      rightAp: 5,
+    );
+    expect(withAp.leftAp, 3);
+    expect(withAp.rightAp, 5);
+  });
 }

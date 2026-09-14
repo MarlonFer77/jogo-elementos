@@ -18,6 +18,10 @@ class BattleSceneView {
   final List<EffectBadgeView> leftStatuses;
   final List<EffectBadgeView> rightStatuses;
   final List<EffectBadgeView> fieldEffects;
+  final int leftAp;
+  final int leftApMax;
+  final int rightAp;
+  final int rightApMax;
 
   const BattleSceneView({
     required this.leftCurrentHp,
@@ -31,5 +35,9 @@ class BattleSceneView {
     this.leftStatuses = const [],
     this.rightStatuses = const [],
     this.fieldEffects = const [],
+    this.leftAp = 0,
+    this.leftApMax = 5,
+    this.rightAp = 0,
+    this.rightApMax = 5,
   });
 }

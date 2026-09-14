@@ -111,4 +111,37 @@ void main() {
 
     expect(find.text('🌪️'), findsOneWidget);
   });
+
+  testWidgets('shows AP pips filled up to ap, empty for the rest',
+      (tester) async {
+    await tester.pumpWidget(const MaterialApp(
+      home: Scaffold(
+        body: BattleHudWidget(
+          view: BattleSceneView(
+            leftCurrentHp: 100, leftMaxHp: 100,
+            rightCurrentHp: 100, rightMaxHp: 100,
+            isLeftTurn: true,
+            leftLabel: 'Jogador A',
+            rightLabel: 'Jogador B',
+            leftAp: 2,
+            leftApMax: 5,
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final pips = tester.widgetList<Container>(
+      find.descendant(
+        of: find.byKey(const Key('apPips-left')),
+        matching: find.byType(Container),
+      ),
+    );
+    expect(pips.length, 5);
+    final filled = pips.where((c) {
+      final decoration = c.decoration as BoxDecoration?;
+      return decoration?.color == const Color(0xFF7C4DFF);
+    });
+    expect(filled.length, 2);
+  });
 }

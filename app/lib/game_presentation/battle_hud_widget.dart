@@ -32,6 +32,8 @@ class BattleHudWidget extends StatelessWidget {
                   isActive: view.isLeftTurn,
                   alignEnd: false,
                   statuses: view.leftStatuses,
+                  ap: view.leftAp,
+                  apMax: view.leftApMax,
                 ),
               ),
               const SizedBox(width: 8),
@@ -43,6 +45,8 @@ class BattleHudWidget extends StatelessWidget {
                   isActive: !view.isLeftTurn,
                   alignEnd: true,
                   statuses: view.rightStatuses,
+                  ap: view.rightAp,
+                  apMax: view.rightApMax,
                 ),
               ),
             ],
@@ -76,6 +80,8 @@ class _HudPanel extends StatelessWidget {
     required this.isActive,
     required this.alignEnd,
     required this.statuses,
+    required this.ap,
+    required this.apMax,
   });
 
   final String label;
@@ -84,6 +90,8 @@ class _HudPanel extends StatelessWidget {
   final bool isActive;
   final bool alignEnd;
   final List<EffectBadgeView> statuses;
+  final int ap;
+  final int apMax;
 
   Widget _buildNameRow() {
     final arrow = Text(
@@ -152,6 +160,24 @@ class _HudPanel extends StatelessWidget {
           Text(
             '$currentHp/$maxHp HP',
             style: const TextStyle(fontSize: 10, color: Color(0xFF555555)),
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            key: Key(alignEnd ? 'apPips-right' : 'apPips-left'),
+            spacing: 3,
+            alignment: alignEnd ? WrapAlignment.end : WrapAlignment.start,
+            children: [
+              for (var i = 0; i < apMax; i++)
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: i < ap ? const Color(0xFF7C4DFF) : const Color(0xFFE0E0E0),
+                    border: Border.all(color: const Color(0xFF20242B), width: 1),
+                  ),
+                ),
+            ],
           ),
           if (statuses.isNotEmpty) ...[
             const SizedBox(height: 4),
