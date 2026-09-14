@@ -1,11 +1,15 @@
 import { tick as tickStatus, isExpired } from "./active-status.js";
 import {
+  withRegenerated as apWithRegenerated,
+  withSpent as apWithSpent,
+} from "./ap-pool.js";
+import {
   withDamage as poolWithDamage,
   withMaxIncreased as poolWithMaxIncreased,
   isDefeated,
 } from "./hp-pool.js";
 import { TurnValidationError } from "./errors.js";
-import type { ActiveStatus, BattleState, FieldEffect, HpPool } from "./types.js";
+import type { ActiveStatus, ApPool, BattleState, FieldEffect, HpPool } from "./types.js";
 
 /** Builds a validated BattleState — mirrors the invariants of
  * BattleState's constructor in battle_engine. `hp` defaults each player to
@@ -18,6 +22,7 @@ export function createBattleState(input: {
   currentTurnId: string;
   activeFieldEffects?: readonly FieldEffect[];
   hp?: Readonly<Record<string, HpPool>>;
+  ap?: Readonly<Record<string, ApPool>>;
   combatantStatuses?: Readonly<Record<string, readonly ActiveStatus[]>>;
   winner?: string | null;
 }): BattleState {
@@ -43,6 +48,10 @@ export function createBattleState(input: {
     hp: {
       [input.playerAId]: input.hp?.[input.playerAId] ?? { max: 100, current: 100 },
       [input.playerBId]: input.hp?.[input.playerBId] ?? { max: 100, current: 100 },
+    },
+    ap: {
+      [input.playerAId]: input.ap?.[input.playerAId] ?? { max: 5, current: 0 },
+      [input.playerBId]: input.ap?.[input.playerBId] ?? { max: 5, current: 0 },
     },
     combatantStatuses: {
       [input.playerAId]: input.combatantStatuses?.[input.playerAId] ?? [],
@@ -104,6 +113,36 @@ export function withMaxHpIncreased(
   return {
     ...state,
     hp: { ...state.hp, [targetId]: poolWithMaxIncreased(hpOf(state, targetId), amount) },
+  };
+}
+
+/** AP pool of a combatant. */
+export function apOf(state: BattleState, combatantId: string): ApPool {
+  const pool = state.ap[combatantId];
+  if (!pool) {
+    throw new TurnValidationError(
+      `"${combatantId}" is not part of this battle`,
+    );
+  }
+  return pool;
+}
+
+/** Returns a new state with `combatantId`'s AP incremented by 1 (clamped
+ * at their max) — happens at the start of their own turn, before
+ * turn-engine.ts checks whether they can afford a combination. */
+export function withApRegenerated(state: BattleState, combatantId: string): BattleState {
+  return {
+    ...state,
+    ap: { ...state.ap, [combatantId]: apWithRegenerated(apOf(state, combatantId)) },
+  };
+}
+
+/** Returns a new state with `amount` of AP subtracted from
+ * `combatantId`'s pool. */
+export function withApSpent(state: BattleState, combatantId: string, amount: number): BattleState {
+  return {
+    ...state,
+    ap: { ...state.ap, [combatantId]: apWithSpent(apOf(state, combatantId), amount) },
   };
 }
 

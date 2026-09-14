@@ -58,6 +58,7 @@ export interface BattleState {
   readonly currentTurnId: string;
   readonly activeFieldEffects: readonly FieldEffect[];
   readonly hp: Readonly<Record<string, HpPool>>;
+  readonly ap: Readonly<Record<string, ApPool>>;
   readonly combatantStatuses: Readonly<Record<string, readonly ActiveStatus[]>>;
   readonly winner: string | null;
 }

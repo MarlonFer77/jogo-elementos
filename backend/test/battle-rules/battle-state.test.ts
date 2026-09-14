@@ -2,11 +2,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  apOf,
   createBattleState,
   hasStatus,
   hpOf,
   opponentOf,
   statusesOf,
+  withApRegenerated,
+  withApSpent,
   withDamage,
   withMaxHpIncreased,
   withStatusApplied,
@@ -173,4 +176,43 @@ test("withStatusesTicked ticks every status for both combatants, dropping expire
 
   assert.equal(hasStatus(updated, "a", "shield"), true); // permanent, untouched
   assert.equal(hasStatus(updated, "b", "burn"), false); // 1 -> 0 -> expired, removed
+});
+
+test("defaults both combatants to 5 max, 0 current AP", () => {
+  const state = createBattleState({
+    playerAId: "a",
+    playerBId: "b",
+    currentTurnId: "a",
+  });
+  assert.deepEqual(apOf(state, "a"), { max: 5, current: 0 });
+  assert.deepEqual(apOf(state, "b"), { max: 5, current: 0 });
+});
+
+test("createBattleState accepts a seeded AP override", () => {
+  const state = createBattleState({
+    playerAId: "a",
+    playerBId: "b",
+    currentTurnId: "a",
+    ap: { a: { max: 5, current: 3 } },
+  });
+  assert.deepEqual(apOf(state, "a"), { max: 5, current: 3 });
+  assert.deepEqual(apOf(state, "b"), { max: 5, current: 0 });
+});
+
+test("withApRegenerated increments only the target's AP", () => {
+  const state = createBattleState({ playerAId: "a", playerBId: "b", currentTurnId: "a" });
+  const updated = withApRegenerated(state, "a");
+  assert.deepEqual(apOf(updated, "a"), { max: 5, current: 1 });
+  assert.deepEqual(apOf(updated, "b"), { max: 5, current: 0 });
+});
+
+test("withApSpent decrements only the target's AP", () => {
+  const state = createBattleState({
+    playerAId: "a",
+    playerBId: "b",
+    currentTurnId: "a",
+    ap: { a: { max: 5, current: 3 } },
+  });
+  const updated = withApSpent(state, "a", 3);
+  assert.deepEqual(apOf(updated, "a"), { max: 5, current: 0 });
 });
