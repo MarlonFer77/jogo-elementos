@@ -20,6 +20,15 @@ import 'skill_tree_catalog.dart';
 /// unlocked. A combination's damage always hits the opponent of whoever
 /// played it; the match ends the moment either player's HP reaches 0.
 ///
+/// Bloco 2b: each player can only play an element they've been granted
+/// access to (see [SkillProgress.grantedElementIds]) — starts empty for a
+/// bare [TrainingMatch]; real gameplay always goes through a one-time
+/// starting-elements choice before the first match (`ElementStarterScreen`),
+/// which seeds 2 elements directly into the persisted Skill Tree progress
+/// the same way any other unlocked node is. Unlocking further "elementos"
+/// branch nodes also requires enough cumulative turns played — see
+/// [unlockSkillForCurrentPlayer].
+///
 /// Exposes only Flutter-friendly types, never a `battle_engine` type — ver
 /// DECISION-011/017.
 class TrainingMatch {
@@ -35,6 +44,8 @@ class TrainingMatch {
   late DiscoveryBook _discoveryBook;
   late SkillProgress _progressA;
   late SkillProgress _progressB;
+  late int _cumulativeTurnsA;
+  late int _cumulativeTurnsB;
 
   String? _lastTriggeredCombinationName;
   List<String> _lastAppliedStatusNames = [];
@@ -49,16 +60,23 @@ class TrainingMatch {
   /// durante a partida. [initialApA]/[initialApB] existem só pra
   /// conveniência de teste (Bloco 2a) — nenhum código de produção
   /// precisa seedar AP, uma partida real sempre começa em 0.
+  /// [initialTurnsPlayedA]/[initialTurnsPlayedB] seedam o contador
+  /// cumulativo de turnos jogados (Bloco 2b — gate de desbloqueio de
+  /// elementos), default 0.
   TrainingMatch({
     SkillProgress? initialProgressA,
     SkillProgress? initialProgressB,
     DiscoveryBook? initialDiscoveryBook,
     ApPool? initialApA,
     ApPool? initialApB,
+    int initialTurnsPlayedA = 0,
+    int initialTurnsPlayedB = 0,
   }) {
     _progressA = initialProgressA ?? SkillProgress(defaultSkillTree);
     _progressB = initialProgressB ?? SkillProgress(defaultSkillTree);
     _discoveryBook = initialDiscoveryBook ?? DiscoveryBook();
+    _cumulativeTurnsA = initialTurnsPlayedA;
+    _cumulativeTurnsB = initialTurnsPlayedB;
     _state = BattleState.start(
       playerA: _playerA,
       playerB: _playerB,
@@ -79,22 +97,29 @@ class TrainingMatch {
     required List<String> unlockedNodeIdsA,
     required List<String> unlockedNodeIdsB,
     required List<String> discoveredCombinationIds,
+    required int turnsPlayedA,
+    required int turnsPlayedB,
   }) {
     return TrainingMatch(
       initialProgressA: SkillProgress(defaultSkillTree, unlockedNodeIds: unlockedNodeIdsA),
       initialProgressB: SkillProgress(defaultSkillTree, unlockedNodeIds: unlockedNodeIdsB),
       initialDiscoveryBook: DiscoveryBook(discoveredCombinationIds: discoveredCombinationIds.toSet()),
+      initialTurnsPlayedA: turnsPlayedA,
+      initialTurnsPlayedB: turnsPlayedB,
     );
   }
 
-  /// Começa uma batalha nova preservando Skill Tree/Descobertas desta
-  /// partida — usado por "Nova partida" (Bloco 10): reseta HP/turno/
-  /// campo, mas não a progressão.
+  /// Começa uma batalha nova preservando Skill Tree/Descobertas/turnos
+  /// cumulativos desta partida — usado por "Nova partida" (Bloco 10):
+  /// reseta HP/turno/campo, mas não a progressão (o contador de turnos
+  /// cumulativos do Bloco 2b segue a mesma regra).
   TrainingMatch startNewBattleKeepingProgress() {
     return TrainingMatch(
       initialProgressA: _progressA,
       initialProgressB: _progressB,
       initialDiscoveryBook: _discoveryBook,
+      initialTurnsPlayedA: _cumulativeTurnsA,
+      initialTurnsPlayedB: _cumulativeTurnsB,
     );
   }
 
@@ -188,12 +213,57 @@ class TrainingMatch {
         ..._currentProgress.grantedCombinationModifiers.map((m) => m.name),
       ];
 
+  /// Element ids the player whose turn it currently is can play with —
+  /// used by the element picker to know which chips are selectable
+  /// (Bloco 2b).
+  List<String> get availableElementIdsForCurrentPlayer =>
+      _currentProgress.grantedElementIds;
+
+  /// Cumulative turns played by Jogador A/B, since ever — not reset by
+  /// [startNewBattleKeepingProgress] (Bloco 2b's element-unlock gate).
+  /// Direct per-player, not "of the current player": right after
+  /// [playElementIds] passes the turn, "the current player" is already
+  /// the opponent of whoever just played, so callers that need to save
+  /// whoever just acted's counter need the specific player's value.
+  int get cumulativeTurnsPlayedA => _cumulativeTurnsA;
+  int get cumulativeTurnsPlayedB => _cumulativeTurnsB;
+
+  /// Turns still needed before [nodeId] (an "elementos" branch node)
+  /// becomes unlockable for whoever's turn it currently is — null if
+  /// [nodeId] doesn't grant an [ElementUnlock], is already unlocked, or
+  /// the requirement is already met.
+  int? turnsRemainingToUnlock(String nodeId) {
+    final grant = defaultSkillTree.nodeById(nodeId)?.grants;
+    if (grant is! ElementUnlock) return null;
+    if (_currentProgress.isUnlocked(nodeId)) return null;
+    final requiredTurns = (_currentProgress.grantedElementIds.length - 1) * 10;
+    final cumulativeTurns = _isPlayerATurn ? _cumulativeTurnsA : _cumulativeTurnsB;
+    final remaining = requiredTurns - cumulativeTurns;
+    return remaining > 0 ? remaining : null;
+  }
+
   /// Unlocks [nodeId] for whoever's turn it currently is. If the node
   /// grants a [MaxHpBonus], it's applied to that player's HP immediately
   /// (not deferred to their next action). Throws `StateError` if it can't
-  /// be unlocked yet (see `SkillProgress.unlock`).
+  /// be unlocked yet (see `SkillProgress.unlock`) — or, for an
+  /// [ElementUnlock] node (Bloco 2b), if that player hasn't played enough
+  /// cumulative turns yet (`(E-1) × 10`, `E` = how many elements they
+  /// already have, including the 2 starting ones).
   void unlockSkillForCurrentPlayer(String nodeId) {
     final actor = _currentCombatant;
+    final node = defaultSkillTree.nodeById(nodeId);
+    final grant = node?.grants;
+    if (grant is ElementUnlock && !_currentProgress.isUnlocked(nodeId)) {
+      final requiredTurns = (_currentProgress.grantedElementIds.length - 1) * 10;
+      final cumulativeTurns = _isPlayerATurn ? _cumulativeTurnsA : _cumulativeTurnsB;
+      if (cumulativeTurns < requiredTurns) {
+        throw StateError(
+          'Faltam ${requiredTurns - cumulativeTurns} turnos para '
+          'desbloquear ${node!.name}.',
+        );
+      }
+    }
+
     final updated = _currentProgress.unlock(nodeId);
     if (_isPlayerATurn) {
       _progressA = updated;
@@ -201,7 +271,6 @@ class TrainingMatch {
       _progressB = updated;
     }
 
-    final grant = defaultSkillTree.nodeById(nodeId)!.grants;
     if (grant is MaxHpBonus) {
       _state = _state.withMaxHpIncreased(actor, grant.bonus);
     }
@@ -211,9 +280,15 @@ class TrainingMatch {
   /// turn it currently is, building an [Ability] on the fly from those
   /// elements plus everything the player has unlocked, wrapped in a
   /// [Build] (validated — always valid here, since mutations/modifiers
-  /// come straight from what's granted). Throws `StateError` if the match
-  /// is already over.
+  /// come straight from what's granted). Throws `ArgumentError` for an
+  /// unknown element id, or for one the current player hasn't unlocked
+  /// yet (Bloco 2b — `availableElementIdsForCurrentPlayer`; the UI never
+  /// offers a locked element as selectable, this closes the guarantee).
+  /// Throws `StateError` if the match is already over, or (from
+  /// `TurnEngine`) if there isn't enough AP for the combination attempted
+  /// (Bloco 2a).
   void playElementIds(List<String> elementIds) {
+    final wasPlayerATurn = _isPlayerATurn;
     final elements = elementIds
         .map(
           (id) => Elements.all.firstWhere(
@@ -225,6 +300,12 @@ class TrainingMatch {
         .toList();
 
     final progress = _currentProgress;
+    for (final id in elementIds) {
+      if (!progress.grantedElementIds.contains(id)) {
+        throw ArgumentError.value(id, 'elementIds', 'element not unlocked yet');
+      }
+    }
+
     final ability = Ability(
       id: 'turn_action',
       name: 'Ação',
@@ -257,5 +338,10 @@ class TrainingMatch {
       );
     }
     _turnsPlayed++;
+    if (wasPlayerATurn) {
+      _cumulativeTurnsA++;
+    } else {
+      _cumulativeTurnsB++;
+    }
   }
 }
