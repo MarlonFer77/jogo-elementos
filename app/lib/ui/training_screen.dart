@@ -116,6 +116,8 @@ class _TrainingScreenState extends State<TrainingScreen> {
         }
       } on ArgumentError {
         _error = 'Jogada inválida.';
+      } on StateError {
+        _error = 'AP insuficiente para essa combinação.';
       }
     });
   }
@@ -193,6 +195,10 @@ class _TrainingScreenState extends State<TrainingScreen> {
                       leftStatuses: _match.playerAActiveStatuses,
                       rightStatuses: _match.playerBActiveStatuses,
                       fieldEffects: _match.activeFieldEffectBadges,
+                      leftAp: _match.playerAAp,
+                      leftApMax: _match.playerAApMax,
+                      rightAp: _match.playerBAp,
+                      rightApMax: _match.playerBApMax,
                     ),
                   ),
                   const SizedBox(height: 16),
