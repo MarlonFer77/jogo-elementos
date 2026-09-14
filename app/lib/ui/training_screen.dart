@@ -16,6 +16,7 @@ import '../game_presentation/pixel_outlined_text.dart';
 import '../game_presentation/pixel_page_route.dart';
 import '../game_presentation/pixel_sheet_panel.dart';
 import '../game_presentation/sfx_player.dart';
+import 'element_starter_screen.dart';
 import 'skill_tree_screen.dart';
 
 /// Modo treino: batalha local, offline, hotseat — os dois lados jogados no
@@ -24,6 +25,10 @@ import 'skill_tree_screen.dart';
 /// desbloqueou se aplica automaticamente em toda ação que jogar depois (e,
 /// no caso de bônus de HP, imediatamente). A partida termina quando o HP
 /// de alguém chega a 0.
+///
+/// Bloco 2b: antes da primeira partida, cada jogador (Jogador A, depois
+/// Jogador B) escolhe 2 elementos iniciais via [ElementStarterScreen] —
+/// só acontece uma vez por slot, nunca de novo depois de salvo.
 class TrainingScreen extends StatefulWidget {
   const TrainingScreen({super.key, TrainingMatch? initialMatch})
       : _initialMatch = initialMatch;
@@ -38,6 +43,12 @@ class _TrainingScreenState extends State<TrainingScreen> {
   final TrainingProgressStore _progressStore = TrainingProgressStore();
   late TrainingMatch _match;
   bool _loading = true;
+  String? _pendingOnboardingSlot;
+  List<String> _unlockedA = [];
+  List<String> _unlockedB = [];
+  List<String> _discovered = [];
+  int _turnsPlayedA = 0;
+  int _turnsPlayedB = 0;
   final Set<String> _selectedIds = {};
   String? _error;
   AttackEvent? _pendingAttack;
@@ -54,19 +65,68 @@ class _TrainingScreenState extends State<TrainingScreen> {
     }
   }
 
+  /// Todo nó da branch "elementos" tem id `'unlock_<elementId>'` (ver
+  /// `ElementUnlocks` em `battle_engine`) — checar o prefixo evita a UI
+  /// precisar importar aquele tipo (DECISION-011/017).
+  bool _hasChosenStartingElements(List<String> unlockedNodeIds) {
+    return unlockedNodeIds.any((id) => id.startsWith('unlock_'));
+  }
+
   Future<void> _loadPersistedMatch() async {
-    final unlockedA = await _progressStore.loadUnlockedNodeIds('a');
-    final unlockedB = await _progressStore.loadUnlockedNodeIds('b');
-    final discovered = await _progressStore.loadDiscoveredCombinationIds();
+    _unlockedA = await _progressStore.loadUnlockedNodeIds('a');
+    _unlockedB = await _progressStore.loadUnlockedNodeIds('b');
+    _discovered = await _progressStore.loadDiscoveredCombinationIds();
+    _turnsPlayedA = await _progressStore.loadTurnsPlayed('a');
+    _turnsPlayedB = await _progressStore.loadTurnsPlayed('b');
     if (!mounted) return;
+    if (!_hasChosenStartingElements(_unlockedA)) {
+      setState(() {
+        _pendingOnboardingSlot = 'a';
+        _loading = false;
+      });
+      return;
+    }
+    if (!_hasChosenStartingElements(_unlockedB)) {
+      setState(() {
+        _pendingOnboardingSlot = 'b';
+        _loading = false;
+      });
+      return;
+    }
+    _buildMatchFromLoadedProgress();
+  }
+
+  void _buildMatchFromLoadedProgress() {
     setState(() {
       _match = TrainingMatch.fromPersistedProgress(
-        unlockedNodeIdsA: unlockedA,
-        unlockedNodeIdsB: unlockedB,
-        discoveredCombinationIds: discovered,
+        unlockedNodeIdsA: _unlockedA,
+        unlockedNodeIdsB: _unlockedB,
+        discoveredCombinationIds: _discovered,
+        turnsPlayedA: _turnsPlayedA,
+        turnsPlayedB: _turnsPlayedB,
       );
+      _pendingOnboardingSlot = null;
       _loading = false;
     });
+  }
+
+  Future<void> _confirmStartingElements(List<String> elementIds) async {
+    final slot = _pendingOnboardingSlot!;
+    final nodeIds = elementIds.map((id) => 'unlock_$id').toList();
+    if (slot == 'a') {
+      _unlockedA = [..._unlockedA, ...nodeIds];
+      await _progressStore.saveUnlockedNodeIds('a', _unlockedA);
+      if (!mounted) return;
+      if (!_hasChosenStartingElements(_unlockedB)) {
+        setState(() => _pendingOnboardingSlot = 'b');
+        return;
+      }
+    } else {
+      _unlockedB = [..._unlockedB, ...nodeIds];
+      await _progressStore.saveUnlockedNodeIds('b', _unlockedB);
+      if (!mounted) return;
+    }
+    _buildMatchFromLoadedProgress();
   }
 
   void _toggleElement(String id) {
@@ -111,6 +171,11 @@ class _TrainingScreenState extends State<TrainingScreen> {
             _progressStore.saveDiscoveredCombinationIds(_match.discoveredCombinationIds),
           );
         }
+        if (wasPlayerATurn) {
+          unawaited(_progressStore.saveTurnsPlayed('a', _match.cumulativeTurnsPlayedA));
+        } else {
+          unawaited(_progressStore.saveTurnsPlayed('b', _match.cumulativeTurnsPlayedB));
+        }
         if (_match.isOver) {
           sfxPlayer.play(SfxId.victory);
         }
@@ -135,6 +200,10 @@ class _TrainingScreenState extends State<TrainingScreen> {
       title: 'Habilidades de ${_match.currentTurnName}',
       unlockedNodeIds: _match.unlockedNodeIdsForCurrentPlayer,
       canUnlockNow: true,
+      extraLockedHint: (nodeId) {
+        final remaining = _match.turnsRemainingToUnlock(nodeId);
+        return remaining != null ? 'Faltam $remaining turnos.' : null;
+      },
       onUnlock: (nodeId) async {
         try {
           _match.unlockSkillForCurrentPlayer(nodeId);
@@ -157,6 +226,13 @@ class _TrainingScreenState extends State<TrainingScreen> {
     if (_loading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_pendingOnboardingSlot != null) {
+      return ElementStarterScreen(
+        key: ValueKey(_pendingOnboardingSlot),
+        playerLabel: _pendingOnboardingSlot == 'a' ? 'Jogador A' : 'Jogador B',
+        onConfirm: (ids) => unawaited(_confirmStartingElements(ids)),
       );
     }
     return Stack(
@@ -292,6 +368,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final availableIds = _match.availableElementIdsForCurrentPlayer;
             return PixelSheetPanel(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -309,14 +386,21 @@ class _TrainingScreenState extends State<TrainingScreen> {
                       runSpacing: 8,
                       children: [
                         for (final element in elements)
-                          PixelElementChip(
-                            label: '${element.symbol} ${element.name}',
-                            selected: _selectedIds.contains(element.id),
-                            onTap: () {
-                              _toggleElement(element.id);
-                              setSheetState(() {});
-                            },
-                          ),
+                          if (availableIds.contains(element.id))
+                            PixelElementChip(
+                              label: '${element.symbol} ${element.name}',
+                              selected: _selectedIds.contains(element.id),
+                              onTap: () {
+                                _toggleElement(element.id);
+                                setSheetState(() {});
+                              },
+                            )
+                          else
+                            PixelElementChip(
+                              label: '🔒 ${element.name}',
+                              selected: false,
+                              onTap: null,
+                            ),
                       ],
                     ),
                     const SizedBox(height: 12),
