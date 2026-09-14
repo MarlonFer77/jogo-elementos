@@ -1457,3 +1457,65 @@ Skill Tree não foi clicado manualmente (mesma limitação recorrente
 desta sessão pra localizar o ícone de Habilidades no preview web) —
 coberto pelo teste de widget novo (`training_screen_test.dart`,
 progresso pré-populado via `SharedPreferences.setMockInitialValues`).
+
+## DECISION-046
+Data: 2026-09-14
+Decisão: custo de AP (pontos de ação) pra combinar 2-3 elementos numa
+mesma jogada (Bloco 2a) — fora da ordem de prioridade do CLAUDE.md,
+implementado a pedido direto do usuário depois de jogar de verdade e
+achar os combos fáceis demais de spammar. `ApPool{max: 5, current}`
+(novo, espelhado em `battle_engine`/Dart e `backend/src/battle-rules/`/
+TypeScript, regra do CLAUDE.md) por jogador em `BattleState.ap`; regenera
++1 no início do próprio turno (acumula entre turnos, não recarrega
+tudo de uma vez — opção B escolhida pelo usuário entre três propostas
+de tuning, "carga pesada", contra minha recomendação da opção A);
+combinar 2 elementos custa 3 AP, 3 elementos custam 5 AP; sem AP
+suficiente, a jogada inteira é rejeitada (nenhum AP gasto, sem dano,
+turno não passa) — `StateError`/`TurnValidationError`. Jogar um único
+elemento passou a ser sempre de graça (0 AP) e causar 5 de dano básico
+direto no oponente (sujeito a bloqueio por Escudo, igual dano de combo)
+em vez de não fazer nada — antes disso, um elemento sozinho existia só
+como isca pra Mutations/AbilityEngine, sem efeito ofensivo próprio.
+Cliente (Treino e Multiplayer) ganhou pips de AP (círculos preenchidos
+até o AP atual) no HUD de batalha, entre a barra de HP e os badges de
+status (Bloco 9), estilo escolhido pelo usuário no companheiro visual
+de brainstorming. Primeiro de quatro blocos decididos com o usuário
+nessa mesma conversa (2a AP; 2b elementos começam bloqueados, a
+desbloquear; 2c combos virarem "ataques" permanentes equipáveis num
+loadout de 3 slots; 2d UI de batalha estilo Pokémon, dependente do 2c)
+— só o 2a foi implementado aqui, 2b/2c/2d ficam no BACKLOG.
+Descoberta durante o plano: a mudança quebrou a maior parte dos testes
+pré-existentes de `TurnEngine`/`turn-engine.ts` e vários testes de
+integração do backend/cliente que combinavam como primeira ação ou
+repetidamente sem intervalo de carga — corrigidos semeando AP inicial
+via parâmetro de teste (`ap:`/`initialApA`/`initialApB`, nunca usado
+por código de produção) onde só um combo bastava, ou trocando por
+ataques de elemento sozinho (agora com dano próprio) onde o teste
+media bookkeeping (vencedor, partida encerrada) e não matemática de
+combo especificamente — inclusive em arquivos fora da lista original
+do plano (`ability_engine_test.dart` no Dart; `training_screen_test.dart`
+tinha dois testes widget-level com o mesmo padrão de grind repetido).
+`TrainingScreen._playTurn` ganhou tratamento pro novo `StateError` (que
+antes não era capturado e derrubava a árvore de widgets) com mensagem
+em português ("AP insuficiente para essa combinação."), sem vazar a
+mensagem crua do `battle_engine`.
+Motivo: jogar a versão publicada revelou que combinar 2-3 elementos
+não tinha nenhum custo ou risco — o jogador ótimo sempre combina,
+tornando elementos sozinhos inúteis e a decisão tática (quando arriscar
+um combo vs. jogar seguro) inexistente.
+Consequência: nenhuma lacuna nova conhecida pro 2a. Blocos 2b/2c/2d
+ainda não iniciados, dependem de decisões de design próprias (quais
+elementos começam bloqueados e como desbloquear; mecânica de conversão
+combo→ataque equipável; nova tela de batalha estilo Pokémon).
+Testes: suíte completa de `battle_engine` (`dart analyze` limpo,
+`dart test`, 196 testes), backend (`npx tsc --noEmit` limpo, `npm
+test`, 140 testes) e app (`flutter analyze` limpo, `flutter test`, 174
+testes) passando. Verificado manualmente via `flutter run -d
+web-server` (reinício completo do preview) no Modo Treino: jogar um
+elemento sozinho causou dano (barra de HP do oponente moveu) e acendeu
+1 pip de AP; tentar Fogo+Vento com menos de 3 AP mostrou "AP
+insuficiente para essa combinação." e o turno não passou (mesmo
+jogador, mesma HP); carregar AP com jogadas de elemento sozinho e
+tentar o combo de novo funcionou — Tempestade Ígnea disparou, 20 de
+dano, pips de AP desceram refletindo o gasto (4 acumulados, 3 gastos, 1
+restante). Nenhum erro no console do navegador.

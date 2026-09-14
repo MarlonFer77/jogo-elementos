@@ -63,6 +63,15 @@ uma tarefa nova terminar revelando um gap novo.
 - Ícone dedicado por combinação futura sem entrada em
   `status_visuals.dart` (Bloco 9, DECISION-044) — cai no fallback (✨)
   até alguém adicionar
+- Elementos começam bloqueados, com mecânica de desbloqueio (Bloco 2b,
+  decidido com o usuário junto do Bloco 2a/DECISION-046, ainda não
+  iniciado) — hoje todos os 10 elementos ficam livres desde o início
+- Combos disparados viram "ataques" permanentes desbloqueáveis, com
+  janela de skills combinadas pra equipar/trocar, limite de 3 (Bloco
+  2c, decidido junto do Bloco 2a, depende do 2b, ainda não iniciado)
+- Tela de batalha estilo Pokémon (básicos liberados + até 3 ataques
+  combinados equipados) (Bloco 2d, decidido junto do Bloco 2a, depende
+  do 2c, ainda não iniciado)
 
 **Multiplayer (cliente)**
 - A modal de Habilidades não escuta o polling por trás — se a vez mudar
@@ -444,6 +453,14 @@ uma tarefa nova terminar revelando um gap novo.
   produto): Skill Tree (por Jogador A/Jogador B) e Livro de Descobertas
   (compartilhado) sobrevivem a "Nova partida" e a fechar/reabrir o app,
   via `shared_preferences` local ao aparelho (DECISION-045)
+- Custo de AP pra combinar elementos (Bloco 2a, fora da ordem de
+  prioridade do CLAUDE.md, a pedido do usuário após jogar): elemento
+  sozinho grátis + 5 de dano básico; combinar 2-3 elementos custa AP
+  (3/5), que regenera +1 por turno próprio e acumula (não recarrega
+  tudo de uma vez); sem AP suficiente, a jogada inteira é rejeitada.
+  Pips de AP no HUD de batalha (Treino e Multiplayer). Sincronizado em
+  `battle_engine` (Dart) e `backend/src/battle-rules/` (TypeScript)
+  (DECISION-046)
 
 # BLOCKED
 

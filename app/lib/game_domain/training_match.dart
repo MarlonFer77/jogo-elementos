@@ -65,8 +65,8 @@ class TrainingMatch {
       playerAMaxHp: _baseMaxHp + _progressA.grantedMaxHpBonus,
       playerBMaxHp: _baseMaxHp + _progressB.grantedMaxHpBonus,
       ap: {
-        if (initialApA != null) _playerA: initialApA,
-        if (initialApB != null) _playerB: initialApB,
+        _playerA: ?initialApA,
+        _playerB: ?initialApB,
       },
     );
   }
