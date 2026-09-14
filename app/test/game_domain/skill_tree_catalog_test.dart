@@ -22,10 +22,10 @@ void main() {
   });
 
   group('allSkillTreeNodes', () {
-    test('returns all 8 nodes from defaultSkillTree with icons and prerequisites', () {
+    test('returns all 18 nodes from defaultSkillTree with icons and prerequisites', () {
       final nodes = allSkillTreeNodes();
 
-      expect(nodes, hasLength(8));
+      expect(nodes, hasLength(18));
 
       final ember = nodes.firstWhere((n) => n.id == 'ember_mastery');
       expect(ember.name, 'Maestria da Brasa');
@@ -36,6 +36,11 @@ void main() {
       final wildfire = nodes.firstWhere((n) => n.id == 'wildfire_path');
       expect(wildfire.prerequisites, ['ember_mastery']);
       expect(wildfire.icon, '🌋');
+
+      final unlockFire = nodes.firstWhere((n) => n.id == 'unlock_fire');
+      expect(unlockFire.branch, 'elementos');
+      expect(unlockFire.icon, '🔥');
+      expect(unlockFire.prerequisites, isEmpty);
     });
   });
 
@@ -46,6 +51,7 @@ void main() {
       expect(skillTreeBranchDisplayName('elemental'), 'Elemental');
       expect(skillTreeBranchDisplayName('vitalidade'), 'Vitalidade');
       expect(skillTreeBranchDisplayName('defesa'), 'Defesa');
+      expect(skillTreeBranchDisplayName('elementos'), 'Elementos');
     });
 
     test('falls back to the raw branch string when unknown', () {

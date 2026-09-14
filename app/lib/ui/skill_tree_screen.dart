@@ -22,12 +22,14 @@ class SkillTreeScreen extends StatefulWidget {
     required this.unlockedNodeIds,
     required this.canUnlockNow,
     required this.onUnlock,
+    this.extraLockedHint,
   });
 
   final String title;
   final List<String> unlockedNodeIds;
   final bool canUnlockNow;
   final Future<String?> Function(String nodeId) onUnlock;
+  final String? Function(String nodeId)? extraLockedHint;
 
   @override
   State<SkillTreeScreen> createState() => _SkillTreeScreenState();
@@ -83,6 +85,9 @@ class _SkillTreeScreenState extends State<SkillTreeScreen> {
 
   void _openNodeDetail(SkillTreeNodeOption node) {
     final state = skillTreeNodeState(node, _unlockedNodeIds);
+    final hint = state == SkillTreeNodeState.available
+        ? widget.extraLockedHint?.call(node.id)
+        : null;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -101,6 +106,8 @@ class _SkillTreeScreenState extends State<SkillTreeScreen> {
                 const SizedBox(height: 12),
                 if (state == SkillTreeNodeState.locked)
                   Text('Requer: ${_prerequisiteNames(node)}')
+                else if (state == SkillTreeNodeState.available && hint != null)
+                  Text(hint)
                 else if (state == SkillTreeNodeState.available && !widget.canUnlockNow)
                   const Text('Só dá pra desbloquear na sua vez.')
                 else if (state == SkillTreeNodeState.available)

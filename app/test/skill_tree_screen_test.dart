@@ -81,4 +81,27 @@ void main() {
     expect(find.text('Só dá pra desbloquear na sua vez.'), findsOneWidget);
     expect(find.text('Desbloquear'), findsNothing);
   });
+
+  testWidgets(
+      'shows the extraLockedHint text instead of the button when the node '
+      'is available but the hint is non-null', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: SkillTreeScreen(
+        title: 'Habilidades',
+        unlockedNodeIds: const [],
+        canUnlockNow: true,
+        extraLockedHint: (nodeId) =>
+            nodeId == 'ember_mastery' ? 'Faltam 7 turnos.' : null,
+        onUnlock: (_) async => throw StateError('should not be called'),
+      ),
+    ));
+    await tester.pump();
+
+    await tester.tap(find.text('Maestria da Brasa'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Faltam 7 turnos.'), findsOneWidget);
+    expect(find.text('Desbloquear'), findsNothing);
+  });
 }

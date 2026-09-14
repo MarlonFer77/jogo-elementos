@@ -68,6 +68,16 @@ const _skillTreeNodeIcons = {
   'elemental_mastery': '⚡',
   'vitality_training': '❤️',
   'guard_training': '🛡️',
+  'unlock_fire': '🔥',
+  'unlock_water': '💧',
+  'unlock_wind': '🌪️',
+  'unlock_ice': '❄️',
+  'unlock_nature': '🌱',
+  'unlock_lightning': '⚡',
+  'unlock_earth': '🪨',
+  'unlock_shadow': '🌑',
+  'unlock_light': '✨',
+  'unlock_poison': '☠️',
 };
 
 /// Todos os nós de `defaultSkillTree`, com ícone — base pra tela de
@@ -92,6 +102,7 @@ const _skillTreeBranchDisplayNames = {
   'elemental': 'Elemental',
   'vitalidade': 'Vitalidade',
   'defesa': 'Defesa',
+  'elementos': 'Elementos',
 };
 
 /// Nome de exibição de uma branch (ex: `'precisao'` -> `'Precisão'`) —
