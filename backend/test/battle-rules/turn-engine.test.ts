@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  apOf,
   createBattleState,
   hasStatus,
   hpOf,
@@ -17,6 +18,10 @@ function startState() {
     playerAId: "a",
     playerBId: "b",
     currentTurnId: "a",
+    // Convenient default for tests that just need one combo to be
+    // affordable right away — tests exercising the AP mechanic itself,
+    // or needing more than one combo in a row, override this.
+    ap: { a: { max: 5, current: 3 }, b: { max: 5, current: 3 } },
   });
 }
 
@@ -113,24 +118,19 @@ test("an unknown combination deals no damage", () => {
   assert.deepEqual(hpOf(result.state, "b"), { max: 100, current: 100 });
 });
 
-test("sets a winner once repeated combo damage defeats a combatant", () => {
+test("sets a winner once repeated basic (single-element) damage defeats a combatant", () => {
+  // 5 basic damage per hit, always affordable (0 AP) — 20 hits defeat
+  // 100 HP. Isolates "playTurn sets a winner"; combo/AP math is covered
+  // by the AP-specific tests below.
   let state = startState();
-  for (let i = 0; i < 4; i++) {
-    state = playTurn(
-      state,
-      { actorId: "a", elementIds: ["fire", "wind"] },
-      defaultCombinationBook,
-    ).state;
-    state = playTurn(
-      state,
-      { actorId: "b", elementIds: ["ice"] },
-      defaultCombinationBook,
-    ).state;
+  for (let i = 0; i < 19; i++) {
+    state = playTurn(state, { actorId: "a", elementIds: ["fire"] }, defaultCombinationBook).state;
+    state = playTurn(state, { actorId: "b", elementIds: ["ice"] }, defaultCombinationBook).state;
   }
   assert.equal(state.winner, null);
   const final = playTurn(
     state,
-    { actorId: "a", elementIds: ["fire", "wind"] },
+    { actorId: "a", elementIds: ["fire"] },
     defaultCombinationBook,
   );
   assert.equal(final.state.winner, "a");
@@ -138,27 +138,15 @@ test("sets a winner once repeated combo damage defeats a combatant", () => {
 
 test("throws when playing a turn after the battle is already over", () => {
   let state = startState();
-  for (let i = 0; i < 5; i++) {
-    state = playTurn(
-      state,
-      { actorId: "a", elementIds: ["fire", "wind"] },
-      defaultCombinationBook,
-    ).state;
-    if (state.winner) break;
-    state = playTurn(
-      state,
-      { actorId: "b", elementIds: ["ice"] },
-      defaultCombinationBook,
-    ).state;
+  for (let i = 0; i < 19; i++) {
+    state = playTurn(state, { actorId: "a", elementIds: ["fire"] }, defaultCombinationBook).state;
+    state = playTurn(state, { actorId: "b", elementIds: ["ice"] }, defaultCombinationBook).state;
   }
+  state = playTurn(state, { actorId: "a", elementIds: ["fire"] }, defaultCombinationBook).state;
   assert.equal(state.winner, "a");
+
   assert.throws(
-    () =>
-      playTurn(
-        state,
-        { actorId: "b", elementIds: ["ice"] },
-        defaultCombinationBook,
-      ),
+    () => playTurn(state, { actorId: "b", elementIds: ["ice"] }, defaultCombinationBook),
     TurnValidationError,
   );
 });
@@ -181,17 +169,22 @@ test("Shield blocks the next combo damage and is consumed", () => {
 });
 
 test("Shield does not block a second hit after being consumed", () => {
-  let state = withStatusApplied(startState(), "b", {
-    effectId: "shield",
-    turnsRemaining: null,
-    damagePerTick: 0,
-  });
+  let state = withStatusApplied(
+    createBattleState({
+      playerAId: "a",
+      playerBId: "b",
+      currentTurnId: "a",
+      ap: { a: { max: 5, current: 4 } },
+    }),
+    "b",
+    { effectId: "shield", turnsRemaining: null, damagePerTick: 0 },
+  );
 
   state = playTurn(
     state,
     { actorId: "a", elementIds: ["fire", "wind"] },
     defaultCombinationBook,
-  ).state; // blocked, shield consumed
+  ).state; // blocked, shield consumed (4 seeded + 1 regen - 3 spent = 2 left)
   state = playTurn(
     state,
     { actorId: "b", elementIds: ["ice"] },
@@ -201,14 +194,15 @@ test("Shield does not block a second hit after being consumed", () => {
     state,
     { actorId: "a", elementIds: ["fire", "wind"] },
     defaultCombinationBook,
-  ).state; // not blocked this time
+  ).state; // 2 + 1 regen = 3, affordable again — not blocked this time
 
   assert.equal(hpOf(state, "b").current, 80);
 });
 
 test(
   "a status with damagePerTick damages its owner at the end of every " +
-    "playTurn call, including the tick that expires it",
+    "playTurn call, including the tick that expires it — on top of the " +
+    "actor's own basic damage",
   () => {
     let state = withStatusApplied(startState(), "b", {
       effectId: "burn",
@@ -221,25 +215,31 @@ test(
       { actorId: "a", elementIds: ["fire"] },
       defaultCombinationBook,
     ).state;
-    assert.equal(hpOf(state, "b").current, 92); // first tick
+    // b: 100 - 5 (a's basic damage) - 8 (first DOT tick) = 87
+    assert.equal(hpOf(state, "b").current, 87);
 
     state = playTurn(
       state,
       { actorId: "b", elementIds: ["water"] },
       defaultCombinationBook,
     ).state;
-    assert.equal(hpOf(state, "b").current, 84); // second tick, expires
+    // a: 100 - 5 (b's basic damage) = 95
+    // b: 87 - 8 (second DOT tick, expires) = 79
+    assert.equal(hpOf(state, "a").current, 95);
+    assert.equal(hpOf(state, "b").current, 79);
     assert.equal(hasStatus(state, "b", "burn"), false);
   },
 );
 
 test("DOT damage alone can set a winner", () => {
+  // b's maxHp is 10, not 5: a's basic damage (5) alone must not be
+  // enough to defeat them — only the DOT tick (8) on top of it should.
   const state = withStatusApplied(
     createBattleState({
       playerAId: "a",
       playerBId: "b",
       currentTurnId: "a",
-      hp: { a: { max: 100, current: 100 }, b: { max: 5, current: 5 } },
+      hp: { a: { max: 100, current: 100 }, b: { max: 10, current: 10 } },
     }),
     "b",
     { effectId: "burn", turnsRemaining: 1, damagePerTick: 8 },
@@ -258,14 +258,13 @@ test(
   "when DOT ticks would defeat both combatants in the same resolution, " +
     "the actor wins the tie",
   () => {
-    // Both start lethal-low on HP, both carry a lethal DOT — the action
-    // itself deals no combo damage (single element), so this isolates the
-    // tie strictly to the DOT tick ordering.
+    // Both start at 8 HP (not 5): a's basic damage to b alone must not
+    // decide the winner ahead of the DOT tick this test is about.
     let state = createBattleState({
       playerAId: "a",
       playerBId: "b",
       currentTurnId: "a",
-      hp: { a: { max: 5, current: 5 }, b: { max: 5, current: 5 } },
+      hp: { a: { max: 8, current: 8 }, b: { max: 8, current: 8 } },
     });
     state = withStatusApplied(state, "a", {
       effectId: "burn",
@@ -338,4 +337,75 @@ test("volatility reduces a triggered combination's duration", () => {
   // ignited_storm has a null (permanent) duration — volatility leaves it
   // unchanged, same as in battle_engine.
   assert.equal(result.state.activeFieldEffects[0]?.duration, null);
+});
+
+test("regenerates 1 AP for the actor at the start of their turn", () => {
+  const state = createBattleState({ playerAId: "a", playerBId: "b", currentTurnId: "a" });
+  const result = playTurn(state, { actorId: "a", elementIds: ["fire"] }, defaultCombinationBook);
+
+  assert.deepEqual(apOf(result.state, "a"), { max: 5, current: 1 });
+  assert.deepEqual(apOf(result.state, "b"), { max: 5, current: 0 });
+});
+
+test("AP regeneration is clamped at max", () => {
+  const state = createBattleState({
+    playerAId: "a",
+    playerBId: "b",
+    currentTurnId: "a",
+    ap: { a: { max: 5, current: 5 } },
+  });
+  const result = playTurn(state, { actorId: "a", elementIds: ["fire"] }, defaultCombinationBook);
+
+  assert.equal(apOf(result.state, "a").current, 5);
+});
+
+test("rejects a 2-element combination without enough AP", () => {
+  const state = createBattleState({ playerAId: "a", playerBId: "b", currentTurnId: "a" });
+  assert.throws(
+    () => playTurn(state, { actorId: "a", elementIds: ["fire", "wind"] }, defaultCombinationBook),
+    TurnValidationError,
+  );
+});
+
+test("rejects a 3-element combination that only affords a 2-element one", () => {
+  const state = createBattleState({
+    playerAId: "a",
+    playerBId: "b",
+    currentTurnId: "a",
+    ap: { a: { max: 5, current: 3 } },
+  });
+  assert.throws(
+    () =>
+      playTurn(
+        state,
+        { actorId: "a", elementIds: ["earth", "fire", "water"] },
+        defaultCombinationBook,
+      ),
+    TurnValidationError,
+  );
+});
+
+test("spends 3 AP on a successful 2-element combination", () => {
+  const result = playTurn(
+    startState(),
+    { actorId: "a", elementIds: ["fire", "wind"] },
+    defaultCombinationBook,
+  );
+  // startState seeds 3 + 1 regen = 4, minus 3 spent = 1
+  assert.equal(apOf(result.state, "a").current, 1);
+});
+
+test("spends all 5 AP on a successful 3-element combination", () => {
+  const state = createBattleState({
+    playerAId: "a",
+    playerBId: "b",
+    currentTurnId: "a",
+    ap: { a: { max: 5, current: 5 } },
+  });
+  const result = playTurn(
+    state,
+    { actorId: "a", elementIds: ["earth", "fire", "water"] },
+    defaultCombinationBook,
+  );
+  assert.equal(apOf(result.state, "a").current, 0);
 });
