@@ -43,7 +43,11 @@ void main() {
     });
 
     test('playing a known 2-element combination adds it to the field', () {
-      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
+      );
       final action = TurnAction(
         actor: playerA,
         elements: [Elements.fire, Elements.wind],
@@ -61,7 +65,11 @@ void main() {
 
     test('playing an unknown combination advances the turn without adding '
         'a field effect', () {
-      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
+      );
       final action = TurnAction(
         actor: playerA,
         elements: [Elements.ice, Elements.shadow],
@@ -89,7 +97,14 @@ void main() {
     });
 
     test('field effects accumulate across turns', () {
-      var state = BattleState.start(playerA: playerA, playerB: playerB);
+      var state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {
+          playerA: const ApPool(max: 5, current: 3),
+          playerB: const ApPool(max: 5, current: 3),
+        },
+      );
 
       state = engine
           .playTurn(
@@ -116,7 +131,11 @@ void main() {
 
     test('applies combinationModifiers to a triggered combination\'s '
         'field effect before adding it to the field', () {
-      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
+      );
       final action = TurnAction(
         actor: playerA,
         elements: [Elements.fire, Elements.wind],
@@ -132,7 +151,11 @@ void main() {
     });
 
     test('combinationModifiers apply in order', () {
-      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 5)},
+      );
       final action = TurnAction(
         actor: playerA,
         elements: [Elements.earth, Elements.fire, Elements.water],
@@ -166,7 +189,11 @@ void main() {
 
     test('with no combinationModifiers the combination result is '
         'unmodified', () {
-      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
+      );
       final action = TurnAction(
         actor: playerA,
         elements: [Elements.fire, Elements.wind],
@@ -179,7 +206,11 @@ void main() {
 
     test('a known 2-element combination deals 20 damage to the opponent',
         () {
-      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
+      );
       final action = TurnAction(
         actor: playerA,
         elements: [Elements.fire, Elements.wind],
@@ -192,7 +223,11 @@ void main() {
     });
 
     test('the 3-element combination deals 35 damage', () {
-      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 5)},
+      );
       final action = TurnAction(
         actor: playerA,
         elements: [Elements.earth, Elements.fire, Elements.water],
@@ -203,8 +238,13 @@ void main() {
       expect(result.state.hpOf(playerB).current, equals(65));
     });
 
-    test('a single element or an unknown combination deals no damage', () {
-      final state = BattleState.start(playerA: playerA, playerB: playerB);
+    test('a single element deals 5 basic damage; an unknown combination '
+        'deals none', () {
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerB: const ApPool(max: 5, current: 3)},
+      );
 
       final afterSingle = engine
           .playTurn(
@@ -212,7 +252,7 @@ void main() {
             TurnAction(actor: playerA, elements: [Elements.fire]),
           )
           .state;
-      expect(afterSingle.hpOf(playerB).current, equals(100));
+      expect(afterSingle.hpOf(playerB).current, equals(95));
 
       final afterUnknown = engine
           .playTurn(
@@ -227,8 +267,11 @@ void main() {
     });
 
     test('Shield blocks the next combo damage and is consumed', () {
-      final state = BattleState.start(playerA: playerA, playerB: playerB)
-          .withStatusApplied(playerB, ActiveStatus(effect: StatusEffects.shield));
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
+      ).withStatusApplied(playerB, ActiveStatus(effect: StatusEffects.shield));
       final action = TurnAction(
         actor: playerA,
         elements: [Elements.fire, Elements.wind],
@@ -241,15 +284,18 @@ void main() {
     });
 
     test('Shield does not block a second hit after being consumed', () {
-      var state = BattleState.start(playerA: playerA, playerB: playerB)
-          .withStatusApplied(playerB, ActiveStatus(effect: StatusEffects.shield));
+      var state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 4)},
+      ).withStatusApplied(playerB, ActiveStatus(effect: StatusEffects.shield));
 
       state = engine
           .playTurn(
             state,
             TurnAction(actor: playerA, elements: [Elements.fire, Elements.wind]),
           )
-          .state; // blocked, shield consumed
+          .state; // blocked, shield consumed (4 seeded + 1 regen - 3 spent = 2 left)
       state = engine
           .playTurn(
             state,
@@ -261,13 +307,14 @@ void main() {
             state,
             TurnAction(actor: playerA, elements: [Elements.fire, Elements.wind]),
           )
-          .state; // not blocked this time
+          .state; // 2 + 1 regen = 3, affordable again — not blocked this time
 
       expect(state.hpOf(playerB).current, equals(80));
     });
 
     test('a status with damagePerTick damages its owner at the end of '
-        'every playTurn call, including the tick that expires it', () {
+        'every playTurn call, including the tick that expires it — on top '
+        'of the actor\'s own basic damage', () {
       var state = BattleState.start(playerA: playerA, playerB: playerB)
           .withStatusApplied(
             playerB,
@@ -281,12 +328,16 @@ void main() {
       state = engine
           .playTurn(state, TurnAction(actor: playerA, elements: [Elements.fire]))
           .state;
-      expect(state.hpOf(playerB).current, equals(92)); // first tick
+      // playerB: 100 - 5 (a's basic damage) - 8 (first DOT tick) = 87
+      expect(state.hpOf(playerB).current, equals(87));
 
       state = engine
           .playTurn(state, TurnAction(actor: playerB, elements: [Elements.water]))
           .state;
-      expect(state.hpOf(playerB).current, equals(84)); // second tick, expires
+      // playerA: 100 - 5 (b's basic damage) = 95
+      // playerB: 87 - 8 (second DOT tick, expires) = 79
+      expect(state.hpOf(playerA).current, equals(95));
+      expect(state.hpOf(playerB).current, equals(79));
       expect(state.hasStatus(playerB, StatusEffects.burn), isFalse);
     });
 
@@ -295,6 +346,7 @@ void main() {
         playerA: playerA,
         playerB: playerB,
         playerBMaxHp: 15,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
       );
       final result = engine.playTurn(
         state,
@@ -306,10 +358,12 @@ void main() {
     });
 
     test('DOT damage alone can set a winner', () {
+      // playerBMaxHp is 10, not 5: a's basic damage (5) alone must not be
+      // enough to defeat them — only the DOT tick (8) on top of it should.
       var state = BattleState.start(
         playerA: playerA,
         playerB: playerB,
-        playerBMaxHp: 5,
+        playerBMaxHp: 10,
       ).withStatusApplied(
         playerB,
         ActiveStatus(effect: StatusEffects.burn, turnsRemaining: 1, damagePerTick: 8),
@@ -325,14 +379,14 @@ void main() {
 
     test('when DOT ticks would defeat both combatants in the same '
         'resolution, the actor wins the tie', () {
-      // Both start lethal-low on HP, both carry a lethal DOT — the action
-      // itself deals no combo damage (single element), so this isolates
-      // the tie strictly to the DOT tick ordering.
+      // Both start at 8 HP (not 5): a's basic damage (5) to b alone must
+      // not decide the winner ahead of the DOT tick this test is about —
+      // it isolates the tie strictly to DOT tick ordering.
       final state = BattleState.start(
         playerA: playerA,
         playerB: playerB,
-        playerAMaxHp: 5,
-        playerBMaxHp: 5,
+        playerAMaxHp: 8,
+        playerBMaxHp: 8,
       ).withStatusApplied(
         playerA,
         ActiveStatus(effect: StatusEffects.burn, turnsRemaining: 1, damagePerTick: 8),
@@ -356,6 +410,7 @@ void main() {
         playerA: playerA,
         playerB: playerB,
         playerBMaxHp: 1,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
       );
       final finished = engine
           .playTurn(
@@ -372,6 +427,111 @@ void main() {
         ),
         throwsStateError,
       );
+    });
+
+    test('ends the match after enough basic (single-element) hits, with '
+        'no AP involved', () {
+      // 5 basic damage per hit — 20 hits defeat 100 HP. Actor A acts
+      // first each round, so their 20th hit lands before B's 20th.
+      var state = BattleState.start(playerA: playerA, playerB: playerB);
+      for (var i = 0; i < 19; i++) {
+        state = engine
+            .playTurn(state, TurnAction(actor: playerA, elements: [Elements.fire]))
+            .state;
+        state = engine
+            .playTurn(state, TurnAction(actor: playerB, elements: [Elements.ice]))
+            .state;
+      }
+      final result = engine.playTurn(
+        state,
+        TurnAction(actor: playerA, elements: [Elements.fire]),
+      );
+
+      expect(result.state.hpOf(playerB).isDefeated, isTrue);
+      expect(result.state.winner, equals(playerA));
+    });
+  });
+
+  group('AP cost for combining elements', () {
+    test('regenerates 1 AP for the actor at the start of their turn', () {
+      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      final action = TurnAction(actor: playerA, elements: [Elements.fire]);
+
+      final result = engine.playTurn(state, action);
+
+      expect(result.state.apOf(playerA).current, equals(1));
+      expect(result.state.apOf(playerB).current, equals(0));
+    });
+
+    test('AP regeneration is clamped at max', () {
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 5)},
+      );
+      final action = TurnAction(actor: playerA, elements: [Elements.fire]);
+
+      final result = engine.playTurn(state, action);
+
+      expect(result.state.apOf(playerA).current, equals(5));
+    });
+
+    test('rejects a 2-element combination without enough AP', () {
+      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      final action = TurnAction(
+        actor: playerA,
+        elements: [Elements.fire, Elements.wind],
+      );
+
+      expect(() => engine.playTurn(state, action), throwsStateError);
+    });
+
+    test('rejects a 3-element combination that only affords a 2-element '
+        'one', () {
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
+      );
+      final action = TurnAction(
+        actor: playerA,
+        elements: [Elements.earth, Elements.fire, Elements.water],
+      );
+
+      expect(() => engine.playTurn(state, action), throwsStateError);
+    });
+
+    test('spends 3 AP on a successful 2-element combination', () {
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
+      );
+      final action = TurnAction(
+        actor: playerA,
+        elements: [Elements.fire, Elements.wind],
+      );
+
+      final result = engine.playTurn(state, action);
+
+      // seeded 3 + 1 regen = 4, minus 3 spent = 1
+      expect(result.state.apOf(playerA).current, equals(1));
+    });
+
+    test('spends all 5 AP on a successful 3-element combination', () {
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 5)},
+      );
+      final action = TurnAction(
+        actor: playerA,
+        elements: [Elements.earth, Elements.fire, Elements.water],
+      );
+
+      final result = engine.playTurn(state, action);
+
+      expect(result.state.apOf(playerA).current, equals(0));
     });
   });
 }

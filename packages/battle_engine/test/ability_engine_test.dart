@@ -38,7 +38,11 @@ void main() {
     });
 
     test('base elements can still trigger a combination', () {
-      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
+      );
       final windCall = Ability(
         id: 'wind_call',
         name: 'Chamado do Vento',
@@ -84,7 +88,11 @@ void main() {
 
     test('a self-targeted Escudo actually blocks the next combo damage '
         'against the actor', () {
-      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerB: const ApPool(max: 5, current: 3)},
+      );
       final guarded = abilityEngine.useAbility(
         state,
         playerA,
@@ -108,7 +116,11 @@ void main() {
 
     test('Incêndio mutation adds its field effect alongside a triggered '
         'combination', () {
-      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
+      );
       final windCall = Ability(
         id: 'wind_call',
         name: 'Chamado do Vento',
@@ -157,7 +169,11 @@ void main() {
 
     test('forwards combinationModifiers to the triggered combination\'s '
         'field effect', () {
-      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
+      );
       final windCall = Ability(
         id: 'wind_call',
         name: 'Chamado do Vento',
