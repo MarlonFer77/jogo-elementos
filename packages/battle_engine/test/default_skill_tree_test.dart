@@ -57,4 +57,18 @@ void main() {
         SkillProgress(defaultSkillTree).unlock('guard_training');
     expect(progress.grantedMutations, equals([Mutations.guard]));
   });
+
+  test('elementos branch has one node per built-in element, no '
+      'prerequisites', () {
+    final elementNodes =
+        defaultSkillTree.nodes.where((n) => n.branch == 'elementos');
+    expect(elementNodes.length, equals(Elements.all.length));
+    expect(elementNodes.every((n) => n.prerequisites.isEmpty), isTrue);
+  });
+
+  test('unlocking an elementos node grants the matching elementId', () {
+    final progress =
+        SkillProgress(defaultSkillTree).unlock('unlock_fire');
+    expect(progress.grantedElementIds, equals(['fire']));
+  });
 }

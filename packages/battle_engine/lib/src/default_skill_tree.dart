@@ -1,11 +1,19 @@
 import 'combination_modifiers.dart';
+import 'element_unlocks.dart';
+import 'elements.dart';
 import 'max_hp_bonuses.dart';
 import 'mutations.dart';
 import 'skill_node.dart';
 import 'skill_tree.dart';
 
 /// Example skill tree with five independent branches, granting the
-/// built-in [Mutations], [CombinationModifiers] and [MaxHpBonuses].
+/// built-in [Mutations], [CombinationModifiers] and [MaxHpBonuses], plus
+/// a sixth "elementos" branch (Bloco 2b — ver DECISION-047) granting
+/// [ElementUnlocks]: one leaf per built-in element, no prerequisites
+/// among them — a player picks freely which to unlock next.
+/// `TrainingMatch` enforces its own turns-played gate on top of this (see
+/// `element_unlock.dart`'s doc comment); `SkillTree`/`SkillProgress`
+/// themselves stay unaware of that gate, only prerequisites.
 /// Demonstrates that the tree structure supports different paths — a real
 /// content tree is expected to grow well beyond this.
 final defaultSkillTree = SkillTree([
@@ -75,4 +83,14 @@ final defaultSkillTree = SkillTree([
     branch: 'defesa',
     grants: Mutations.guard,
   ),
+  for (final unlock in ElementUnlocks.all)
+    SkillNode(
+      id: unlock.id,
+      name: Elements.all.firstWhere((e) => e.id == unlock.elementId).name,
+      description: 'Desbloqueia o elemento '
+          '${Elements.all.firstWhere((e) => e.id == unlock.elementId).name} '
+          'pra jogar.',
+      branch: 'elementos',
+      grants: unlock,
+    ),
 ]);
