@@ -33,6 +33,13 @@ export interface HpPool {
   readonly current: number;
 }
 
+/** Mirrors ApPool in battle_engine (Dart) — action points, gates
+ * combining 2-3 elements in one turn (see turn-engine.ts). */
+export interface ApPool {
+  readonly max: number;
+  readonly current: number;
+}
+
 /** Mirrors ActiveStatus in battle_engine (Dart) — an instance of a status
  * effect applied to a target. `effectId` identifies which one (e.g.
  * "shield", "burn"); no display text, same reasoning as FieldEffect.
