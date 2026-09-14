@@ -1,4 +1,5 @@
 import 'active_status.dart';
+import 'ap_pool.dart';
 import 'combatant.dart';
 import 'field_effect.dart';
 import 'hp_pool.dart';
@@ -19,6 +20,7 @@ class BattleState {
   final List<FieldEffect> activeFieldEffects;
   final Map<Combatant, List<ActiveStatus>> combatantStatuses;
   final Map<Combatant, HpPool> hp;
+  final Map<Combatant, ApPool> ap;
   final Combatant? winner;
 
   BattleState({
@@ -28,6 +30,7 @@ class BattleState {
     List<FieldEffect> activeFieldEffects = const [],
     Map<Combatant, List<ActiveStatus>>? combatantStatuses,
     Map<Combatant, HpPool>? hp,
+    Map<Combatant, ApPool>? ap,
     this.winner,
   })  : activeFieldEffects = List.unmodifiable(activeFieldEffects),
         combatantStatuses = Map<Combatant, List<ActiveStatus>>.unmodifiable({
@@ -41,6 +44,10 @@ class BattleState {
         hp = Map<Combatant, HpPool>.unmodifiable({
           playerA: hp?[playerA] ?? const HpPool(max: 100, current: 100),
           playerB: hp?[playerB] ?? const HpPool(max: 100, current: 100),
+        }),
+        ap = Map<Combatant, ApPool>.unmodifiable({
+          playerA: ap?[playerA] ?? const ApPool(max: 5, current: 0),
+          playerB: ap?[playerB] ?? const ApPool(max: 5, current: 0),
         }) {
     if (playerA == playerB) {
       throw ArgumentError('playerA and playerB must be distinct combatants');
@@ -61,6 +68,7 @@ class BattleState {
     required Combatant playerB,
     int playerAMaxHp = 100,
     int playerBMaxHp = 100,
+    Map<Combatant, ApPool>? ap,
   }) {
     return BattleState(
       playerA: playerA,
@@ -70,6 +78,7 @@ class BattleState {
         playerA: HpPool(max: playerAMaxHp, current: playerAMaxHp),
         playerB: HpPool(max: playerBMaxHp, current: playerBMaxHp),
       },
+      ap: ap,
     );
   }
 
@@ -78,6 +87,7 @@ class BattleState {
     List<FieldEffect>? activeFieldEffects,
     Map<Combatant, List<ActiveStatus>>? combatantStatuses,
     Map<Combatant, HpPool>? hp,
+    Map<Combatant, ApPool>? ap,
     Combatant? winner,
   }) {
     return BattleState(
@@ -87,6 +97,7 @@ class BattleState {
       activeFieldEffects: activeFieldEffects ?? this.activeFieldEffects,
       combatantStatuses: combatantStatuses ?? this.combatantStatuses,
       hp: hp ?? this.hp,
+      ap: ap ?? this.ap,
       winner: winner ?? this.winner,
     );
   }
@@ -180,6 +191,31 @@ class BattleState {
     final updatedHp = Map<Combatant, HpPool>.from(hp)
       ..[target] = hpOf(target).withMaxIncreased(amount);
     return copyWith(hp: updatedHp);
+  }
+
+  /// AP pool of [combatant].
+  ApPool apOf(Combatant combatant) {
+    _requireParticipant(combatant);
+    return ap[combatant]!;
+  }
+
+  /// Returns a new state with [combatant]'s AP incremented by 1 (clamped
+  /// at their max) — happens at the start of their own turn, before
+  /// [TurnEngine.playTurn] checks whether they can afford a combination.
+  BattleState withApRegenerated(Combatant combatant) {
+    _requireParticipant(combatant);
+    final updated = Map<Combatant, ApPool>.from(ap)
+      ..[combatant] = apOf(combatant).withRegenerated();
+    return copyWith(ap: updated);
+  }
+
+  /// Returns a new state with [amount] of AP subtracted from
+  /// [combatant]'s pool.
+  BattleState withApSpent(Combatant combatant, int amount) {
+    _requireParticipant(combatant);
+    final updated = Map<Combatant, ApPool>.from(ap)
+      ..[combatant] = apOf(combatant).withSpent(amount);
+    return copyWith(ap: updated);
   }
 
   void _requireParticipant(Combatant combatant) {

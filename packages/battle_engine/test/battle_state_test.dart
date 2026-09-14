@@ -261,4 +261,62 @@ void main() {
       expect(next.winner, equals(state.winner));
     });
   });
+
+  group('BattleState AP', () {
+    test('start defaults both players to 5 max, 0 current AP', () {
+      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      expect(state.apOf(playerA).max, equals(5));
+      expect(state.apOf(playerA).current, equals(0));
+      expect(state.apOf(playerB).max, equals(5));
+      expect(state.apOf(playerB).current, equals(0));
+    });
+
+    test('start accepts a seeded AP override, for tests that need a '
+        'combo affordable right away', () {
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
+      );
+      expect(state.apOf(playerA).current, equals(3));
+      expect(state.apOf(playerB).current, equals(0));
+    });
+
+    test('apOf throws for a combatant outside the battle', () {
+      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      const stranger = Combatant(id: 'c', name: 'Carla');
+      expect(() => state.apOf(stranger), throwsArgumentError);
+    });
+
+    test('withApRegenerated increments only the target\'s AP', () {
+      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      final next = state.withApRegenerated(playerA);
+
+      expect(next.apOf(playerA).current, equals(1));
+      expect(next.apOf(playerB).current, equals(0));
+    });
+
+    test('withApSpent decrements only the target\'s AP', () {
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
+      );
+      final next = state.withApSpent(playerA, 3);
+
+      expect(next.apOf(playerA).current, equals(0));
+      expect(next.apOf(playerB).current, equals(0));
+    });
+
+    test('copyWith preserves ap when not specified', () {
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
+      );
+      final next = state.copyWith(currentTurn: playerB);
+
+      expect(next.apOf(playerA).current, equals(3));
+    });
+  });
 }
