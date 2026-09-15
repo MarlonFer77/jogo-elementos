@@ -72,4 +72,53 @@ void main() {
       expect(await store.loadTurnsPlayed('b'), 3);
     });
   });
+
+  group('unlocked attack ids', () {
+    test('an empty slot returns an empty list', () async {
+      final store = TrainingProgressStore();
+      expect(await store.loadUnlockedAttackIds('a'), isEmpty);
+    });
+
+    test('saves and reloads a slot', () async {
+      final store = TrainingProgressStore();
+      await store.saveUnlockedAttackIds('a', ['ignited_storm', 'lava']);
+
+      expect(
+        await store.loadUnlockedAttackIds('a'),
+        ['ignited_storm', 'lava'],
+      );
+    });
+
+    test('two slots are independent', () async {
+      final store = TrainingProgressStore();
+      await store.saveUnlockedAttackIds('a', ['ignited_storm']);
+      await store.saveUnlockedAttackIds('b', ['lava']);
+
+      expect(await store.loadUnlockedAttackIds('a'), ['ignited_storm']);
+      expect(await store.loadUnlockedAttackIds('b'), ['lava']);
+    });
+  });
+
+  group('equipped attack ids', () {
+    test('an empty slot returns an empty list', () async {
+      final store = TrainingProgressStore();
+      expect(await store.loadEquippedAttackIds('a'), isEmpty);
+    });
+
+    test('saves and reloads a slot', () async {
+      final store = TrainingProgressStore();
+      await store.saveEquippedAttackIds('a', ['ignited_storm']);
+
+      expect(await store.loadEquippedAttackIds('a'), ['ignited_storm']);
+    });
+
+    test('two slots are independent', () async {
+      final store = TrainingProgressStore();
+      await store.saveEquippedAttackIds('a', ['ignited_storm']);
+      await store.saveEquippedAttackIds('b', ['lava']);
+
+      expect(await store.loadEquippedAttackIds('a'), ['ignited_storm']);
+      expect(await store.loadEquippedAttackIds('b'), ['lava']);
+    });
+  });
 }
