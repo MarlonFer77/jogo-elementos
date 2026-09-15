@@ -39,3 +39,4 @@ export 'src/default_skill_tree.dart';
 export 'src/build.dart';
 export 'src/discovery_entry.dart';
 export 'src/discovery_book.dart';
+export 'src/attack_loadout.dart';
