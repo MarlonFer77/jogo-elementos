@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../game_domain/attack_catalog.dart';
 import '../game_domain/attack_event.dart';
 import '../game_domain/battle_scene_view.dart';
 import '../game_domain/element_catalog.dart';
@@ -16,6 +17,7 @@ import '../game_presentation/pixel_outlined_text.dart';
 import '../game_presentation/pixel_page_route.dart';
 import '../game_presentation/pixel_sheet_panel.dart';
 import '../game_presentation/sfx_player.dart';
+import 'attacks_screen.dart';
 import 'element_starter_screen.dart';
 import 'skill_tree_screen.dart';
 
@@ -49,8 +51,13 @@ class _TrainingScreenState extends State<TrainingScreen> {
   List<String> _discovered = [];
   int _turnsPlayedA = 0;
   int _turnsPlayedB = 0;
+  List<String> _unlockedAttacksA = [];
+  List<String> _equippedAttacksA = [];
+  List<String> _unlockedAttacksB = [];
+  List<String> _equippedAttacksB = [];
   final Set<String> _selectedIds = {};
   String? _error;
+  String? _lastUnlockedAttackText;
   AttackEvent? _pendingAttack;
 
   @override
@@ -78,6 +85,10 @@ class _TrainingScreenState extends State<TrainingScreen> {
     _discovered = await _progressStore.loadDiscoveredCombinationIds();
     _turnsPlayedA = await _progressStore.loadTurnsPlayed('a');
     _turnsPlayedB = await _progressStore.loadTurnsPlayed('b');
+    _unlockedAttacksA = await _progressStore.loadUnlockedAttackIds('a');
+    _equippedAttacksA = await _progressStore.loadEquippedAttackIds('a');
+    _unlockedAttacksB = await _progressStore.loadUnlockedAttackIds('b');
+    _equippedAttacksB = await _progressStore.loadEquippedAttackIds('b');
     if (!mounted) return;
     if (!_hasChosenStartingElements(_unlockedA)) {
       setState(() {
@@ -104,6 +115,10 @@ class _TrainingScreenState extends State<TrainingScreen> {
         discoveredCombinationIds: _discovered,
         turnsPlayedA: _turnsPlayedA,
         turnsPlayedB: _turnsPlayedB,
+        unlockedAttackIdsA: _unlockedAttacksA,
+        equippedAttackIdsA: _equippedAttacksA,
+        unlockedAttackIdsB: _unlockedAttacksB,
+        equippedAttackIdsB: _equippedAttacksB,
       );
       _pendingOnboardingSlot = null;
       _loading = false;
@@ -140,10 +155,11 @@ class _TrainingScreenState extends State<TrainingScreen> {
   }
 
   void _playTurn() {
+    final wasPlayerATurn = _match.isPlayerATurn;
     setState(() {
       _error = null;
+      _lastUnlockedAttackText = null;
       final playedElementIds = _selectedIds.toList();
-      final wasPlayerATurn = _match.isPlayerATurn;
       final hpABefore = _match.playerACurrentHp;
       final hpBBefore = _match.playerBCurrentHp;
       final discoveredCountBefore = _match.discoveredCombinationIds.length;
@@ -176,15 +192,39 @@ class _TrainingScreenState extends State<TrainingScreen> {
         } else {
           unawaited(_progressStore.saveTurnsPlayed('b', _match.cumulativeTurnsPlayedB));
         }
+        if (_match.lastUnlockedAttackName != null) {
+          final slot = wasPlayerATurn ? 'a' : 'b';
+          final unlockedIds = wasPlayerATurn
+              ? _match.unlockedAttackIdsForPlayerA
+              : _match.unlockedAttackIdsForPlayerB;
+          final equippedIds = wasPlayerATurn
+              ? _match.equippedAttackIdsForPlayerA
+              : _match.equippedAttackIdsForPlayerB;
+          unawaited(_progressStore.saveUnlockedAttackIds(slot, unlockedIds));
+          unawaited(_progressStore.saveEquippedAttackIds(slot, equippedIds));
+          if (!_match.lastUnlockedAttackNeededEquipChoice) {
+            _lastUnlockedAttackText =
+                'Novo ataque desbloqueado: ${_match.lastUnlockedAttackName}! '
+                '(equipado automaticamente)';
+          }
+        }
         if (_match.isOver) {
           sfxPlayer.play(SfxId.victory);
         }
       } on ArgumentError {
         _error = 'Jogada inválida.';
-      } on StateError {
-        _error = 'AP insuficiente para essa combinação.';
+      } on StateError catch (e) {
+        _error = e.message.contains('não está equipado')
+            ? e.message
+            : 'AP insuficiente para essa combinação.';
       }
     });
+    if (_match.lastUnlockedAttackNeededEquipChoice) {
+      unawaited(_openAttacksScreen(
+        forPlayerA: wasPlayerATurn,
+        highlightComboId: _match.lastUnlockedAttackId,
+      ));
+    }
   }
 
   void _startNewMatch() {
@@ -221,6 +261,33 @@ class _TrainingScreenState extends State<TrainingScreen> {
     setState(() {});
   }
 
+  Future<void> _openAttacksScreen({
+    required bool forPlayerA,
+    String? highlightComboId,
+  }) async {
+    final unlockedIds = forPlayerA
+        ? _match.unlockedAttackIdsForPlayerA
+        : _match.unlockedAttackIdsForPlayerB;
+    final equippedIds = forPlayerA
+        ? _match.equippedAttackIdsForPlayerA
+        : _match.equippedAttackIdsForPlayerB;
+    await Navigator.of(context).push(pixelSlideRoute((_) => AttacksScreen(
+      attacks: allAttackOptions(unlockedIds: unlockedIds, equippedIds: equippedIds),
+      highlightComboId: highlightComboId,
+      onSetEquipped: (ids) async {
+        try {
+          _match.setEquippedAttacks(forPlayerA: forPlayerA, combinationIds: ids);
+          final slot = forPlayerA ? 'a' : 'b';
+          unawaited(_progressStore.saveEquippedAttackIds(slot, ids));
+          return null;
+        } on ArgumentError catch (e) {
+          return e.message;
+        }
+      },
+    )));
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -249,6 +316,11 @@ class _TrainingScreenState extends State<TrainingScreen> {
                 icon: const Icon(Icons.auto_awesome),
                 tooltip: 'Habilidades',
                 onPressed: _openSkillTree,
+              ),
+              IconButton(
+                icon: const Icon(Icons.flash_on),
+                tooltip: 'Ataques Combinados',
+                onPressed: () => _openAttacksScreen(forPlayerA: _match.isPlayerATurn),
               ),
             ],
           ),
@@ -299,6 +371,11 @@ class _TrainingScreenState extends State<TrainingScreen> {
                       child: Text(
                         'Efeitos aplicados: ${_match.lastAppliedStatusNames.join(", ")}',
                       ),
+                    ),
+                  if (_lastUnlockedAttackText != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(_lastUnlockedAttackText!),
                     ),
                   const Divider(height: 32),
                   if (_match.isOver)

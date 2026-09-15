@@ -58,6 +58,10 @@ void main() {
       );
       expect(find.text('Descobertas: 1/3'), findsOneWidget);
       expect(find.textContaining('80/100 HP'), findsOneWidget);
+      expect(
+        find.textContaining('Novo ataque desbloqueado: Tempestade Ígnea'),
+        findsOneWidget,
+      );
     },
   );
 
@@ -307,4 +311,113 @@ void main() {
     expect(find.text('🔥 Fogo'), findsOneWidget);
     expect(find.text('🔒 Água'), findsOneWidget);
   });
+
+  testWidgets(
+    'rejects replaying a discovered-but-unequipped combination with a '
+    'friendly message',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: TrainingScreen(
+          initialMatch: TrainingMatch(
+            initialApA: const ApPool(max: 5, current: 5),
+            initialProgressA: _allElementsUnlocked(),
+            initialLoadoutA: AttackLoadout(
+              unlockedCombinationIds: const {'ignited_storm'},
+              equippedCombinationIds: const [], // desbloqueado, não equipado
+            ),
+          ),
+        ),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.text('Escolher elementos'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.text('🔥 Fogo'));
+      await tester.pump();
+      await tester.tap(find.text('🌪️ Vento'));
+      await tester.pump();
+
+      await tester.tap(find.text('Confirmar'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.ensureVisible(find.text('Jogar'));
+      await tester.tap(find.text('Jogar'));
+      await tester.pump();
+
+      expect(
+        find.text(
+          'Tempestade Ígnea não está equipado. Troque na janela de '
+          'Ataques Combinados.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Vez de: Jogador A'), findsOneWidget); // turno não passou
+    },
+  );
+
+  testWidgets(
+    'opens Ataques Combinados automatically when unlocking with 3 slots '
+    'already full',
+    (WidgetTester tester) async {
+      // O jogo só define 3 combinações reais hoje (ignited_storm,
+      // electrified_field, lava) — não dá pra encher 3 vagas com
+      // combos reais e ainda sobrar um 4º real pra descobrir. Os 2
+      // ids "fake_a"/"fake_b" preenchem 2 das 3 vagas de propósito
+      // (`AttackLoadout` não valida que um id equipado corresponda a
+      // uma `ElementCombination` real — é só contagem); a 3ª vaga é
+      // preenchida com "electrified_field" (também não jogado nesta
+      // partida) só pra reduzir o que aparece de "ruído" na tela. O
+      // que este teste verifica é só a navegação (TrainingScreen abre
+      // AttacksScreen sozinha) — o conteúdo exato do seletor de troca
+      // já é coberto por `attacks_screen_test.dart` (Task 5).
+      await tester.pumpWidget(MaterialApp(
+        home: TrainingScreen(
+          initialMatch: TrainingMatch(
+            initialApA: const ApPool(max: 5, current: 5),
+            initialProgressA: _allElementsUnlocked(),
+            initialLoadoutA: AttackLoadout(
+              unlockedCombinationIds: const {
+                'electrified_field',
+                'fake_a',
+                'fake_b',
+              },
+              equippedCombinationIds: const [
+                'electrified_field',
+                'fake_a',
+                'fake_b',
+              ],
+            ),
+          ),
+        ),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.text('Escolher elementos'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.text('🪨 Terra'));
+      await tester.pump();
+      await tester.tap(find.text('🔥 Fogo'));
+      await tester.pump();
+      await tester.tap(find.text('💧 Água'));
+      await tester.pump();
+
+      await tester.tap(find.text('Confirmar'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.ensureVisible(find.text('Jogar'));
+      await tester.tap(find.text('Jogar'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text('Ataques Combinados'), findsOneWidget);
+    },
+  );
 }

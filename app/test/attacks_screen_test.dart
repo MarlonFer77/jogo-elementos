@@ -10,13 +10,6 @@ const _storm = AttackOption(
   unlocked: true,
   equipped: false,
 );
-const _field = AttackOption(
-  id: 'electrified_field',
-  name: 'Campo Eletrocutado',
-  description: 'Água carregada de eletricidade; choca quem entrar no campo.',
-  unlocked: true,
-  equipped: false,
-);
 const _lockedLava = AttackOption(
   id: 'lava',
   name: 'Lava',
