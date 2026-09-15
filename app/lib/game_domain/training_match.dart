@@ -44,11 +44,16 @@ class TrainingMatch {
   late DiscoveryBook _discoveryBook;
   late SkillProgress _progressA;
   late SkillProgress _progressB;
+  late AttackLoadout _loadoutA;
+  late AttackLoadout _loadoutB;
   late int _cumulativeTurnsA;
   late int _cumulativeTurnsB;
 
   String? _lastTriggeredCombinationName;
   List<String> _lastAppliedStatusNames = [];
+  String? _lastUnlockedAttackId;
+  String? _lastUnlockedAttackName;
+  bool _lastUnlockedAttackNeededEquipChoice = false;
   int _turnsPlayed = 0;
 
   /// [initialProgressA]/[initialProgressB]/[initialDiscoveryBook] seedam
@@ -62,7 +67,9 @@ class TrainingMatch {
   /// precisa seedar AP, uma partida real sempre começa em 0.
   /// [initialTurnsPlayedA]/[initialTurnsPlayedB] seedam o contador
   /// cumulativo de turnos jogados (Bloco 2b — gate de desbloqueio de
-  /// elementos), default 0.
+  /// elementos), default 0. [initialLoadoutA]/[initialLoadoutB] seedam
+  /// os ataques já desbloqueados/equipados de cada jogador (Bloco 2c),
+  /// default `AttackLoadout()` vazio.
   TrainingMatch({
     SkillProgress? initialProgressA,
     SkillProgress? initialProgressB,
@@ -71,12 +78,16 @@ class TrainingMatch {
     ApPool? initialApB,
     int initialTurnsPlayedA = 0,
     int initialTurnsPlayedB = 0,
+    AttackLoadout? initialLoadoutA,
+    AttackLoadout? initialLoadoutB,
   }) {
     _progressA = initialProgressA ?? SkillProgress(defaultSkillTree);
     _progressB = initialProgressB ?? SkillProgress(defaultSkillTree);
     _discoveryBook = initialDiscoveryBook ?? DiscoveryBook();
     _cumulativeTurnsA = initialTurnsPlayedA;
     _cumulativeTurnsB = initialTurnsPlayedB;
+    _loadoutA = initialLoadoutA ?? AttackLoadout();
+    _loadoutB = initialLoadoutB ?? AttackLoadout();
     _state = BattleState.start(
       playerA: _playerA,
       playerB: _playerB,
@@ -99,6 +110,10 @@ class TrainingMatch {
     required List<String> discoveredCombinationIds,
     required int turnsPlayedA,
     required int turnsPlayedB,
+    required List<String> unlockedAttackIdsA,
+    required List<String> equippedAttackIdsA,
+    required List<String> unlockedAttackIdsB,
+    required List<String> equippedAttackIdsB,
   }) {
     return TrainingMatch(
       initialProgressA: SkillProgress(defaultSkillTree, unlockedNodeIds: unlockedNodeIdsA),
@@ -106,6 +121,14 @@ class TrainingMatch {
       initialDiscoveryBook: DiscoveryBook(discoveredCombinationIds: discoveredCombinationIds.toSet()),
       initialTurnsPlayedA: turnsPlayedA,
       initialTurnsPlayedB: turnsPlayedB,
+      initialLoadoutA: AttackLoadout(
+        unlockedCombinationIds: unlockedAttackIdsA.toSet(),
+        equippedCombinationIds: equippedAttackIdsA,
+      ),
+      initialLoadoutB: AttackLoadout(
+        unlockedCombinationIds: unlockedAttackIdsB.toSet(),
+        equippedCombinationIds: equippedAttackIdsB,
+      ),
     );
   }
 
@@ -120,6 +143,8 @@ class TrainingMatch {
       initialDiscoveryBook: _discoveryBook,
       initialTurnsPlayedA: _cumulativeTurnsA,
       initialTurnsPlayedB: _cumulativeTurnsB,
+      initialLoadoutA: _loadoutA,
+      initialLoadoutB: _loadoutB,
     );
   }
 
@@ -193,6 +218,9 @@ class TrainingMatch {
   SkillProgress get _currentProgress =>
       _isPlayerATurn ? _progressA : _progressB;
 
+  AttackLoadout get _currentLoadout =>
+      _isPlayerATurn ? _loadoutA : _loadoutB;
+
   Combatant get _currentCombatant => _isPlayerATurn ? _playerA : _playerB;
 
   /// Skill nodes the player whose turn it currently is could unlock right
@@ -218,6 +246,55 @@ class TrainingMatch {
   /// (Bloco 2b).
   List<String> get availableElementIdsForCurrentPlayer =>
       _currentProgress.grantedElementIds;
+
+  /// Id/nome do combo que a jogada mais recente desbloqueou pela
+  /// primeira vez — `null` se a jogada mais recente não desbloqueou
+  /// nada novo (Bloco 2c).
+  String? get lastUnlockedAttackId => _lastUnlockedAttackId;
+  String? get lastUnlockedAttackName => _lastUnlockedAttackName;
+
+  /// `true` só quando a jogada mais recente desbloqueou um combo novo
+  /// e as 3 vagas de equipados já estavam cheias (o novo ficou
+  /// desbloqueado, mas não equipado) — sinaliza que a UI precisa abrir
+  /// a tela de troca.
+  bool get lastUnlockedAttackNeededEquipChoice =>
+      _lastUnlockedAttackNeededEquipChoice;
+
+  /// Ids das combinações que Jogador A/B já desbloquearam como ataque
+  /// pessoal (Bloco 2c) — diretos por jogador, não "do jogador da vez
+  /// atual": depois que [playElementIds] passa o turno, "o jogador da
+  /// vez" já é o oponente de quem acabou de jogar, então quem chama
+  /// (`TrainingScreen`) sempre precisa dizer explicitamente qual
+  /// jogador quer (mesmo motivo de `cumulativeTurnsPlayedA`/`B`, Bloco
+  /// 2b) — usados tanto pra montar a tela de Ataques Combinados quanto
+  /// pra salvar o progresso de quem acabou de jogar.
+  List<String> get unlockedAttackIdsForPlayerA =>
+      _loadoutA.unlockedCombinationIds.toList();
+  List<String> get unlockedAttackIdsForPlayerB =>
+      _loadoutB.unlockedCombinationIds.toList();
+
+  /// Ids das combinações que Jogador A/B têm equipadas agora (até 3).
+  List<String> get equippedAttackIdsForPlayerA => _loadoutA.equippedCombinationIds;
+  List<String> get equippedAttackIdsForPlayerB => _loadoutB.equippedCombinationIds;
+
+  /// Substitui os ataques equipados de [forPlayerA] (`true` = Jogador
+  /// A, `false` = Jogador B) — explícito, não "do jogador da vez",
+  /// pelo mesmo motivo dos getters acima (quem chama pode estar
+  /// gerenciando o ataque de um jogador cujo turno já passou). Lança
+  /// `ArgumentError` se passar mais de 3 ids, ou algum id que esse
+  /// jogador ainda não desbloqueou (ver `AttackLoadout.withEquipped`).
+  void setEquippedAttacks({
+    required bool forPlayerA,
+    required List<String> combinationIds,
+  }) {
+    final current = forPlayerA ? _loadoutA : _loadoutB;
+    final updated = current.withEquipped(combinationIds);
+    if (forPlayerA) {
+      _loadoutA = updated;
+    } else {
+      _loadoutB = updated;
+    }
+  }
 
   /// Cumulative turns played by Jogador A/B, since ever — not reset by
   /// [startNewBattleKeepingProgress] (Bloco 2b's element-unlock gate).
@@ -284,9 +361,10 @@ class TrainingMatch {
   /// unknown element id, or for one the current player hasn't unlocked
   /// yet (Bloco 2b — `availableElementIdsForCurrentPlayer`; the UI never
   /// offers a locked element as selectable, this closes the guarantee).
-  /// Throws `StateError` if the match is already over, or (from
-  /// `TurnEngine`) if there isn't enough AP for the combination attempted
-  /// (Bloco 2a).
+  /// Throws `StateError` if the match is already over, if there isn't
+  /// enough AP for the combination attempted (Bloco 2a, from
+  /// `TurnEngine`), or if the combination is already unlocked for this
+  /// player but not equipped (Bloco 2c).
   void playElementIds(List<String> elementIds) {
     final wasPlayerATurn = _isPlayerATurn;
     final elements = elementIds
@@ -303,6 +381,19 @@ class TrainingMatch {
     for (final id in elementIds) {
       if (!progress.grantedElementIds.contains(id)) {
         throw ArgumentError.value(id, 'elementIds', 'element not unlocked yet');
+      }
+    }
+
+    final loadoutBeforeThisPlay = _currentLoadout;
+    if (elementIds.length >= 2) {
+      final knownCombo = defaultCombinationBook.resolve(elements);
+      if (knownCombo != null &&
+          loadoutBeforeThisPlay.isUnlocked(knownCombo.resultId) &&
+          !loadoutBeforeThisPlay.isEquipped(knownCombo.resultId)) {
+        throw StateError(
+          '${knownCombo.resultName} não está equipado. Troque na '
+          'janela de Ataques Combinados.',
+        );
       }
     }
 
@@ -336,6 +427,28 @@ class TrainingMatch {
       _discoveryBook = _discoveryBook.withDiscovered(
         result.triggeredCombination!,
       );
+      final comboId = result.triggeredCombination!.resultId;
+      final wasNewlyUnlocked = !loadoutBeforeThisPlay.isUnlocked(comboId);
+      final updatedLoadout = loadoutBeforeThisPlay.withUnlocked(comboId);
+      if (wasPlayerATurn) {
+        _loadoutA = updatedLoadout;
+      } else {
+        _loadoutB = updatedLoadout;
+      }
+      if (wasNewlyUnlocked) {
+        _lastUnlockedAttackId = comboId;
+        _lastUnlockedAttackName = result.triggeredCombination!.resultName;
+        _lastUnlockedAttackNeededEquipChoice =
+            loadoutBeforeThisPlay.equippedCombinationIds.length >= 3;
+      } else {
+        _lastUnlockedAttackId = null;
+        _lastUnlockedAttackName = null;
+        _lastUnlockedAttackNeededEquipChoice = false;
+      }
+    } else {
+      _lastUnlockedAttackId = null;
+      _lastUnlockedAttackName = null;
+      _lastUnlockedAttackNeededEquipChoice = false;
     }
     _turnsPlayed++;
     if (wasPlayerATurn) {

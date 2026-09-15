@@ -317,6 +317,10 @@ void main() {
         discoveredCombinationIds: ['ignited_storm'],
         turnsPlayedA: 0,
         turnsPlayedB: 0,
+        unlockedAttackIdsA: const [],
+        equippedAttackIdsA: const [],
+        unlockedAttackIdsB: const [],
+        equippedAttackIdsB: const [],
       );
 
       expect(match.unlockedNodeIdsForPlayerA, ['ember_mastery']);
@@ -332,6 +336,10 @@ void main() {
         discoveredCombinationIds: [],
         turnsPlayedA: 7,
         turnsPlayedB: 12,
+        unlockedAttackIdsA: const [],
+        equippedAttackIdsA: const [],
+        unlockedAttackIdsB: const [],
+        equippedAttackIdsB: const [],
       );
 
       expect(match.cumulativeTurnsPlayedA, equals(7));
@@ -481,6 +489,149 @@ void main() {
         match.turnsRemainingToUnlock('unlock_earth'),
         equals(10), // 3 elementos já: (3-1)*10=20, já tem 10 jogados
       );
+    });
+  });
+
+  group('equippable attacks (Bloco 2c)', () {
+    test('a combination triggered for the first time is unlocked and '
+        'auto-equipped (there is room)', () {
+      final match = TrainingMatch(
+        initialApA: const ApPool(max: 5, current: 3),
+        initialProgressA: _allElementsUnlocked(),
+      );
+
+      match.playElementIds(['fire', 'wind']); // Jogador A, Tempestade Ígnea
+
+      expect(match.lastUnlockedAttackId, 'ignited_storm');
+      expect(match.lastUnlockedAttackName, 'Tempestade Ígnea');
+      expect(match.lastUnlockedAttackNeededEquipChoice, isFalse);
+    });
+
+    test('playElementIds throws if the combination is already unlocked '
+        'but not equipped', () {
+      final match = TrainingMatch(
+        initialApA: const ApPool(max: 5, current: 5),
+        initialProgressA: _allElementsUnlocked(),
+        initialLoadoutA: AttackLoadout(
+          unlockedCombinationIds: {'ignited_storm'},
+          equippedCombinationIds: const [], // desbloqueado, mas não equipado
+        ),
+      );
+
+      expect(
+        () => match.playElementIds(['fire', 'wind']),
+        throwsA(isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          'Tempestade Ígnea não está equipado. Troque na janela de '
+              'Ataques Combinados.',
+        )),
+      );
+    });
+
+    test('playing an equipped combination works normally', () {
+      final match = TrainingMatch(
+        initialApA: const ApPool(max: 5, current: 3),
+        initialProgressA: _allElementsUnlocked(),
+        initialLoadoutA: AttackLoadout(
+          unlockedCombinationIds: {'ignited_storm'},
+          equippedCombinationIds: const ['ignited_storm'],
+        ),
+      );
+
+      match.playElementIds(['fire', 'wind']);
+
+      expect(match.playerBCurrentHp, equals(80));
+      expect(match.lastUnlockedAttackName, isNull); // não é desbloqueio novo
+    });
+
+    test('unlocking with 3 slots already full does not auto-equip', () {
+      final match = TrainingMatch(
+        initialApA: const ApPool(max: 5, current: 5),
+        initialProgressA: _allElementsUnlocked(),
+        initialLoadoutA: AttackLoadout(
+          unlockedCombinationIds: {'a', 'b', 'c'},
+          equippedCombinationIds: const ['a', 'b', 'c'],
+        ),
+      );
+
+      match.playElementIds(['earth', 'fire', 'water']); // Lava, 3º elemento
+
+      expect(match.lastUnlockedAttackId, 'lava');
+      expect(match.lastUnlockedAttackNeededEquipChoice, isTrue);
+      expect(match.equippedAttackIdsForPlayerA, ['a', 'b', 'c']);
+      expect(match.unlockedAttackIdsForPlayerA, contains('lava'));
+    });
+
+    test('setEquippedAttacks updates the right player\'s loadout and '
+        'propagates AttackLoadout errors', () {
+      final match = TrainingMatch(
+        initialProgressA: _allElementsUnlocked(),
+        initialLoadoutA: AttackLoadout(
+          unlockedCombinationIds: {'ignited_storm', 'lava'},
+          equippedCombinationIds: const ['ignited_storm'],
+        ),
+      );
+
+      match.setEquippedAttacks(forPlayerA: true, combinationIds: ['lava']);
+      expect(match.equippedAttackIdsForPlayerA, ['lava']);
+
+      expect(
+        () => match.setEquippedAttacks(
+          forPlayerA: true,
+          combinationIds: ['ghost'],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('setEquippedAttacks targets Jogador B when forPlayerA is false',
+        () {
+      final match = TrainingMatch(
+        initialProgressB: _allElementsUnlocked(),
+        initialLoadoutB: AttackLoadout(
+          unlockedCombinationIds: {'ignited_storm', 'lava'},
+          equippedCombinationIds: const ['ignited_storm'],
+        ),
+      );
+
+      match.setEquippedAttacks(forPlayerA: false, combinationIds: ['lava']);
+
+      expect(match.equippedAttackIdsForPlayerB, ['lava']);
+      expect(match.equippedAttackIdsForPlayerA, isEmpty); // A não foi tocado
+    });
+
+    test('loadout survives startNewBattleKeepingProgress', () {
+      final match = TrainingMatch(
+        initialApA: const ApPool(max: 5, current: 3),
+        initialProgressA: _allElementsUnlocked(),
+      );
+      match.playElementIds(['fire', 'wind']); // desbloqueia Tempestade Ígnea
+
+      final rematch = match.startNewBattleKeepingProgress();
+
+      expect(rematch.unlockedAttackIdsForPlayerA, ['ignited_storm']);
+      expect(rematch.equippedAttackIdsForPlayerA, ['ignited_storm']);
+    });
+
+    test('fromPersistedProgress seeds unlocked/equipped attack ids per '
+        'player', () {
+      final match = TrainingMatch.fromPersistedProgress(
+        unlockedNodeIdsA: [],
+        unlockedNodeIdsB: [],
+        discoveredCombinationIds: [],
+        turnsPlayedA: 0,
+        turnsPlayedB: 0,
+        unlockedAttackIdsA: ['ignited_storm'],
+        equippedAttackIdsA: ['ignited_storm'],
+        unlockedAttackIdsB: ['lava'],
+        equippedAttackIdsB: ['lava'],
+      );
+
+      expect(match.unlockedAttackIdsForPlayerA, ['ignited_storm']);
+      expect(match.equippedAttackIdsForPlayerA, ['ignited_storm']);
+      expect(match.unlockedAttackIdsForPlayerB, ['lava']);
+      expect(match.equippedAttackIdsForPlayerB, ['lava']);
     });
   });
 }
