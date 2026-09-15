@@ -1582,3 +1582,94 @@ Habilidades no preview web (mesma limitação recorrente desta sessão,
 já registrada nas DECISION-044/045) — a mensagem "Faltam N turnos."
 não foi conferida a olho, mas está coberta pelo teste de widget novo
 de `skill_tree_screen_test.dart`. Nenhum erro no console do navegador.
+
+## DECISION-048
+Data: 2026-09-15
+Decisão: ataques combinados equipáveis no Modo Treino (Bloco 2c) —
+terceiro dos quatro blocos combinados com o usuário desde o Bloco 2a
+(DECISION-046/047). A primeira vez que um jogador dispara uma
+combinação (2-3 elementos) vira um "ataque" pessoal permanentemente
+desbloqueado pra esse jogador — até 3 podem estar "equipados" ao mesmo
+tempo; só um ataque equipado pode ser jogado de novo. Nova classe
+`AttackLoadout` (`packages/battle_engine`), imutável, por jogador,
+deliberadamente separada do `DiscoveryBook` compartilhado existente
+(que não muda — continua só meta-progressão, alimentando "Descobertas:
+X/Y"): `unlockedCombinationIds` (Set) + `equippedCombinationIds` (List,
+máx 3). `withUnlocked(id)` marca desbloqueado e equipa automático se
+houver vaga livre (<3); `withEquipped(ids)` substitui a lista de
+equipados, lançando `ArgumentError` pra mais de 3 ids ou pra um id
+ainda não desbloqueado. `TrainingMatch.playElementIds` ganha uma nova
+checagem — via `defaultCombinationBook.resolve(elements)`, antes de
+montar a `Ability` — que lança `StateError` (mensagem em português, ex:
+"Tempestade Ígnea não está equipado. Troque na janela de Ataques
+Combinados.") se a combinação já foi desbloqueada mas não está
+equipada; a jogada fica um no-op completo (sem gastar AP, sem passar o
+turno), mesmo padrão de "AP insuficiente"/"elemento bloqueado". Quando
+as 3 vagas já estão cheias no momento do desbloqueio, a nova combinação
+fica desbloqueada mas não equipada, e a `TrainingScreen` abre a tela
+"Ataques Combinados" (`AttacksScreen`, nova) automaticamente, com o
+combo recém-desbloqueado em destaque, pedindo a troca; com vaga livre,
+o equipar é automático e some um texto inline ("Novo ataque
+desbloqueado: X! (equipado automaticamente)"), sem abrir tela nova. A
+mesma `AttacksScreen` é reaproveitada pros dois fluxos — abertura
+automática (com `highlightComboId`) e gerenciamento manual via um novo
+ícone (`Icons.flash_on`, tooltip "Ataques Combinados") na AppBar.
+Getters/setter novos em `TrainingMatch` são todos diretos por jogador
+(`unlockedAttackIdsForPlayerA`/`B`, `equippedAttackIdsForPlayerA`/`B`,
+`setEquippedAttacks({required forPlayerA, required combinationIds})`) —
+não "do jogador da vez atual", porque no momento em que a
+`TrainingScreen` decide abrir a troca automática (dentro de
+`_playTurn`, depois que `playElementIds` já passou o turno), "o
+jogador da vez" já é o oponente de quem acabou de desbloquear; um
+`_currentLoadout` privado, só pra uso interno em `playElementIds` (que
+roda antes do turno passar), é a única exceção "current player".
+Persistência nova em `TrainingProgressStore`:
+`training_attacks_unlocked_<slot>`/`training_attacks_equipped_<slot>`,
+mesmo padrão de `SharedPreferences.getStringList`/`setStringList` já
+usado pros outros progressos do Treino.
+Só Modo Treino — Multiplayer aguarda o Bloco 11 (persistência real),
+mesma razão dos Blocos 2b/10. Nada neste bloco toca
+`BattleState`/`TurnEngine` (Dart) nem `backend/src/battle-rules/`
+(TypeScript) — o gate vive inteiramente em `TrainingMatch`.
+Dois ajustes descobertos rodando os testes de `AttacksScreen`, fora do
+sketch original do plano: o indicador visual de "equipado" virou um
+ícone (não mais texto concatenado ao nome, que quebrava finders de
+texto exato), e a lista de ataques desbloqueados some enquanto um modal
+(desequipar/trocar) está aberto — sem isso, o nome de um ataque já
+equipado aparecia duas vezes na árvore de widgets (tile de fundo +
+botão do modal), ambíguo pra `find.text`.
+Diferente dos Blocos 2a/2b, o ripple em testes pré-existentes foi
+mínimo — nenhum teste de `training_match_test.dart` jogava a mesma
+combinação duas vezes pro mesmo jogador antes deste bloco, então o
+auto-equipar nunca colidiu com nada já escrito; só duas chamadas
+pré-existentes de `fromPersistedProgress` (em testes de
+`fromPersistedProgress`/Bloco 2b) precisaram dos 4 novos parâmetros
+required.
+Motivo: sequência já combinada com o usuário desde o Bloco 2a — dar
+peso de progressão real às combinações descobertas, não só registrar
+que existem.
+Consequência: fecha a sequência. Bloco 2d (UI de batalha estilo
+Pokémon) é o próximo e último, consumindo
+`equippedAttackIdsForPlayerA`/`B` pra montar os botões de ação do
+turno. Multiplayer com ataques equipáveis aguarda o Bloco 11.
+Testes: suíte completa de `battle_engine` (`dart analyze` limpo, `dart
+test`, 213 testes) e app (`flutter analyze` limpo, `flutter test`, 214
+testes) passando. Verificado manualmente via `flutter run -d
+web-server` (reinício completo do preview): disparar Fogo+Vento pela
+primeira vez (depois de acumular AP com jogadas de elemento sozinho)
+mostrou "Última combinação: Tempestade Ígnea" e "Novo ataque
+desbloqueado: Tempestade Ígnea! (equipado automaticamente)" inline, sem
+abrir tela nova; o ícone novo na AppBar abriu "Ataques Combinados"
+mostrando Tempestade Ígnea marcado como equipado (ícone de check);
+desequipar manualmente funcionou (fundo da lista some enquanto o modal
+de desequipar está aberto, confirma visualmente); tentar montar
+Fogo+Vento de novo mostrou "Tempestade Ígnea não está equipado. Troque
+na janela de Ataques Combinados." e o turno não passou. O cenário de
+"3 vagas cheias abre a troca sozinha" não foi reproduzido manualmente
+— o jogo só tem 3 combinações reais definidas hoje, insuficiente pra
+encher 3 vagas e ainda sobrar uma 4ª real pra descobrir em uma sessão
+de verificação manual — mas está coberto pelos testes automatizados de
+`training_match_test.dart` e `training_screen_test.dart` (que usam ids
+sintéticos como preenchimento, já que `AttackLoadout` não valida que um
+id equipado corresponda a uma combinação real). Nenhum erro no console
+do navegador.

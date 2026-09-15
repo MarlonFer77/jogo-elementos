@@ -63,12 +63,9 @@ uma tarefa nova terminar revelando um gap novo.
 - Ícone dedicado por combinação futura sem entrada em
   `status_visuals.dart` (Bloco 9, DECISION-044) — cai no fallback (✨)
   até alguém adicionar
-- Combos disparados viram "ataques" permanentes desbloqueáveis, com
-  janela de skills combinadas pra equipar/trocar, limite de 3 (Bloco
-  2c, decidido junto do Bloco 2a, depende do 2b, ainda não iniciado)
 - Tela de batalha estilo Pokémon (básicos liberados + até 3 ataques
   combinados equipados) (Bloco 2d, decidido junto do Bloco 2a, depende
-  do 2c, ainda não iniciado)
+  do 2c — DECISION-048 —, último da sequência, ainda não iniciado)
 
 **Multiplayer (cliente)**
 - A modal de Habilidades não escuta o polling por trás — se a vez mudar
@@ -465,6 +462,15 @@ uma tarefa nova terminar revelando um gap novo.
   custo crescente em turnos cumulativos jogados ((E-1)×10) além do
   pré-requisito de sempre. Só Modo Treino — Multiplayer aguarda o
   Bloco 11 pra ter persistência real primeiro (DECISION-047)
+- Ataques combinados equipáveis no Modo Treino (Bloco 2c, sequência
+  combinada com o usuário desde o Bloco 2a, fecha a sequência): a
+  primeira vez que um jogador dispara uma combinação, ela vira um
+  ataque pessoal desbloqueado; até 3 podem ficar equipados por vez
+  (`AttackLoadout`, novo, separado do Livro de Descobertas
+  compartilhado); replay de combo desbloqueado-mas-não-equipado é
+  rejeitado; vaga livre equipa automático, vagas cheias abre a tela
+  "Ataques Combinados" pedindo a troca. Só Modo Treino — Multiplayer
+  aguarda o Bloco 11 (DECISION-048)
 
 # BLOCKED
 
