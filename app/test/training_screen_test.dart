@@ -8,9 +8,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 SkillProgress _allElementsUnlocked() => SkillProgress(
-      defaultSkillTree,
-      unlockedNodeIds: ElementUnlocks.all.map((u) => u.id).toList(),
-    );
+  defaultSkillTree,
+  unlockedNodeIds: ElementUnlocks.all.map((u) => u.id).toList(),
+);
 
 void main() {
   setUp(() {
@@ -21,20 +21,23 @@ void main() {
     'selecting fire and wind then playing triggers Tempestade Ígnea and '
     'passes the turn to Jogador B',
     (WidgetTester tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: TrainingScreen(
-          initialMatch: TrainingMatch(
-            initialApA: const ApPool(max: 5, current: 3),
-            initialProgressA: _allElementsUnlocked(),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TrainingScreen(
+            initialMatch: TrainingMatch(
+              initialApA: const ApPool(max: 5, current: 3),
+              initialProgressA: _allElementsUnlocked(),
+            ),
           ),
         ),
-      ));
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
       expect(find.text('Vez de: Jogador A'), findsOneWidget);
 
-      await tester.tap(find.text('Escolher elementos'));
+      await tester.ensureVisible(find.text('Combinar elementos'));
+      await tester.tap(find.text('Combinar elementos'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
@@ -52,10 +55,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('Vez de: Jogador B'), findsOneWidget);
-      expect(
-        find.text('Última combinação: Tempestade Ígnea'),
-        findsOneWidget,
-      );
+      expect(find.text('Última combinação: Tempestade Ígnea'), findsOneWidget);
       expect(find.text('Descobertas: 1/3'), findsOneWidget);
       expect(find.textContaining('80/100 HP'), findsOneWidget);
       expect(
@@ -65,15 +65,18 @@ void main() {
     },
   );
 
-  testWidgets('the play button is disabled until an element is selected',
-      (WidgetTester tester) async {
+  testWidgets('the play button is disabled until an element is selected', (
+    WidgetTester tester,
+  ) async {
     SharedPreferences.setMockInitialValues({
       'training_unlocked_a': ['unlock_fire'],
       'training_unlocked_b': ['unlock_fire'],
     });
 
     await tester.pumpWidget(const GameApp());
-    await tester.pump(const Duration(milliseconds: 1)); // resolve o Future.delayed da checagem de atualização
+    await tester.pump(
+      const Duration(milliseconds: 1),
+    ); // resolve o Future.delayed da checagem de atualização
 
     await tester.tap(find.text('MODO TREINO'));
     await tester.pump();
@@ -95,7 +98,9 @@ void main() {
       });
 
       await tester.pumpWidget(const GameApp());
-      await tester.pump(const Duration(milliseconds: 1)); // resolve o Future.delayed da checagem de atualização
+      await tester.pump(
+        const Duration(milliseconds: 1),
+      ); // resolve o Future.delayed da checagem de atualização
 
       await tester.tap(find.text('MODO TREINO'));
       await tester.pump();
@@ -117,7 +122,8 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      await tester.tap(find.text('Escolher elementos'));
+      await tester.ensureVisible(find.text('Combinar elementos'));
+      await tester.tap(find.text('Combinar elementos'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
@@ -132,11 +138,11 @@ void main() {
       await tester.tap(find.text('Jogar'));
       await tester.pump();
 
+      expect(find.text('Efeitos aplicados: Queimadura'), findsOneWidget);
       expect(
-        find.text('Efeitos aplicados: Queimadura'),
+        find.text('🔥'),
         findsOneWidget,
-      );
-      expect(find.text('🔥'), findsOneWidget); // badge de Queimadura em Jogador B
+      ); // badge de Queimadura em Jogador B
     },
   );
 
@@ -145,8 +151,14 @@ void main() {
     'the play form',
     (WidgetTester tester) async {
       final match = TrainingMatch(
-        initialProgressA: SkillProgress(defaultSkillTree, unlockedNodeIds: ['unlock_fire']),
-        initialProgressB: SkillProgress(defaultSkillTree, unlockedNodeIds: ['unlock_ice']),
+        initialProgressA: SkillProgress(
+          defaultSkillTree,
+          unlockedNodeIds: ['unlock_fire'],
+        ),
+        initialProgressB: SkillProgress(
+          defaultSkillTree,
+          unlockedNodeIds: ['unlock_ice'],
+        ),
       );
       // 5 basic damage per hit (single element, always free) — 20 hits
       // defeat 100 HP.
@@ -171,8 +183,14 @@ void main() {
 
   testWidgets('Nova partida starts a fresh match', (WidgetTester tester) async {
     final match = TrainingMatch(
-      initialProgressA: SkillProgress(defaultSkillTree, unlockedNodeIds: ['unlock_fire']),
-      initialProgressB: SkillProgress(defaultSkillTree, unlockedNodeIds: ['unlock_ice']),
+      initialProgressA: SkillProgress(
+        defaultSkillTree,
+        unlockedNodeIds: ['unlock_fire'],
+      ),
+      initialProgressB: SkillProgress(
+        defaultSkillTree,
+        unlockedNodeIds: ['unlock_ice'],
+      ),
     );
     for (var i = 0; i < 19; i++) {
       match.playElementIds(['fire']);
@@ -222,20 +240,23 @@ void main() {
   testWidgets(
     'shows a friendly message when a combo is attempted without enough AP',
     (WidgetTester tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: TrainingScreen(
-          initialMatch: TrainingMatch(
-            initialProgressA: SkillProgress(
-              defaultSkillTree,
-              unlockedNodeIds: ['unlock_fire', 'unlock_wind'],
-            ),
-          ), // AP começa em 0
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TrainingScreen(
+            initialMatch: TrainingMatch(
+              initialProgressA: SkillProgress(
+                defaultSkillTree,
+                unlockedNodeIds: ['unlock_fire', 'unlock_wind'],
+              ),
+            ), // AP começa em 0
+          ),
         ),
-      ));
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      await tester.tap(find.text('Escolher elementos'));
+      await tester.ensureVisible(find.text('Combinar elementos'));
+      await tester.tap(find.text('Combinar elementos'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
@@ -252,8 +273,14 @@ void main() {
       await tester.tap(find.text('Jogar'));
       await tester.pump();
 
-      expect(find.text('AP insuficiente para essa combinação.'), findsOneWidget);
-      expect(find.text('Vez de: Jogador A'), findsOneWidget); // turno não passou
+      expect(
+        find.text('AP insuficiente para essa combinação.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Vez de: Jogador A'),
+        findsOneWidget,
+      ); // turno não passou
     },
   );
 
@@ -291,20 +318,23 @@ void main() {
 
   testWidgets('locked elements appear with a lock icon and are not '
       'selectable', (WidgetTester tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: TrainingScreen(
-        initialMatch: TrainingMatch(
-          initialProgressA: SkillProgress(
-            defaultSkillTree,
-            unlockedNodeIds: ['unlock_fire'],
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TrainingScreen(
+          initialMatch: TrainingMatch(
+            initialProgressA: SkillProgress(
+              defaultSkillTree,
+              unlockedNodeIds: ['unlock_fire'],
+            ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    await tester.tap(find.text('Escolher elementos'));
+    await tester.ensureVisible(find.text('Combinar elementos'));
+    await tester.tap(find.text('Combinar elementos'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
@@ -316,22 +346,25 @@ void main() {
     'rejects replaying a discovered-but-unequipped combination with a '
     'friendly message',
     (WidgetTester tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: TrainingScreen(
-          initialMatch: TrainingMatch(
-            initialApA: const ApPool(max: 5, current: 5),
-            initialProgressA: _allElementsUnlocked(),
-            initialLoadoutA: AttackLoadout(
-              unlockedCombinationIds: const {'ignited_storm'},
-              equippedCombinationIds: const [], // desbloqueado, não equipado
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TrainingScreen(
+            initialMatch: TrainingMatch(
+              initialApA: const ApPool(max: 5, current: 5),
+              initialProgressA: _allElementsUnlocked(),
+              initialLoadoutA: AttackLoadout(
+                unlockedCombinationIds: const {'ignited_storm'},
+                equippedCombinationIds: const [], // desbloqueado, não equipado
+              ),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      await tester.tap(find.text('Escolher elementos'));
+      await tester.ensureVisible(find.text('Combinar elementos'));
+      await tester.tap(find.text('Combinar elementos'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
@@ -355,7 +388,10 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.text('Vez de: Jogador A'), findsOneWidget); // turno não passou
+      expect(
+        find.text('Vez de: Jogador A'),
+        findsOneWidget,
+      ); // turno não passou
     },
   );
 
@@ -374,30 +410,33 @@ void main() {
       // que este teste verifica é só a navegação (TrainingScreen abre
       // AttacksScreen sozinha) — o conteúdo exato do seletor de troca
       // já é coberto por `attacks_screen_test.dart` (Task 5).
-      await tester.pumpWidget(MaterialApp(
-        home: TrainingScreen(
-          initialMatch: TrainingMatch(
-            initialApA: const ApPool(max: 5, current: 5),
-            initialProgressA: _allElementsUnlocked(),
-            initialLoadoutA: AttackLoadout(
-              unlockedCombinationIds: const {
-                'electrified_field',
-                'fake_a',
-                'fake_b',
-              },
-              equippedCombinationIds: const [
-                'electrified_field',
-                'fake_a',
-                'fake_b',
-              ],
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TrainingScreen(
+            initialMatch: TrainingMatch(
+              initialApA: const ApPool(max: 5, current: 5),
+              initialProgressA: _allElementsUnlocked(),
+              initialLoadoutA: AttackLoadout(
+                unlockedCombinationIds: const {
+                  'electrified_field',
+                  'fake_a',
+                  'fake_b',
+                },
+                equippedCombinationIds: const [
+                  'electrified_field',
+                  'fake_a',
+                  'fake_b',
+                ],
+              ),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      await tester.tap(find.text('Escolher elementos'));
+      await tester.ensureVisible(find.text('Combinar elementos'));
+      await tester.tap(find.text('Combinar elementos'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 

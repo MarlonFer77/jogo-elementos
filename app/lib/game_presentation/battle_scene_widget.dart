@@ -11,9 +11,14 @@ import 'battle_scene_game.dart';
 /// vez por instância deste widget e recebe [view] via `updateView` a cada
 /// rebuild.
 class BattleSceneWidget extends StatefulWidget {
-  const BattleSceneWidget({super.key, required this.view});
+  const BattleSceneWidget({
+    super.key,
+    required this.view,
+    this.onAttackComplete,
+  });
 
   final BattleSceneView view;
+  final VoidCallback? onAttackComplete;
 
   @override
   State<BattleSceneWidget> createState() => _BattleSceneWidgetState();
@@ -25,6 +30,7 @@ class _BattleSceneWidgetState extends State<BattleSceneWidget> {
   @override
   void initState() {
     super.initState();
+    _game.onAttackComplete = () => widget.onAttackComplete?.call();
     _game.updateView(widget.view);
   }
 

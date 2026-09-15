@@ -1,5 +1,41 @@
 # DECISIONS.md
 
+## DECISION-049
+Data: 2026-09-15
+Decisão: Bloco 2d — ataques equipados durante a batalha do Treino,
+aprovado pelo usuário após apresentação do escopo. TrainingMatch expõe
+ataques do jogador da vez, disponibilidade e playEquippedAttack(id).
+A execução resolve os elementos do catálogo e usa playElementIds,
+preservando AP, mutações, dano, status, descobertas e progressão existentes.
+Rejeita partida encerrada, ID inexistente, ataque não equipado, elemento
+bloqueado e AP insuficiente antes de alterar o estado.
+
+EquippedAttackPanel mostra três slots, custo, elementos, descrição na
+seleção e confirmação. Slots vazios convidam à descoberta; ataques
+indisponíveis permitem consultar detalhes, mas não executar. TrainingScreen
+mantém básicos gratuitos e o seletor de combinação livre. O AP informado
+para agir inclui +1 da regeneração já feita por TurnEngine, limitado ao
+máximo, evitando divergência entre o botão e a regra de execução.
+
+AttackSequencePlayer notifica conclusão uma única vez; BattleSceneGame e
+BattleSceneWidget repassam callback opcional. Treino bloqueia comandos até
+essa conclusão e produz AttackEvent também para básicos. Novas partidas
+limpam seleção e feedback antigo. O multiplayer continua usando os mesmos
+componentes sem exigir callback nem introduzir loadout apenas no cliente.
+Não houve mudança no Battle Engine, backend, esquema de persistência ou
+atualização Android. Ajustes pequenos de quebra de texto no HUD e nos
+botões compartilhados corrigem overflow detectado em tela de 360 px.
+
+Verificação: suíte completa inicial do app com 217 testes passou;
+posteriormente, os dois novos testes de tela e 30 testes de regressão de
+Treino, HUD, botões e Multiplayer passaram após o ajuste de layout.
+Battle Engine: 213 testes passaram. Backend: npm test passou.
+Testes novos cobrem execução, AP com regeneração, toque duplicado,
+animação real, troca dos slots, equipamento persistido e ações inválidas.
+Validação da interface automatizada; não foi realizada sessão manual no
+Android nem publicação de APK neste bloco.
+
+
 Somente decisões arquiteturais ou de design relevantes. Não é histórico de commits.
 
 ## DECISION-001

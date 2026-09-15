@@ -6,7 +6,14 @@ import 'battle_character_component.dart';
 import 'element_visuals.dart';
 import 'sfx_player.dart';
 
-enum _AttackStep { preparation, elementalEffect, impact, damage, stateApplied, done }
+enum _AttackStep {
+  preparation,
+  elementalEffect,
+  impact,
+  damage,
+  stateApplied,
+  done,
+}
 
 const _preparationDuration = 0.15;
 const _elementalEffectDuration = 0.2;
@@ -27,10 +34,13 @@ class AttackSequencePlayer extends Component {
     required this.target,
     required Vector2 attackerPosition,
     required Vector2 targetPosition,
-  })  : _attackerPosition = attackerPosition,
-        _targetPosition = targetPosition;
+    this.onComplete,
+  }) : _attackerPosition = attackerPosition,
+       _targetPosition = targetPosition;
 
   final AttackEvent event;
+  final VoidCallback? onComplete;
+  bool _completionReported = false;
   final BattleCharacterComponent attacker;
   final BattleCharacterComponent target;
   final Vector2 _attackerPosition;
@@ -106,8 +116,10 @@ class AttackSequencePlayer extends Component {
       }
     }
 
-    if (_step == _AttackStep.done && parent != null) {
-      removeFromParent();
+    if (_step == _AttackStep.done && !_completionReported) {
+      _completionReported = true;
+      onComplete?.call();
+      if (parent != null) removeFromParent();
     }
   }
 
@@ -135,11 +147,14 @@ class AttackSequencePlayer extends Component {
     final progress = (_stepElapsed / _stepDuration).clamp(0.0, 1.0);
     final travel = _step == _AttackStep.impact ? progress : 0.0;
     final centerX =
-        _attackerPosition.x + (_targetPosition.x - _attackerPosition.x) * travel;
+        _attackerPosition.x +
+        (_targetPosition.x - _attackerPosition.x) * travel;
     final centerY =
-        _attackerPosition.y + (_targetPosition.y - _attackerPosition.y) * travel;
-    final scale =
-        _step == _AttackStep.elementalEffect ? progress.clamp(0.2, 1.0) : 1.0;
+        _attackerPosition.y +
+        (_targetPosition.y - _attackerPosition.y) * travel;
+    final scale = _step == _AttackStep.elementalEffect
+        ? progress.clamp(0.2, 1.0)
+        : 1.0;
 
     final count = event.elementIds.length;
     const spacing = 30.0;
@@ -155,8 +170,12 @@ class AttackSequencePlayer extends Component {
         radius,
         Paint()..color = elementColor(elementId),
       );
-      _drawText(canvas, elementSymbol(elementId), Offset(x, centerY),
-          fontSize: 18 * scale);
+      _drawText(
+        canvas,
+        elementSymbol(elementId),
+        Offset(x, centerY),
+        fontSize: 18 * scale,
+      );
     }
   }
 

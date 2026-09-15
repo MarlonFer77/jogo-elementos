@@ -21,6 +21,7 @@ bool didTakeDamage({required int? previousHp, required int currentHp}) {
 /// pura — nenhuma regra de batalha mora aqui; o estado a renderizar vem de
 /// fora via [updateView].
 class BattleSceneGame extends FlameGame {
+  void Function()? onAttackComplete;
   BattleCharacterComponent? _left;
   BattleCharacterComponent? _right;
 
@@ -87,16 +88,28 @@ class BattleSceneGame extends FlameGame {
     if (attack != null && attack.sequenceId != _lastPlayedSequenceId) {
       _lastPlayedSequenceId = attack.sequenceId;
       _playAttackSequence(attack);
-    } else if (didTakeDamage(previousHp: _lastLeftHp, currentHp: view.leftCurrentHp) ||
-        didTakeDamage(previousHp: _lastRightHp, currentHp: view.rightCurrentHp)) {
+    } else if (didTakeDamage(
+          previousHp: _lastLeftHp,
+          currentHp: view.leftCurrentHp,
+        ) ||
+        didTakeDamage(
+          previousHp: _lastRightHp,
+          currentHp: view.rightCurrentHp,
+        )) {
       // Fallback defensivo: HP caiu mas nenhum AttackEvent chegou (não
       // deveria acontecer — só combinação causa dano, e toda combinação
       // vira AttackEvent nas telas). Mantém pelo menos o flash simples de
       // antes em vez de dano silencioso.
-      if (didTakeDamage(previousHp: _lastLeftHp, currentHp: view.leftCurrentHp)) {
+      if (didTakeDamage(
+        previousHp: _lastLeftHp,
+        currentHp: view.leftCurrentHp,
+      )) {
         left.playHitEffect();
       }
-      if (didTakeDamage(previousHp: _lastRightHp, currentHp: view.rightCurrentHp)) {
+      if (didTakeDamage(
+        previousHp: _lastRightHp,
+        currentHp: view.rightCurrentHp,
+      )) {
         right.playHitEffect();
       }
     }
@@ -118,6 +131,7 @@ class BattleSceneGame extends FlameGame {
       target: target,
       attackerPosition: attacker.position - Vector2(0, 40),
       targetPosition: target.position - Vector2(0, 40),
+      onComplete: () => onAttackComplete?.call(),
     );
     _activeSequence = sequence;
     add(sequence);

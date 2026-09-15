@@ -65,14 +65,16 @@ class _PixelMenuButtonState extends State<PixelMenuButton> {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                widget.label,
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  letterSpacing: 1,
-                  color: Color(0xFF2B2B2B),
+              Flexible(
+                child: Text(
+                  widget.label,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    letterSpacing: 1,
+                    color: Color(0xFF2B2B2B),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),

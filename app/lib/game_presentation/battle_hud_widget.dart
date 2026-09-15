@@ -96,23 +96,42 @@ class _HudPanel extends StatelessWidget {
   Widget _buildNameRow() {
     final arrow = Text(
       alignEnd ? '◀' : '▶',
-      style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFB8860B)),
+      style: const TextStyle(
+        fontWeight: FontWeight.bold,
+        color: Color(0xFFB8860B),
+      ),
     );
-    final nameText = Text(
-      label,
-      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF20242B)),
+    final nameText = Flexible(
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
+          color: Color(0xFF20242B),
+        ),
+      ),
     );
     final children = alignEnd
-        ? [nameText, if (isActive) ...[const SizedBox(width: 4), arrow]]
-        : [if (isActive) ...[arrow, const SizedBox(width: 4)], nameText];
+        ? [
+            nameText,
+            if (isActive) ...[const SizedBox(width: 4), arrow],
+          ]
+        : [
+            if (isActive) ...[arrow, const SizedBox(width: 4)],
+            nameText,
+          ];
     return Row(mainAxisSize: MainAxisSize.min, children: children);
   }
 
   @override
   Widget build(BuildContext context) {
     final fraction = maxHp == 0 ? 0.0 : (currentHp / maxHp).clamp(0.0, 1.0);
-    final crossAlign = alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start;
-    final barAlignment = alignEnd ? Alignment.centerRight : Alignment.centerLeft;
+    final crossAlign = alignEnd
+        ? CrossAxisAlignment.end
+        : CrossAxisAlignment.start;
+    final barAlignment = alignEnd
+        ? Alignment.centerRight
+        : Alignment.centerLeft;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -173,8 +192,13 @@ class _HudPanel extends StatelessWidget {
                   height: 12,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: i < ap ? const Color(0xFF7C4DFF) : const Color(0xFFE0E0E0),
-                    border: Border.all(color: const Color(0xFF20242B), width: 1),
+                    color: i < ap
+                        ? const Color(0xFF7C4DFF)
+                        : const Color(0xFFE0E0E0),
+                    border: Border.all(
+                      color: const Color(0xFF20242B),
+                      width: 1,
+                    ),
                   ),
                 ),
             ],
@@ -201,7 +225,11 @@ class _HudPanel extends StatelessWidget {
 }
 
 class _EffectBadge extends StatelessWidget {
-  const _EffectBadge({required this.icon, required this.color, this.remainingTurns});
+  const _EffectBadge({
+    required this.icon,
+    required this.color,
+    this.remainingTurns,
+  });
 
   final String icon;
   final Color color;
@@ -229,7 +257,10 @@ class _EffectBadge extends StatelessWidget {
               child: Container(
                 width: 10,
                 height: 10,
-                decoration: const BoxDecoration(color: Color(0xFF20242B), shape: BoxShape.circle),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF20242B),
+                  shape: BoxShape.circle,
+                ),
                 alignment: Alignment.center,
                 child: Text(
                   '$remainingTurns',

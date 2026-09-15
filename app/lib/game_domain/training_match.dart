@@ -1,6 +1,7 @@
 import 'package:battle_engine/battle_engine.dart';
 
 import 'effect_badge_view.dart';
+import 'attack_catalog.dart';
 import 'skill_tree_catalog.dart';
 
 /// A local, offline 1v1 match where the same device controls both sides —
@@ -93,10 +94,7 @@ class TrainingMatch {
       playerB: _playerB,
       playerAMaxHp: _baseMaxHp + _progressA.grantedMaxHpBonus,
       playerBMaxHp: _baseMaxHp + _progressB.grantedMaxHpBonus,
-      ap: {
-        _playerA: ?initialApA,
-        _playerB: ?initialApB,
-      },
+      ap: {_playerA: ?initialApA, _playerB: ?initialApB},
     );
   }
 
@@ -116,9 +114,17 @@ class TrainingMatch {
     required List<String> equippedAttackIdsB,
   }) {
     return TrainingMatch(
-      initialProgressA: SkillProgress(defaultSkillTree, unlockedNodeIds: unlockedNodeIdsA),
-      initialProgressB: SkillProgress(defaultSkillTree, unlockedNodeIds: unlockedNodeIdsB),
-      initialDiscoveryBook: DiscoveryBook(discoveredCombinationIds: discoveredCombinationIds.toSet()),
+      initialProgressA: SkillProgress(
+        defaultSkillTree,
+        unlockedNodeIds: unlockedNodeIdsA,
+      ),
+      initialProgressB: SkillProgress(
+        defaultSkillTree,
+        unlockedNodeIds: unlockedNodeIdsB,
+      ),
+      initialDiscoveryBook: DiscoveryBook(
+        discoveredCombinationIds: discoveredCombinationIds.toSet(),
+      ),
       initialTurnsPlayedA: turnsPlayedA,
       initialTurnsPlayedB: turnsPlayedB,
       initialLoadoutA: AttackLoadout(
@@ -150,6 +156,49 @@ class TrainingMatch {
 
   int get turnsPlayed => _turnsPlayed;
 
+  int get availableApForAction =>
+      _state.apOf(_currentCombatant).withRegenerated().current;
+
+  List<AttackOption> get equippedAttacksForCurrentPlayer {
+    final catalog = allAttackOptions(
+      unlockedIds: _currentLoadout.unlockedCombinationIds.toList(),
+      equippedIds: _currentLoadout.equippedCombinationIds,
+    );
+    return [
+      for (final id in _currentLoadout.equippedCombinationIds)
+        for (final attack in catalog)
+          if (attack.id == id) attack,
+    ];
+  }
+
+  String? attackUnavailableReason(String id) {
+    if (isOver) return 'A partida terminou.';
+    final attacks = allAttackOptions(
+      unlockedIds: _currentLoadout.unlockedCombinationIds.toList(),
+      equippedIds: _currentLoadout.equippedCombinationIds,
+    ).where((a) => a.id == id);
+    if (attacks.isEmpty) return 'Ataque inexistente.';
+    final attack = attacks.first;
+    if (!attack.unlocked || !attack.equipped) return 'Ataque não equipado.';
+    if (attack.elementIds.any(
+      (id) => !availableElementIdsForCurrentPlayer.contains(id),
+    )) {
+      return 'Elemento necessário bloqueado.';
+    }
+    final missing = attack.apCost - availableApForAction;
+    if (missing > 0) return 'Falta${missing == 1 ? '' : 'm'} $missing AP.';
+    return null;
+  }
+
+  void playEquippedAttack(String id) {
+    final reason = attackUnavailableReason(id);
+    if (reason != null) throw StateError(reason);
+    final attack = equippedAttacksForCurrentPlayer.firstWhere(
+      (a) => a.id == id,
+    );
+    playElementIds(attack.elementIds);
+  }
+
   String get currentTurnName => _state.currentTurn.name;
 
   List<String> get activeFieldEffectNames =>
@@ -171,16 +220,25 @@ class TrainingMatch {
 
   List<EffectBadgeView> get playerAActiveStatuses => _state
       .statusesOf(_playerA)
-      .map((s) => EffectBadgeView(id: s.effect.id, remainingTurns: s.turnsRemaining))
+      .map(
+        (s) =>
+            EffectBadgeView(id: s.effect.id, remainingTurns: s.turnsRemaining),
+      )
       .toList();
 
   List<EffectBadgeView> get playerBActiveStatuses => _state
       .statusesOf(_playerB)
-      .map((s) => EffectBadgeView(id: s.effect.id, remainingTurns: s.turnsRemaining))
+      .map(
+        (s) =>
+            EffectBadgeView(id: s.effect.id, remainingTurns: s.turnsRemaining),
+      )
       .toList();
 
   List<EffectBadgeView> get activeFieldEffectBadges => _state.activeFieldEffects
-      .map((effect) => EffectBadgeView(id: effect.id, remainingTurns: effect.duration))
+      .map(
+        (effect) =>
+            EffectBadgeView(id: effect.id, remainingTurns: effect.duration),
+      )
       .toList();
 
   List<String> get unlockedNodeIdsForPlayerA => _progressA.unlockedNodeIds;
@@ -218,8 +276,7 @@ class TrainingMatch {
   SkillProgress get _currentProgress =>
       _isPlayerATurn ? _progressA : _progressB;
 
-  AttackLoadout get _currentLoadout =>
-      _isPlayerATurn ? _loadoutA : _loadoutB;
+  AttackLoadout get _currentLoadout => _isPlayerATurn ? _loadoutA : _loadoutB;
 
   Combatant get _currentCombatant => _isPlayerATurn ? _playerA : _playerB;
 
@@ -231,15 +288,16 @@ class TrainingMatch {
   /// Ids dos nós que o jogador da vez atual já desbloqueou — usado pela
   /// tela de Skill Tree visual (Bloco 7) pra saber o estado de cada nó da
   /// árvore inteira, não só os disponíveis agora.
-  List<String> get unlockedNodeIdsForCurrentPlayer => _currentProgress.unlockedNodeIds;
+  List<String> get unlockedNodeIdsForCurrentPlayer =>
+      _currentProgress.unlockedNodeIds;
 
   /// Names of the mutations/combination modifiers/HP bonuses the current
   /// player has already unlocked — shown so they can see their build
   /// taking shape.
   List<String> get unlockedGrantNamesForCurrentPlayer => [
-        ..._currentProgress.grantedMutations.map((m) => m.name),
-        ..._currentProgress.grantedCombinationModifiers.map((m) => m.name),
-      ];
+    ..._currentProgress.grantedMutations.map((m) => m.name),
+    ..._currentProgress.grantedCombinationModifiers.map((m) => m.name),
+  ];
 
   /// Element ids the player whose turn it currently is can play with —
   /// used by the element picker to know which chips are selectable
@@ -274,8 +332,10 @@ class TrainingMatch {
       _loadoutB.unlockedCombinationIds.toList();
 
   /// Ids das combinações que Jogador A/B têm equipadas agora (até 3).
-  List<String> get equippedAttackIdsForPlayerA => _loadoutA.equippedCombinationIds;
-  List<String> get equippedAttackIdsForPlayerB => _loadoutB.equippedCombinationIds;
+  List<String> get equippedAttackIdsForPlayerA =>
+      _loadoutA.equippedCombinationIds;
+  List<String> get equippedAttackIdsForPlayerB =>
+      _loadoutB.equippedCombinationIds;
 
   /// Substitui os ataques equipados de [forPlayerA] (`true` = Jogador
   /// A, `false` = Jogador B) — explícito, não "do jogador da vez",
@@ -314,7 +374,9 @@ class TrainingMatch {
     if (grant is! ElementUnlock) return null;
     if (_currentProgress.isUnlocked(nodeId)) return null;
     final requiredTurns = (_currentProgress.grantedElementIds.length - 1) * 10;
-    final cumulativeTurns = _isPlayerATurn ? _cumulativeTurnsA : _cumulativeTurnsB;
+    final cumulativeTurns = _isPlayerATurn
+        ? _cumulativeTurnsA
+        : _cumulativeTurnsB;
     final remaining = requiredTurns - cumulativeTurns;
     return remaining > 0 ? remaining : null;
   }
@@ -331,8 +393,11 @@ class TrainingMatch {
     final node = defaultSkillTree.nodeById(nodeId);
     final grant = node?.grants;
     if (grant is ElementUnlock && !_currentProgress.isUnlocked(nodeId)) {
-      final requiredTurns = (_currentProgress.grantedElementIds.length - 1) * 10;
-      final cumulativeTurns = _isPlayerATurn ? _cumulativeTurnsA : _cumulativeTurnsB;
+      final requiredTurns =
+          (_currentProgress.grantedElementIds.length - 1) * 10;
+      final cumulativeTurns = _isPlayerATurn
+          ? _cumulativeTurnsA
+          : _cumulativeTurnsB;
       if (cumulativeTurns < requiredTurns) {
         throw StateError(
           'Faltam ${requiredTurns - cumulativeTurns} turnos para '

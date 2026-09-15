@@ -9,6 +9,8 @@ class AttackOption {
   final String description;
   final bool unlocked;
   final bool equipped;
+  final List<String> elementIds;
+  final int apCost;
 
   const AttackOption({
     required this.id,
@@ -16,6 +18,8 @@ class AttackOption {
     required this.description,
     required this.unlocked,
     required this.equipped,
+    this.elementIds = const [],
+    this.apCost = 0,
   });
 }
 
@@ -28,12 +32,16 @@ List<AttackOption> allAttackOptions({
   required List<String> equippedIds,
 }) {
   return defaultCombinationBook.combinations
-      .map((combo) => AttackOption(
-            id: combo.resultId,
-            name: combo.resultName,
-            description: combo.description,
-            unlocked: unlockedIds.contains(combo.resultId),
-            equipped: equippedIds.contains(combo.resultId),
-          ))
+      .map(
+        (combo) => AttackOption(
+          id: combo.resultId,
+          name: combo.resultName,
+          description: combo.description,
+          unlocked: unlockedIds.contains(combo.resultId),
+          equipped: equippedIds.contains(combo.resultId),
+          elementIds: List.unmodifiable(combo.elements.map((e) => e.id)),
+          apCost: combo.elements.length == 2 ? 3 : 5,
+        ),
+      )
       .toList();
 }

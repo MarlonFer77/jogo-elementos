@@ -9,6 +9,7 @@ import '../game_domain/element_catalog.dart';
 import '../game_domain/training_match.dart';
 import '../game_domain/training_progress_store.dart';
 import '../game_presentation/battle_scene_widget.dart';
+import '../game_presentation/equipped_attack_panel.dart';
 import '../game_presentation/pixel_arena_background.dart';
 import '../game_presentation/pixel_content_panel.dart';
 import '../game_presentation/pixel_element_chip.dart';
@@ -33,7 +34,7 @@ import 'skill_tree_screen.dart';
 /// só acontece uma vez por slot, nunca de novo depois de salvo.
 class TrainingScreen extends StatefulWidget {
   const TrainingScreen({super.key, TrainingMatch? initialMatch})
-      : _initialMatch = initialMatch;
+    : _initialMatch = initialMatch;
 
   final TrainingMatch? _initialMatch;
 
@@ -59,6 +60,8 @@ class _TrainingScreenState extends State<TrainingScreen> {
   String? _error;
   String? _lastUnlockedAttackText;
   AttackEvent? _pendingAttack;
+  String? _selectedAttackId;
+  bool _executing = false;
 
   @override
   void initState() {
@@ -155,42 +158,61 @@ class _TrainingScreenState extends State<TrainingScreen> {
   }
 
   void _playTurn() {
+    if (_executing || _match.isOver) return;
     final wasPlayerATurn = _match.isPlayerATurn;
+    var succeeded = false;
     setState(() {
       _error = null;
       _lastUnlockedAttackText = null;
-      final playedElementIds = _selectedIds.toList();
+      final attackId = _selectedAttackId;
+      var playedElementIds = _selectedIds.toList();
       final hpABefore = _match.playerACurrentHp;
       final hpBBefore = _match.playerBCurrentHp;
       final discoveredCountBefore = _match.discoveredCombinationIds.length;
       try {
-        _match.playElementIds(playedElementIds);
+        if (attackId != null) {
+          final reason = _match.attackUnavailableReason(attackId);
+          if (reason != null) throw StateError(reason);
+          playedElementIds = _match.equippedAttacksForCurrentPlayer
+              .firstWhere((a) => a.id == attackId)
+              .elementIds;
+        }
+        if (attackId == null) {
+          _match.playElementIds(playedElementIds);
+        } else {
+          _match.playEquippedAttack(attackId);
+        }
+        succeeded = true;
+        _executing = true;
+        _selectedAttackId = null;
         _selectedIds.clear();
 
-        final triggered = _match.lastTriggeredCombinationName != null;
-        final appliedStatus = _match.lastAppliedStatusNames;
-        if (triggered || appliedStatus.isNotEmpty) {
-          final damage = wasPlayerATurn
-              ? hpBBefore - _match.playerBCurrentHp
-              : hpABefore - _match.playerACurrentHp;
-          _pendingAttack = AttackEvent(
-            sequenceId: _match.turnsPlayed,
-            attackerIsLeft: wasPlayerATurn,
-            elementIds: playedElementIds,
-            comboName: _match.lastTriggeredCombinationName,
-            damage: damage,
-            appliedStatusNames: appliedStatus,
-          );
-        }
+        final damage = wasPlayerATurn
+            ? hpBBefore - _match.playerBCurrentHp
+            : hpABefore - _match.playerACurrentHp;
+        _pendingAttack = AttackEvent(
+          sequenceId: _match.turnsPlayed,
+          attackerIsLeft: wasPlayerATurn,
+          elementIds: playedElementIds,
+          comboName: _match.lastTriggeredCombinationName,
+          damage: damage,
+          appliedStatusNames: _match.lastAppliedStatusNames,
+        );
         if (_match.discoveredCombinationIds.length != discoveredCountBefore) {
           unawaited(
-            _progressStore.saveDiscoveredCombinationIds(_match.discoveredCombinationIds),
+            _progressStore.saveDiscoveredCombinationIds(
+              _match.discoveredCombinationIds,
+            ),
           );
         }
         if (wasPlayerATurn) {
-          unawaited(_progressStore.saveTurnsPlayed('a', _match.cumulativeTurnsPlayedA));
+          unawaited(
+            _progressStore.saveTurnsPlayed('a', _match.cumulativeTurnsPlayedA),
+          );
         } else {
-          unawaited(_progressStore.saveTurnsPlayed('b', _match.cumulativeTurnsPlayedB));
+          unawaited(
+            _progressStore.saveTurnsPlayed('b', _match.cumulativeTurnsPlayedB),
+          );
         }
         if (_match.lastUnlockedAttackName != null) {
           final slot = wasPlayerATurn ? 'a' : 'b';
@@ -214,16 +236,18 @@ class _TrainingScreenState extends State<TrainingScreen> {
       } on ArgumentError {
         _error = 'Jogada inválida.';
       } on StateError catch (e) {
-        _error = e.message.contains('não está equipado')
-            ? e.message
-            : 'AP insuficiente para essa combinação.';
+        _error = e.message.contains('Not enough AP')
+            ? 'AP insuficiente para essa combinação.'
+            : e.message;
       }
     });
-    if (_match.lastUnlockedAttackNeededEquipChoice) {
-      unawaited(_openAttacksScreen(
-        forPlayerA: wasPlayerATurn,
-        highlightComboId: _match.lastUnlockedAttackId,
-      ));
+    if (succeeded && _match.lastUnlockedAttackNeededEquipChoice) {
+      unawaited(
+        _openAttacksScreen(
+          forPlayerA: wasPlayerATurn,
+          highlightComboId: _match.lastUnlockedAttackId,
+        ),
+      );
     }
   }
 
@@ -231,69 +255,87 @@ class _TrainingScreenState extends State<TrainingScreen> {
     setState(() {
       _match = _match.startNewBattleKeepingProgress();
       _selectedIds.clear();
+      _selectedAttackId = null;
+      _pendingAttack = null;
+      _lastUnlockedAttackText = null;
       _error = null;
     });
   }
 
   Future<void> _openSkillTree() async {
-    await Navigator.of(context).push(pixelSlideRoute((_) => SkillTreeScreen(
-      title: 'Habilidades de ${_match.currentTurnName}',
-      unlockedNodeIds: _match.unlockedNodeIdsForCurrentPlayer,
-      canUnlockNow: true,
-      extraLockedHint: (nodeId) {
-        final remaining = _match.turnsRemainingToUnlock(nodeId);
-        return remaining != null ? 'Faltam $remaining turnos.' : null;
-      },
-      onUnlock: (nodeId) async {
-        try {
-          _match.unlockSkillForCurrentPlayer(nodeId);
-          final slot = _match.isPlayerATurn ? 'a' : 'b';
-          final unlockedNodeIds = _match.isPlayerATurn
-              ? _match.unlockedNodeIdsForPlayerA
-              : _match.unlockedNodeIdsForPlayerB;
-          unawaited(_progressStore.saveUnlockedNodeIds(slot, unlockedNodeIds));
-          return null;
-        } on StateError catch (e) {
-          return e.message;
-        }
-      },
-    )));
-    setState(() {});
+    await Navigator.of(context).push(
+      pixelSlideRoute(
+        (_) => SkillTreeScreen(
+          title: 'Habilidades de ${_match.currentTurnName}',
+          unlockedNodeIds: _match.unlockedNodeIdsForCurrentPlayer,
+          canUnlockNow: true,
+          extraLockedHint: (nodeId) {
+            final remaining = _match.turnsRemainingToUnlock(nodeId);
+            return remaining != null ? 'Faltam $remaining turnos.' : null;
+          },
+          onUnlock: (nodeId) async {
+            try {
+              _match.unlockSkillForCurrentPlayer(nodeId);
+              final slot = _match.isPlayerATurn ? 'a' : 'b';
+              final unlockedNodeIds = _match.isPlayerATurn
+                  ? _match.unlockedNodeIdsForPlayerA
+                  : _match.unlockedNodeIdsForPlayerB;
+              unawaited(
+                _progressStore.saveUnlockedNodeIds(slot, unlockedNodeIds),
+              );
+              return null;
+            } on StateError catch (e) {
+              return e.message;
+            }
+          },
+        ),
+      ),
+    );
+    if (mounted) setState(() {});
   }
 
   Future<void> _openAttacksScreen({
     required bool forPlayerA,
     String? highlightComboId,
   }) async {
+    setState(() => _selectedAttackId = null);
     final unlockedIds = forPlayerA
         ? _match.unlockedAttackIdsForPlayerA
         : _match.unlockedAttackIdsForPlayerB;
     final equippedIds = forPlayerA
         ? _match.equippedAttackIdsForPlayerA
         : _match.equippedAttackIdsForPlayerB;
-    await Navigator.of(context).push(pixelSlideRoute((_) => AttacksScreen(
-      attacks: allAttackOptions(unlockedIds: unlockedIds, equippedIds: equippedIds),
-      highlightComboId: highlightComboId,
-      onSetEquipped: (ids) async {
-        try {
-          _match.setEquippedAttacks(forPlayerA: forPlayerA, combinationIds: ids);
-          final slot = forPlayerA ? 'a' : 'b';
-          unawaited(_progressStore.saveEquippedAttackIds(slot, ids));
-          return null;
-        } on ArgumentError catch (e) {
-          return e.message;
-        }
-      },
-    )));
-    setState(() {});
+    await Navigator.of(context).push(
+      pixelSlideRoute(
+        (_) => AttacksScreen(
+          attacks: allAttackOptions(
+            unlockedIds: unlockedIds,
+            equippedIds: equippedIds,
+          ),
+          highlightComboId: highlightComboId,
+          onSetEquipped: (ids) async {
+            try {
+              _match.setEquippedAttacks(
+                forPlayerA: forPlayerA,
+                combinationIds: ids,
+              );
+              final slot = forPlayerA ? 'a' : 'b';
+              unawaited(_progressStore.saveEquippedAttackIds(slot, ids));
+              return null;
+            } on ArgumentError catch (e) {
+              return e.message;
+            }
+          },
+        ),
+      ),
+    );
+    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (_pendingOnboardingSlot != null) {
       return ElementStarterScreen(
@@ -315,12 +357,15 @@ class _TrainingScreenState extends State<TrainingScreen> {
               IconButton(
                 icon: const Icon(Icons.auto_awesome),
                 tooltip: 'Habilidades',
-                onPressed: _openSkillTree,
+                onPressed: _executing || _match.isOver ? null : _openSkillTree,
               ),
               IconButton(
                 icon: const Icon(Icons.flash_on),
                 tooltip: 'Ataques Combinados',
-                onPressed: () => _openAttacksScreen(forPlayerA: _match.isPlayerATurn),
+                onPressed: _executing
+                    ? null
+                    : () =>
+                          _openAttacksScreen(forPlayerA: _match.isPlayerATurn),
               ),
             ],
           ),
@@ -331,6 +376,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   BattleSceneWidget(
+                    onAttackComplete: () {
+                      if (mounted) setState(() => _executing = false);
+                    },
                     view: BattleSceneView(
                       leftCurrentHp: _match.playerACurrentHp,
                       leftMaxHp: _match.playerAMaxHp,
@@ -381,7 +429,13 @@ class _TrainingScreenState extends State<TrainingScreen> {
                   if (_match.isOver)
                     ..._buildGameOver(context)
                   else
-                    ..._buildPlayForm(context),
+                    AbsorbPointer(
+                      absorbing: _executing,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: _buildPlayForm(context),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -400,7 +454,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
       const SizedBox(height: 16),
       PixelMenuButton(
         label: 'Nova partida',
-        onPressed: _startNewMatch,
+        onPressed: _executing ? null : _startNewMatch,
       ),
     ];
   }
@@ -409,24 +463,62 @@ class _TrainingScreenState extends State<TrainingScreen> {
     final elements = const ElementCatalog().all();
 
     return [
+      if (_executing) const Text('Ataque em execução…'),
+      Text('AP para agir: ${_match.availableApForAction} (inclui +1 do turno)'),
+      const SizedBox(height: 8),
+      const Text('ATAQUE BÁSICO · 0 AP'),
+      Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          for (final element in elements)
+            if (_match.availableElementIdsForCurrentPlayer.contains(element.id))
+              PixelElementChip(
+                label: element.name,
+                selected:
+                    _selectedAttackId == null &&
+                    _selectedIds.length == 1 &&
+                    _selectedIds.contains(element.id),
+                onTap: _executing
+                    ? null
+                    : () => setState(() {
+                        _selectedAttackId = null;
+                        _selectedIds
+                          ..clear()
+                          ..add(element.id);
+                        _error = null;
+                      }),
+              ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      EquippedAttackPanel(
+        attacks: _match.equippedAttacksForCurrentPlayer,
+        selectedId: _selectedAttackId,
+        unavailableReason: _match.attackUnavailableReason,
+        onSelect: (id) => setState(() {
+          _selectedAttackId = id;
+          _selectedIds.clear();
+          _error = null;
+        }),
+        onExecute: _playTurn,
+      ),
+      const SizedBox(height: 12),
       Text(_selectedElementsSummary(elements)),
       const SizedBox(height: 8),
       PixelMenuButton(
-        label: 'Escolher elementos',
+        label: 'Combinar elementos',
         onPressed: () => _openElementPicker(elements),
       ),
       const SizedBox(height: 16),
       PixelMenuButton(
         label: 'Jogar',
-        onPressed: _selectedIds.isEmpty ? null : _playTurn,
+        onPressed: _executing || _selectedIds.isEmpty ? null : _playTurn,
       ),
       if (_error != null)
         Padding(
           padding: const EdgeInsets.only(top: 8),
-          child: Text(
-            _error!,
-            style: const TextStyle(color: Colors.red),
-          ),
+          child: Text(_error!, style: const TextStyle(color: Colors.red)),
         ),
     ];
   }
@@ -438,6 +530,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
   }
 
   void _openElementPicker(List<ElementOption> elements) {
+    setState(() => _selectedAttackId = null);
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,

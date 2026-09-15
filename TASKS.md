@@ -4,12 +4,12 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Nenhuma — todas as tarefas definidas até agora foram concluídas. Aguardando
-a próxima tarefa.
+Nenhuma — Bloco 2d concluído. Próxima prioridade: polimento do combate.
 
 # NEXT
 
-Nenhuma
+Polimento do combate — feedback, transições, impacto e clareza das ações,
+conforme diretriz mestra de evolução aprovada pelo usuário.
 
 # BACKLOG
 
@@ -63,9 +63,6 @@ uma tarefa nova terminar revelando um gap novo.
 - Ícone dedicado por combinação futura sem entrada em
   `status_visuals.dart` (Bloco 9, DECISION-044) — cai no fallback (✨)
   até alguém adicionar
-- Tela de batalha estilo Pokémon (básicos liberados + até 3 ataques
-  combinados equipados) (Bloco 2d, decidido junto do Bloco 2a, depende
-  do 2c — DECISION-048 —, último da sequência, ainda não iniciado)
 
 **Multiplayer (cliente)**
 - A modal de Habilidades não escuta o polling por trás — se a vez mudar
@@ -97,6 +94,13 @@ uma tarefa nova terminar revelando um gap novo.
   automática — uma nova versão do jogo exige gerar e reenviar um APK novo
 
 # DONE
+
+- Bloco 2d: painel com três slots de ataques equipados no Treino, seleção,
+  descrição, custo e motivo de indisponibilidade; execução por ID validada
+  em TrainingMatch e encaminhada ao motor existente. Básicos e combinação
+  livre preservados; AP disponível inclui a regeneração existente. Bloqueio
+  contra toque duplo acompanha a conclusão real da animação. Corrigidos
+  estouros de texto no HUD/botões em 360 px. Ver DECISION-049.
 
 - Definição da arquitetura mínima e criação dos 4 arquivos de contexto (CLAUDE.md,
   ARCHITECTURE.md, TASKS.md, DECISIONS.md)
