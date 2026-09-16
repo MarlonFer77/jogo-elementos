@@ -5,6 +5,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// slot — Bloco 2b) entre partidas e entre execuções do app —
 /// `shared_preferences`, local ao aparelho, sem rede, sem custo.
 class TrainingProgressStore {
+  Future<List<String>?> loadEquippedElementIds(String slot) async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.get('training_elements_equipped_$slot');
+    return value is List ? value.whereType<String>().toList() : null;
+  }
+
+  Future<void> saveEquippedElementIds(String slot, List<String> ids) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('training_elements_equipped_$slot', ids);
+  }
+
   static const _unlockedKeyPrefix = 'training_unlocked_';
   static const _discoveredKey = 'training_discovered';
   static const _turnsPlayedKeyPrefix = 'training_turns_played_';
@@ -16,7 +27,10 @@ class TrainingProgressStore {
     return prefs.getStringList('$_unlockedKeyPrefix$slot') ?? const [];
   }
 
-  Future<void> saveUnlockedNodeIds(String slot, List<String> unlockedNodeIds) async {
+  Future<void> saveUnlockedNodeIds(
+    String slot,
+    List<String> unlockedNodeIds,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('$_unlockedKeyPrefix$slot', unlockedNodeIds);
   }
@@ -26,7 +40,9 @@ class TrainingProgressStore {
     return prefs.getStringList(_discoveredKey) ?? const [];
   }
 
-  Future<void> saveDiscoveredCombinationIds(List<String> discoveredCombinationIds) async {
+  Future<void> saveDiscoveredCombinationIds(
+    List<String> discoveredCombinationIds,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_discoveredKey, discoveredCombinationIds);
   }

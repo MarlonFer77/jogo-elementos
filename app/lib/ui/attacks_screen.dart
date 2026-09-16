@@ -19,11 +19,13 @@ class AttacksScreen extends StatefulWidget {
     required this.attacks,
     required this.onSetEquipped,
     this.highlightComboId,
+    this.asSheet = false,
   });
 
   final List<AttackOption> attacks;
   final Future<String?> Function(List<String> combinationIds) onSetEquipped;
   final String? highlightComboId;
+  final bool asSheet;
 
   @override
   State<AttacksScreen> createState() => _AttacksScreenState();
@@ -63,7 +65,17 @@ class _AttacksScreenState extends State<AttacksScreen> {
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
-            title: const PixelOutlinedText('Ataques Combinados', fontSize: 20),
+            leading: widget.asSheet
+                ? IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: 'Fechar habilidades',
+                    onPressed: () => Navigator.pop(context),
+                  )
+                : null,
+            title: PixelOutlinedText(
+              widget.asSheet ? 'Habilidades · 3 slots' : 'Ataques Combinados',
+              fontSize: 18,
+            ),
           ),
           body: Padding(
             padding: const EdgeInsets.all(16),
@@ -165,7 +177,9 @@ class _AttacksScreenState extends State<AttacksScreen> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: PixelMenuButton(
-                      label: _attacks.firstWhere((a) => a.id == equippedId).name,
+                      label: _attacks
+                          .firstWhere((a) => a.id == equippedId)
+                          .name,
                       onPressed: () {
                         Navigator.of(sheetContext).pop();
                         _setEquipped([
@@ -190,7 +204,9 @@ class _AttacksScreenState extends State<AttacksScreen> {
     final error = await widget.onSetEquipped(ids);
     if (error != null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
       return;
     }
     if (!mounted) return;
@@ -203,6 +219,8 @@ class _AttacksScreenState extends State<AttacksScreen> {
             description: attack.description,
             unlocked: attack.unlocked,
             equipped: ids.contains(attack.id),
+            elementIds: attack.elementIds,
+            apCost: attack.apCost,
           ),
       ];
     });
@@ -222,24 +240,32 @@ class _AttackTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: attack.equipped ? const Color(0xFFF4C94A) : const Color(0xFFF4F4E4),
+          color: attack.equipped
+              ? const Color(0xFFF4C94A)
+              : const Color(0xFFF4F4E4),
           border: Border.all(color: const Color(0xFF2B2B2B), width: 3),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              attack.name,
-              style: const TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 14,
-                color: Color(0xFF2B2B2B),
+            Flexible(
+              child: Text(
+                attack.name,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 14,
+                  color: Color(0xFF2B2B2B),
+                ),
               ),
             ),
             if (attack.equipped) ...[
               const SizedBox(width: 6),
-              const Icon(Icons.check_circle, size: 16, color: Color(0xFF2B2B2B)),
+              const Icon(
+                Icons.check_circle,
+                size: 16,
+                color: Color(0xFF2B2B2B),
+              ),
             ],
           ],
         ),

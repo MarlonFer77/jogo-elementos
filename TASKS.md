@@ -4,7 +4,7 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Nenhuma — Bloco 2d concluído. Próxima prioridade: polimento do combate.
+Nenhuma — interface de batalha portátil implementada e verificada.
 
 # NEXT
 
@@ -94,6 +94,13 @@ uma tarefa nova terminar revelando um gap novo.
   automática — uma nova versão do jogo exige gerar e reenviar um APK novo
 
 # DONE
+
+- Interface portátil do Treino: arena/HUD fixos, grade 2×2 com até quatro
+  elementos ativos por jogador, aba com três habilidades, troca em janela
+  inferior e combinação com confirmação. Equipamento elemental persistente,
+  migração de saves antigos e validação no domínio. Habilidades aprendidas
+  independem dos quatro elementos básicos. Mensagem durante animação;
+  troca de habilidade nova só abre após o feedback. Ver DECISION-050.
 
 - Bloco 2d: painel com três slots de ataques equipados no Treino, seleção,
   descrição, custo e motivo de indisponibilidade; execução por ID validada

@@ -15,10 +15,12 @@ class BattleSceneWidget extends StatefulWidget {
     super.key,
     required this.view,
     this.onAttackComplete,
+    this.height = 260,
   });
 
   final BattleSceneView view;
   final VoidCallback? onAttackComplete;
+  final double height;
 
   @override
   State<BattleSceneWidget> createState() => _BattleSceneWidgetState();
@@ -43,7 +45,7 @@ class _BattleSceneWidgetState extends State<BattleSceneWidget> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 260,
+      height: widget.height,
       child: Stack(
         children: [
           Positioned.fill(child: GameWidget(game: _game)),

@@ -62,6 +62,8 @@ class BattleSceneGame extends FlameGame {
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
+    _left?.position = Vector2(size.x * 0.25, size.y * 0.85);
+    _right?.position = Vector2(size.x * 0.75, size.y * 0.85);
     for (final child in children.whereType<PixelArenaBackground>()) {
       child.size = size;
     }

@@ -4,9 +4,9 @@ import 'package:battle_engine/battle_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 SkillProgress _allElementsUnlocked() => SkillProgress(
-      defaultSkillTree,
-      unlockedNodeIds: ElementUnlocks.all.map((u) => u.id).toList(),
-    );
+  defaultSkillTree,
+  unlockedNodeIds: ElementUnlocks.all.map((u) => u.id).toList(),
+);
 
 void main() {
   test('starts with Jogador A to act and nothing discovered', () {
@@ -19,8 +19,7 @@ void main() {
     expect(match.lastTriggeredCombinationName, isNull);
   });
 
-  test('playing fire+wind triggers Tempestade Ígnea and passes the turn',
-      () {
+  test('playing fire+wind triggers Tempestade Ígnea and passes the turn', () {
     final match = TrainingMatch(
       initialApA: const ApPool(max: 5, current: 3),
       initialProgressA: _allElementsUnlocked(),
@@ -55,6 +54,7 @@ void main() {
       initialProgressA: _allElementsUnlocked(),
     );
 
+    match.setEquippedElements(['ice', 'shadow']);
     match.playElementIds(['ice', 'shadow']);
 
     expect(match.lastTriggeredCombinationName, isNull);
@@ -68,22 +68,17 @@ void main() {
   });
 
   group('skill tree integration', () {
-    test('unlocking a node adds it to the current player\'s granted list',
-        () {
+    test('unlocking a node adds it to the current player\'s granted list', () {
       final match = TrainingMatch();
       match.unlockSkillForCurrentPlayer('ember_mastery');
 
-      expect(
-        match.unlockedGrantNamesForCurrentPlayer,
-        contains('Combustão'),
-      );
+      expect(match.unlockedGrantNamesForCurrentPlayer, contains('Combustão'));
     });
 
     test('unlocking a node makes its dependents available', () {
       final match = TrainingMatch();
       expect(
-        match.availableSkillNodesForCurrentPlayer
-            .map((n) => n.id),
+        match.availableSkillNodesForCurrentPlayer.map((n) => n.id),
         isNot(contains('wildfire_path')),
       );
 
@@ -127,15 +122,18 @@ void main() {
       expect(match.unlockedGrantNamesForCurrentPlayer, isEmpty);
     });
 
-    test('unlockedNodeIdsForCurrentPlayer reflects what the current player has unlocked', () {
-      final match = TrainingMatch();
+    test(
+      'unlockedNodeIdsForCurrentPlayer reflects what the current player has unlocked',
+      () {
+        final match = TrainingMatch();
 
-      expect(match.unlockedNodeIdsForCurrentPlayer, isEmpty);
+        expect(match.unlockedNodeIdsForCurrentPlayer, isEmpty);
 
-      match.unlockSkillForCurrentPlayer('ember_mastery');
+        match.unlockSkillForCurrentPlayer('ember_mastery');
 
-      expect(match.unlockedNodeIdsForCurrentPlayer, ['ember_mastery']);
-    });
+        expect(match.unlockedNodeIdsForCurrentPlayer, ['ember_mastery']);
+      },
+    );
   });
 
   group('HP and victory', () {
@@ -162,8 +160,7 @@ void main() {
       expect(match.winnerName, isNull);
     });
 
-    test('ends the match and names the winner once someone reaches 0 HP',
-        () {
+    test('ends the match and names the winner once someone reaches 0 HP', () {
       final match = TrainingMatch(
         initialProgressA: _allElementsUnlocked(),
         initialProgressB: _allElementsUnlocked(),
@@ -243,10 +240,9 @@ void main() {
     );
     match.playElementIds(['fire', 'wind']); // Tempestade Ígnea
 
-    expect(
-      match.activeFieldEffectBadges,
-      [const EffectBadgeView(id: 'ignited_storm', remainingTurns: null)],
-    );
+    expect(match.activeFieldEffectBadges, [
+      const EffectBadgeView(id: 'ignited_storm', remainingTurns: null),
+    ]);
   });
 
   test('playerAActiveStatuses/playerBActiveStatuses resolve id and '
@@ -257,16 +253,18 @@ void main() {
     match.playElementIds(['fire']); // aplica Queimadura em Jogador B
 
     expect(match.playerAActiveStatuses, isEmpty);
-    expect(
-      match.playerBActiveStatuses,
-      [const EffectBadgeView(id: 'burn', remainingTurns: 2)],
-    );
+    expect(match.playerBActiveStatuses, [
+      const EffectBadgeView(id: 'burn', remainingTurns: 2),
+    ]);
   });
 
   test('a player seeded with Treino de Vitalidade already unlocked starts '
       'with 120 HP, not 100', () {
     final match = TrainingMatch(
-      initialProgressA: SkillProgress(defaultSkillTree, unlockedNodeIds: ['vitality_training']),
+      initialProgressA: SkillProgress(
+        defaultSkillTree,
+        unlockedNodeIds: ['vitality_training'],
+      ),
     );
 
     expect(match.playerAMaxHp, equals(120));
@@ -300,10 +298,11 @@ void main() {
     match.unlockSkillForCurrentPlayer('ember_mastery'); // Jogador A
     match.playElementIds(['fire', 'wind']); // Jogador A, Tempestade Ígnea
 
-    expect(
-      match.unlockedNodeIdsForPlayerA,
-      ['unlock_fire', 'unlock_wind', 'ember_mastery'],
-    );
+    expect(match.unlockedNodeIdsForPlayerA, [
+      'unlock_fire',
+      'unlock_wind',
+      'ember_mastery',
+    ]);
     expect(match.unlockedNodeIdsForPlayerB, isEmpty);
     expect(match.discoveredCombinationIds, ['ignited_storm']);
   });
@@ -354,7 +353,10 @@ void main() {
         initialProgressA: _allElementsUnlocked(),
       );
       match.unlockSkillForCurrentPlayer('vitality_training'); // Jogador A
-      match.playElementIds(['fire', 'wind']); // Jogador A, descobre Tempestade Ígnea
+      match.playElementIds([
+        'fire',
+        'wind',
+      ]); // Jogador A, descobre Tempestade Ígnea
 
       final rematch = match.startNewBattleKeepingProgress();
 
@@ -375,8 +377,7 @@ void main() {
     });
   });
 
-  test('playerAAp/playerAApMax/playerBAp/playerBApMax reflect real state',
-      () {
+  test('playerAAp/playerAApMax/playerBAp/playerBApMax reflect real state', () {
     final match = TrainingMatch(initialProgressA: _allElementsUnlocked());
     expect(match.playerAAp, 0);
     expect(match.playerAApMax, 5);
@@ -409,10 +410,7 @@ void main() {
           unlockedNodeIds: ['unlock_fire'],
         ),
       );
-      expect(
-        () => match.playElementIds(['water']),
-        throwsArgumentError,
-      );
+      expect(() => match.playElementIds(['water']), throwsArgumentError);
     });
 
     test('cumulativeTurnsPlayedA/B increment only for whoever just played', () {
@@ -442,11 +440,13 @@ void main() {
       );
       expect(
         () => match.unlockSkillForCurrentPlayer('unlock_water'),
-        throwsA(isA<StateError>().having(
-          (e) => e.message,
-          'message',
-          'Faltam 10 turnos para desbloquear Água.',
-        )),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'Faltam 10 turnos para desbloquear Água.',
+          ),
+        ),
       );
     });
 
@@ -483,7 +483,10 @@ void main() {
         match.playElementIds(['fire']); // Jogador B
       }
 
-      expect(match.turnsRemainingToUnlock('unlock_water'), isNull); // já alcançável
+      expect(
+        match.turnsRemainingToUnlock('unlock_water'),
+        isNull,
+      ); // já alcançável
       match.unlockSkillForCurrentPlayer('unlock_water'); // ainda a vez de A
       expect(
         match.turnsRemainingToUnlock('unlock_earth'),
@@ -520,12 +523,14 @@ void main() {
 
       expect(
         () => match.playElementIds(['fire', 'wind']),
-        throwsA(isA<StateError>().having(
-          (e) => e.message,
-          'message',
-          'Tempestade Ígnea não está equipado. Troque na janela de '
-              'Ataques Combinados.',
-        )),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'Tempestade Ígnea não está equipado. Troque na janela de '
+                'Ataques Combinados.',
+          ),
+        ),
       );
     });
 
@@ -555,6 +560,7 @@ void main() {
         ),
       );
 
+      match.setEquippedElements(['earth', 'fire', 'water']);
       match.playElementIds(['earth', 'fire', 'water']); // Lava, 3º elemento
 
       expect(match.lastUnlockedAttackId, 'lava');
@@ -585,8 +591,7 @@ void main() {
       );
     });
 
-    test('setEquippedAttacks targets Jogador B when forPlayerA is false',
-        () {
+    test('setEquippedAttacks targets Jogador B when forPlayerA is false', () {
       final match = TrainingMatch(
         initialProgressB: _allElementsUnlocked(),
         initialLoadoutB: AttackLoadout(

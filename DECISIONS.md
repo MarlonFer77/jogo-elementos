@@ -1,5 +1,48 @@
 # DECISIONS.md
 
+## DECISION-050
+Data: 2026-09-15
+Decisão: a pedido do usuário após testar a v0.16.0, refazer o painel de
+batalha do Treino com inspiração nos RPGs portáteis/Game Boy. A arena e o
+HUD ficam fora da rolagem; somente a área de comandos pode rolar em telas
+pequenas. Elementos em grade 2×2, Habilidades em três slots mais comando
+Trocar. Selecionar não consome turno: confirmação executa com a arena
+visível. Durante animação, caixa de mensagem informa quem usou a ação;
+ao terminar, aparecem os comandos do próximo jogador. Resumo de
+descobertas/último combo fica no botão de informação; Skill Tree se chama
+Árvore para não confundir com Habilidades (combos).
+
+Cada jogador equipa até quatro elementos desbloqueados. TrainingMatch
+valida limite, duplicatas, IDs inválidos e uso de elemento fora dos slots;
+ataques básicos e experimentação usam esses quatro. Habilidades aprendidas
+equipadas têm receitas independentes dos slots básicos, mas continuam
+exigindo os elementos desbloqueados e AP suficiente. Isso permite trocar
+básicos sem perder acesso a uma habilidade aprendida. Novo elemento ocupa
+uma vaga livre automaticamente; acima de quatro fica disponível para troca.
+Escolha inicial de dois elementos e progressão permanecem.
+
+SharedPreferences ganha training_elements_equipped_a/b. Saves sem a chave
+recebem até quatro elementos já desbloqueados; IDs desconhecidos/duplicados
+são filtrados e uma lista sem elementos válidos recebe fallback. Progresso,
+descobertas, habilidades e contagem de turnos não são apagados. Trocas são
+salvas e preservadas ao iniciar outra partida. Cancelar a experimentação
+não modifica a seleção anterior. AttacksScreen é reutilizada em janela
+inferior; os três slots e o fluxo de substituição permanecem.
+
+BattleSceneWidget aceita altura opcional (260 por padrão para manter o
+Multiplayer); BattleSceneGame reposiciona sprites ao redimensionar a cena.
+Correção descoberta na inspeção visual em 360×640. Nenhuma nova regra no
+motor, protocolo de rede ou atualização Android. O Multiplayer mantém seu
+fluxo existente até implementar equipamentos autoritativos no servidor.
+
+Validação: suíte completa do app com 229 testes passou. Novos testes cobrem
+quatro slots, validação, migração/armazenamento, independência entre elementos
+e habilidades, desbloqueio com vagas, cancelamento e arena fixa em 360×640,
+320×568 e 740×360. Preview web compilado e inspecionado em tamanho de celular,
+com onboarding, persistência da escolha e ataque básico real. O servidor de
+debug do SDK apresentou falha própria no DWDS; build web funcionou.
+
+
 ## DECISION-049
 Data: 2026-09-15
 Decisão: Bloco 2d — ataques equipados durante a batalha do Treino,

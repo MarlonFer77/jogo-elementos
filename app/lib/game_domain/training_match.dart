@@ -47,6 +47,8 @@ class TrainingMatch {
   late SkillProgress _progressB;
   late AttackLoadout _loadoutA;
   late AttackLoadout _loadoutB;
+  late List<String> _elementsA;
+  late List<String> _elementsB;
   late int _cumulativeTurnsA;
   late int _cumulativeTurnsB;
 
@@ -81,6 +83,8 @@ class TrainingMatch {
     int initialTurnsPlayedB = 0,
     AttackLoadout? initialLoadoutA,
     AttackLoadout? initialLoadoutB,
+    List<String>? initialEquippedElementsA,
+    List<String>? initialEquippedElementsB,
   }) {
     _progressA = initialProgressA ?? SkillProgress(defaultSkillTree);
     _progressB = initialProgressB ?? SkillProgress(defaultSkillTree);
@@ -89,6 +93,8 @@ class TrainingMatch {
     _cumulativeTurnsB = initialTurnsPlayedB;
     _loadoutA = initialLoadoutA ?? AttackLoadout();
     _loadoutB = initialLoadoutB ?? AttackLoadout();
+    _elementsA = _restoreElements(initialEquippedElementsA, _progressA);
+    _elementsB = _restoreElements(initialEquippedElementsB, _progressB);
     _state = BattleState.start(
       playerA: _playerA,
       playerB: _playerB,
@@ -112,8 +118,12 @@ class TrainingMatch {
     required List<String> equippedAttackIdsA,
     required List<String> unlockedAttackIdsB,
     required List<String> equippedAttackIdsB,
+    List<String>? equippedElementIdsA,
+    List<String>? equippedElementIdsB,
   }) {
     return TrainingMatch(
+      initialEquippedElementsA: equippedElementIdsA,
+      initialEquippedElementsB: equippedElementIdsB,
       initialProgressA: SkillProgress(
         defaultSkillTree,
         unlockedNodeIds: unlockedNodeIdsA,
@@ -151,10 +161,47 @@ class TrainingMatch {
       initialTurnsPlayedB: _cumulativeTurnsB,
       initialLoadoutA: _loadoutA,
       initialLoadoutB: _loadoutB,
+      initialEquippedElementsA: _elementsA,
+      initialEquippedElementsB: _elementsB,
     );
   }
 
   int get turnsPlayed => _turnsPlayed;
+
+  // Older saves have no element loadout. Keep unlocked progress intact and
+  // seed up to four slots; filter stale/duplicate IDs at this storage boundary.
+  static List<String> _restoreElements(
+    List<String>? saved,
+    SkillProgress progress,
+  ) {
+    final unlocked = progress.grantedElementIds;
+    final valid = (saved ?? unlocked)
+        .where(unlocked.contains)
+        .toSet()
+        .take(4)
+        .toList();
+    return List.unmodifiable(valid.isEmpty ? unlocked.take(4) : valid);
+  }
+
+  List<String> get equippedElementIdsForPlayerA => _elementsA;
+  List<String> get equippedElementIdsForPlayerB => _elementsB;
+  List<String> get equippedElementIdsForCurrentPlayer =>
+      _isPlayerATurn ? _elementsA : _elementsB;
+
+  void setEquippedElements(List<String> ids) {
+    if (isOver) throw StateError('A partida terminou.');
+    if (ids.isEmpty || ids.length > 4 || ids.toSet().length != ids.length) {
+      throw ArgumentError('Escolha de 1 a 4 elementos diferentes.');
+    }
+    if (ids.any((id) => !availableElementIdsForCurrentPlayer.contains(id))) {
+      throw ArgumentError('Elemento bloqueado ou inexistente.');
+    }
+    if (_isPlayerATurn) {
+      _elementsA = List.unmodifiable(ids);
+    } else {
+      _elementsB = List.unmodifiable(ids);
+    }
+  }
 
   int get availableApForAction =>
       _state.apOf(_currentCombatant).withRegenerated().current;
@@ -196,7 +243,8 @@ class TrainingMatch {
     final attack = equippedAttacksForCurrentPlayer.firstWhere(
       (a) => a.id == id,
     );
-    playElementIds(attack.elementIds);
+    // A learned ability owns its recipe independently of the four basic slots.
+    _resolveElements(attack.elementIds);
   }
 
   String get currentTurnName => _state.currentTurn.name;
@@ -416,6 +464,13 @@ class TrainingMatch {
     if (grant is MaxHpBonus) {
       _state = _state.withMaxHpIncreased(actor, grant.bonus);
     }
+    if (grant is ElementUnlock &&
+        equippedElementIdsForCurrentPlayer.length < 4) {
+      setEquippedElements([
+        ...equippedElementIdsForCurrentPlayer,
+        grant.elementId,
+      ]);
+    }
   }
 
   /// Plays the elements identified by [elementIds] (1 a 3) for whoever's
@@ -431,6 +486,19 @@ class TrainingMatch {
   /// `TurnEngine`), or if the combination is already unlocked for this
   /// player but not equipped (Bloco 2c).
   void playElementIds(List<String> elementIds) {
+    if (isOver) throw StateError('A partida terminou.');
+    for (final id in elementIds) {
+      if (!availableElementIdsForCurrentPlayer.contains(id)) {
+        throw ArgumentError('Elemento bloqueado ou inexistente.');
+      }
+      if (!equippedElementIdsForCurrentPlayer.contains(id)) {
+        throw StateError('Equipe esse elemento em Trocar elementos.');
+      }
+    }
+    _resolveElements(elementIds);
+  }
+
+  void _resolveElements(List<String> elementIds) {
     final wasPlayerATurn = _isPlayerATurn;
     final elements = elementIds
         .map(

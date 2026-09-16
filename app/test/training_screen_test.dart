@@ -1,5 +1,4 @@
 import 'package:app/game_domain/training_match.dart';
-import 'package:app/game_presentation/pixel_menu_button.dart';
 import 'package:app/main.dart';
 import 'package:app/ui/training_screen.dart';
 import 'package:battle_engine/battle_engine.dart';
@@ -54,7 +53,12 @@ void main() {
       await tester.tap(find.text('Jogar'));
       await tester.pump();
 
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       expect(find.text('Vez de: Jogador B'), findsOneWidget);
+      await tester.tap(find.byTooltip('Resumo da batalha'));
+      await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Última combinação: Tempestade Ígnea'), findsOneWidget);
       expect(find.text('Descobertas: 1/3'), findsOneWidget);
       expect(find.textContaining('80/100 HP'), findsOneWidget);
@@ -82,10 +86,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    final button = tester.widget<PixelMenuButton>(
-      find.widgetWithText(PixelMenuButton, 'Jogar'),
-    );
-    expect(button.onPressed, isNull);
+    expect(find.text('Jogar'), findsNothing);
   });
 
   testWidgets(
@@ -106,7 +107,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      await tester.tap(find.byIcon(Icons.auto_awesome));
+      await tester.tap(find.byIcon(Icons.account_tree_outlined));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
@@ -138,6 +139,8 @@ void main() {
       await tester.tap(find.text('Jogar'));
       await tester.pump();
 
+      await tester.tap(find.byTooltip('Resumo da batalha'));
+      await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Efeitos aplicados: Queimadura'), findsOneWidget);
       expect(
         find.text('🔥'),
@@ -210,7 +213,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text('Vez de: Jogador A'), findsOneWidget);
-    expect(find.text('Jogar'), findsOneWidget);
+    expect(find.text('Escolha uma ação. +1 AP ao agir.'), findsOneWidget);
   });
 
   testWidgets(
@@ -225,7 +228,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 1));
 
-      await tester.tap(find.byIcon(Icons.auto_awesome));
+      await tester.tap(find.byIcon(Icons.account_tree_outlined));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
@@ -339,7 +342,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text('🔥 Fogo'), findsOneWidget);
-    expect(find.text('🔒 Água'), findsOneWidget);
+    expect(find.text('💧 Água'), findsNothing);
   });
 
   testWidgets(
@@ -416,6 +419,7 @@ void main() {
             initialMatch: TrainingMatch(
               initialApA: const ApPool(max: 5, current: 5),
               initialProgressA: _allElementsUnlocked(),
+              initialEquippedElementsA: ['earth', 'fire', 'water'],
               initialLoadoutA: AttackLoadout(
                 unlockedCombinationIds: const {
                   'electrified_field',
@@ -456,7 +460,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      expect(find.text('Ataques Combinados'), findsOneWidget);
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(find.text('Habilidades · 3 slots'), findsOneWidget);
     },
   );
 }

@@ -28,15 +28,17 @@ void main() {
         MaterialApp(home: TrainingScreen(initialMatch: match)),
       );
       await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.text('Habilidades'));
+      await tester.pump();
       final slot = find.byKey(const ValueKey('attack-ignited_storm'));
       await tester.ensureVisible(slot);
       await tester.tap(slot);
       await tester.pump();
       expect(match.turnsPlayed, 0);
-      final use = find.text('Usar ataque · 3 AP');
+      final use = find.text('Usar habilidade · 3 AP');
       await tester.ensureVisible(use);
       final button = tester.widget<PixelMenuButton>(
-        find.widgetWithText(PixelMenuButton, 'Usar ataque · 3 AP'),
+        find.widgetWithText(PixelMenuButton, 'Usar habilidade · 3 AP'),
       );
       button.onPressed!();
       button.onPressed!(); // second queued tap must not play for the opponent
@@ -56,7 +58,9 @@ void main() {
       }
       expect(find.text('Ataque em execução…'), findsNothing);
       expect(slot, findsNothing);
-      expect(find.text('— Descubra um combo'), findsNWidgets(3));
+      await tester.tap(find.text('Habilidades'));
+      await tester.pump();
+      expect(find.text('Não aprendido'), findsNWidgets(3));
     },
   );
 
@@ -76,15 +80,17 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: TrainingScreen()));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.text('Habilidades'));
+      await tester.pump();
       final slot = find.byKey(const ValueKey('attack-ignited_storm'));
       await tester.ensureVisible(slot);
       await tester.tap(slot);
       await tester.pump();
-      expect(find.text('Faltam 2 AP.'), findsOneWidget);
+      expect(find.text('Faltam 2 AP.'), findsWidgets);
       expect(
         tester
             .widget<PixelMenuButton>(
-              find.widgetWithText(PixelMenuButton, 'Usar ataque · 3 AP'),
+              find.widgetWithText(PixelMenuButton, 'Usar habilidade · 3 AP'),
             )
             .onPressed,
         isNull,
