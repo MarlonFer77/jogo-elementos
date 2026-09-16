@@ -4,7 +4,7 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Nenhuma — interface de batalha portátil implementada e verificada.
+Nenhuma — preparação do Treino e layout responsivo implementados e verificados.
 
 # NEXT
 
@@ -94,6 +94,13 @@ uma tarefa nova terminar revelando um gap novo.
   automática — uma nova versão do jogo exige gerar e reenviar um APK novo
 
 # DONE
+
+- Preparação personalizada do Treino: etapas A/B, seleção de dois elementos,
+  contador e entrada explícita na batalha. Campo e comandos lado a lado na
+  horizontal, empilhados na vertical; abas/AP/confirmação fixos, áreas seguras
+  respeitadas e rotação sem reiniciar a animação ou perder seleção/progresso.
+  Suíte do app: 237 testes aprovados; análise estática sem problemas.
+  Ver DECISION-051. Preparado para distribuição na v0.18.0+18.
 
 - Interface portátil do Treino: arena/HUD fixos, grade 2×2 com até quatro
   elementos ativos por jogador, aba com três habilidades, troca em janela

@@ -329,6 +329,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       builder: (_) => SizedBox(
         height: MediaQuery.sizeOf(context).height * .65,
         child: AttacksScreen(
@@ -366,6 +367,12 @@ class _TrainingScreenState extends State<TrainingScreen> {
       return ElementStarterScreen(
         key: ValueKey(_pendingOnboardingSlot),
         playerLabel: _pendingOnboardingSlot == 'a' ? 'Jogador A' : 'Jogador B',
+        step: _pendingOnboardingSlot == 'a' ? 1 : 2,
+        confirmLabel:
+            _pendingOnboardingSlot == 'a' &&
+                !_hasChosenStartingElements(_unlockedB)
+            ? 'Preparar Jogador B'
+            : 'Entrar na batalha',
         onConfirm: (ids) => unawaited(_confirmStartingElements(ids)),
       );
     }
@@ -400,31 +407,45 @@ class _TrainingScreenState extends State<TrainingScreen> {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
+            final horizontal =
+                constraints.maxWidth >= 480 &&
+                constraints.maxWidth > constraints.maxHeight;
             final arenaHeight = (constraints.maxHeight * .49).clamp(
               150.0,
               360.0,
             );
-            return Column(
+            // Keep the same widget tree when rotating so Flame and the
+            // active animation are not disposed/replayed.
+            return Flex(
+              direction: horizontal ? Axis.horizontal : Axis.vertical,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                BattleSceneWidget(
-                  height: arenaHeight,
-                  onAttackComplete: _finishAttack,
-                  view: BattleSceneView(
-                    leftCurrentHp: _match.playerACurrentHp,
-                    leftMaxHp: _match.playerAMaxHp,
-                    rightCurrentHp: _match.playerBCurrentHp,
-                    rightMaxHp: _match.playerBMaxHp,
-                    isLeftTurn: _match.isPlayerATurn,
-                    lastAttack: _pendingAttack,
-                    leftLabel: 'Jogador A',
-                    rightLabel: 'Jogador B',
-                    leftStatuses: _match.playerAActiveStatuses,
-                    rightStatuses: _match.playerBActiveStatuses,
-                    fieldEffects: _match.activeFieldEffectBadges,
-                    leftAp: _match.playerAAp,
-                    leftApMax: _match.playerAApMax,
-                    rightAp: _match.playerBAp,
-                    rightApMax: _match.playerBApMax,
+                SizedBox(
+                  width: horizontal
+                      ? constraints.maxWidth -
+                          (constraints.maxWidth * .45).clamp(280.0, 420.0)
+                      : null,
+                  height: horizontal ? constraints.maxHeight : arenaHeight,
+                  child: BattleSceneWidget(
+                    height: horizontal ? constraints.maxHeight : arenaHeight,
+                    onAttackComplete: _finishAttack,
+                    view: BattleSceneView(
+                      leftCurrentHp: _match.playerACurrentHp,
+                      leftMaxHp: _match.playerAMaxHp,
+                      rightCurrentHp: _match.playerBCurrentHp,
+                      rightMaxHp: _match.playerBMaxHp,
+                      isLeftTurn: _match.isPlayerATurn,
+                      lastAttack: _pendingAttack,
+                      leftLabel: 'Jogador A',
+                      rightLabel: 'Jogador B',
+                      leftStatuses: _match.playerAActiveStatuses,
+                      rightStatuses: _match.playerBActiveStatuses,
+                      fieldEffects: _match.activeFieldEffectBadges,
+                      leftAp: _match.playerAAp,
+                      leftApMax: _match.playerAApMax,
+                      rightAp: _match.playerBAp,
+                      rightApMax: _match.playerBApMax,
+                    ),
                   ),
                 ),
                 Expanded(
@@ -453,6 +474,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                             fontSize: 14,
                           ),
                         ),
+                        if (!_executing && !_match.isOver) _commandTabs(),
                         Expanded(
                           child: SingleChildScrollView(
                             key: const ValueKey('command-scroll'),
@@ -478,6 +500,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                             ),
                           ),
                         ),
+                        if (!_executing && !_match.isOver) _actionCommand(),
                       ],
                     ),
                   ),
@@ -518,22 +541,6 @@ class _TrainingScreenState extends State<TrainingScreen> {
         ? null
         : _match.attackUnavailableReason(selectedAttack.id);
     return [
-      Row(
-        children: [
-          _tab('Elementos', !_showAbilities, () => _setCommandTab(false)),
-          _tab('Habilidades', _showAbilities, () => _setCommandTab(true)),
-          Expanded(
-            child: Text(
-              '${_match.availableApForAction} AP',
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontFamily: 'monospace',
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
       BattleCommandGrid(
         children: _showAbilities
             ? [
@@ -634,30 +641,60 @@ class _TrainingScreenState extends State<TrainingScreen> {
           'Combinar: ${elements.where((e) => _selectedIds.contains(e.id)).map((e) => e.name).join(' + ')}',
           style: const TextStyle(fontSize: 12),
         ),
-      if (_selectedIds.isNotEmpty || selectedAttack != null) ...[
-        const SizedBox(height: 6),
-        PixelMenuButton(
-          label: selectedAttack != null
-              ? 'Usar habilidade · ${selectedAttack.apCost} AP'
-              : 'Jogar',
-          primary: true,
-          onPressed: _executing || reason != null ? null : _playTurn,
-        ),
-      ] else
-        const Text(
-          'Escolha uma ação. +1 AP ao agir.',
-          style: TextStyle(
-            fontFamily: 'monospace',
-            fontSize: 12,
-            color: Color(0xFF646653),
-          ),
-        ),
       if (_lastUnlockedAttackText != null)
         Text(
           _lastUnlockedAttackText!,
           style: const TextStyle(fontSize: 12, color: Color(0xFF38653F)),
         ),
     ];
+  }
+
+  Widget _commandTabs() => Row(
+    children: [
+      _tab('Elementos', !_showAbilities, () => _setCommandTab(false)),
+      _tab('Habilidades', _showAbilities, () => _setCommandTab(true)),
+      Expanded(
+        child: Text(
+          '${_match.availableApForAction} AP',
+          textAlign: TextAlign.right,
+          style: const TextStyle(
+            fontFamily: 'monospace',
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    ],
+  );
+
+  Widget _actionCommand() {
+    final attack = _match.equippedAttacksForCurrentPlayer
+        .where((a) => a.id == _selectedAttackId)
+        .firstOrNull;
+    if (_selectedIds.isEmpty && attack == null) {
+      return const Text(
+        'Escolha uma ação. +1 AP ao agir.',
+        style: TextStyle(
+          fontFamily: 'monospace',
+          fontSize: 12,
+          color: Color(0xFF646653),
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: PixelMenuButton(
+        label: attack == null
+            ? 'Jogar'
+            : 'Usar habilidade · ${attack.apCost} AP',
+        primary: true,
+        onPressed:
+            _executing ||
+                (attack != null &&
+                    _match.attackUnavailableReason(attack.id) != null)
+            ? null
+            : _playTurn,
+      ),
+    );
   }
 
   Widget _tab(String title, bool selected, VoidCallback onTap) => Expanded(
@@ -689,6 +726,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
       showModalBottomSheet<T>(
         context: context,
         isScrollControlled: true,
+        useSafeArea: true,
         backgroundColor: Colors.transparent,
         builder: (context) => PixelSheetPanel(
           child: SafeArea(

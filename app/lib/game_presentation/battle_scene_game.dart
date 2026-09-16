@@ -64,6 +64,15 @@ class BattleSceneGame extends FlameGame {
     super.onGameResize(size);
     _left?.position = Vector2(size.x * 0.25, size.y * 0.85);
     _right?.position = Vector2(size.x * 0.75, size.y * 0.85);
+    final sequence = _activeSequence;
+    if (sequence != null && _left != null && _right != null) {
+      final attacker = sequence.event.attackerIsLeft ? _left! : _right!;
+      final target = sequence.event.attackerIsLeft ? _right! : _left!;
+      sequence.updatePositions(
+        attackerPosition: attacker.position - Vector2(0, 40),
+        targetPosition: target.position - Vector2(0, 40),
+      );
+    }
     for (final child in children.whereType<PixelArenaBackground>()) {
       child.size = size;
     }

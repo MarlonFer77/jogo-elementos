@@ -1,5 +1,37 @@
 # DECISIONS.md
 
+## DECISION-051
+Data: 2026-09-16
+Decisão: diferenciar visualmente a preparação inicial do Treino da batalha.
+ElementStarterScreen reutiliza os comandos emoldurados da interface portátil,
+com etapa/jogador atual, trilha Jogador A → Jogador B → Batalha, contador de
+seleção e explicação dos dois elementos iniciais versus quatro equipáveis.
+Confirmar A passa a se chamar Preparar Jogador B; a última escolha usa Entrar
+na batalha. Mantidos os desbloqueios e a persistência existentes: jogadores
+com progresso salvo não precisam escolher novamente. Sem reset de dados.
+
+No Treino, a orientação horizontal usa campo à esquerda e comandos à direita;
+a vertical mantém campo acima. Layout considera a área segura, inclusive
+celulares baixos com recorte lateral. Turno, abas, AP e confirmação ficam
+fora da rolagem de ações. A preparação também distribui introdução e seleção
+lado a lado na horizontal. Janelas de seleção respeitam as áreas seguras.
+
+A árvore de widgets da arena permanece estável ao girar para preservar a
+instância do Flame e não repetir ataques. A sequência visual atualiza suas
+posições quando a arena muda de tamanho, sem reiniciar seu tempo. Nenhuma
+regra de combate, engine, backend ou esquema de persistência foi alterado.
+Multiplayer mantém sua interface atual; o ajuste de posições de efeitos no
+componente compartilhado também respeita o redimensionamento nesse modo.
+
+Testes cobrem preparação A/B, limite e troca de seleção, persistência/reabertura,
+320×568, 360×740, 568×320 e 740×360, barras/recortes, seleção e ataque durante
+rotação (mesma instância Flame, um único turno/dano), e janelas auxiliares.
+Preview web usado para inspeção visual; validação em aparelho Android físico
+permanece necessária após gerar o próximo APK.
+
+Validação final: 237 testes do app aprovados, incluindo regressões do
+Multiplayer, atualização e persistência; flutter analyze sem problemas.
+
 ## DECISION-050
 Data: 2026-09-15
 Decisão: a pedido do usuário após testar a v0.16.0, refazer o painel de

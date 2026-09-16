@@ -52,6 +52,15 @@ class AttackSequencePlayer extends Component {
 
   bool get isFinished => _step == _AttackStep.done;
 
+  /// Follow the arena resize without restarting the current attack.
+  void updatePositions({
+    required Vector2 attackerPosition,
+    required Vector2 targetPosition,
+  }) {
+    _attackerPosition.setFrom(attackerPosition);
+    _targetPosition.setFrom(targetPosition);
+  }
+
   double get _stepDuration {
     switch (_step) {
       case _AttackStep.preparation:

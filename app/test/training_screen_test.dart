@@ -301,7 +301,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.text('🌪️ Vento'));
       await tester.pump();
-      await tester.tap(find.text('Confirmar'));
+      await tester.tap(find.text('Preparar Jogador B'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
@@ -311,7 +311,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.text('🌪️ Vento'));
       await tester.pump();
-      await tester.tap(find.text('Confirmar'));
+      await tester.tap(find.text('Entrar na batalha'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
