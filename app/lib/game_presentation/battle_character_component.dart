@@ -5,6 +5,7 @@ import 'package:flame/components.dart';
 import 'package:flutter/material.dart' show Colors;
 
 import 'pixel_sprite.dart';
+import 'element_visuals.dart';
 
 /// Qual lado do campo de batalha um [BattleCharacterComponent] representa.
 /// Puramente cosmético (paleta, direção do espelhamento/shake) — sem
@@ -49,6 +50,10 @@ class BattleCharacterComponent extends PositionComponent {
   double _charge = 0;
   double _strike = 0;
   bool _striding = false;
+  String? _swordElement;
+
+  /// The weapon belongs only to the current visual action, never to a build.
+  String? get swordElement => _swordElement;
 
   Vector2 get restPosition => _basePosition.clone();
 
@@ -59,12 +64,14 @@ class BattleCharacterComponent extends PositionComponent {
     double charge = 0,
     double strike = 0,
     bool striding = false,
+    String? swordElement,
   }) {
     _actionOffsetX = offsetX;
     _actionLean = lean;
     _charge = charge;
     _strike = strike;
     _striding = striding;
+    _swordElement = swordElement;
     position.x = _basePosition.x + offsetX;
   }
 
@@ -171,22 +178,17 @@ class BattleCharacterComponent extends PositionComponent {
       drawPixelGrid(canvas, _legs[leg], palette, pixelSize: pixelSize);
       canvas.restore();
     }
-    if (_charge > 0 || _strike > 0) {
-      final handX = 42 + _strike * 20;
-      final handY = 36 - _charge * 20;
-      canvas.drawRect(
-        Rect.fromLTWH(34, handY + 1, handX - 26, 9),
-        Paint()..color = palette[4],
-      );
-      canvas.drawRect(
-        Rect.fromLTWH(handX, handY, 10, 10),
-        Paint()..color = palette[1],
-      );
-      canvas.drawRect(
-        Rect.fromLTWH(handX + 2, handY + 2, 6, 6),
-        Paint()..color = palette[2],
-      );
-    }
+    final sway =
+        math.sin(_idleTime * (_striding ? 30 : 4)) * (_striding ? 5 : 1.5);
+    final armed = _swordElement != null;
+    final backHand = Offset(10 + _charge * 12, 51 - _charge * 31 - sway);
+    final frontHand = Offset(
+      52 + (armed ? _strike * 7 : _charge * 3),
+      51 - _charge * 31 - (armed ? 15 - _strike * 9 : 0) + sway,
+    );
+    _drawArm(canvas, palette, const Offset(16, 30), backHand);
+    _drawArm(canvas, palette, const Offset(46, 30), frontHand);
+    if (armed) _drawSword(canvas, frontHand, _swordElement!);
 
     if (isPlayingHitEffect) {
       final flashOpacity = (_hitEffectRemaining / _hitEffectDuration).clamp(
@@ -199,6 +201,64 @@ class BattleCharacterComponent extends PositionComponent {
       );
     }
 
+    canvas.restore();
+  }
+
+  void _drawArm(
+    Canvas canvas,
+    List<Color> palette,
+    Offset shoulder,
+    Offset hand,
+  ) {
+    final elbow = Offset(shoulder.dx, (shoulder.dy + hand.dy) / 2 + 4);
+    final path = Path()
+      ..moveTo(shoulder.dx, shoulder.dy)
+      ..lineTo(elbow.dx, elbow.dy)
+      ..lineTo(hand.dx, hand.dy);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = palette[1]
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 10,
+    );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = palette[4]
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 6,
+    );
+    canvas.drawRect(
+      Rect.fromCenter(center: hand, width: 10, height: 10),
+      Paint()..color = palette[1],
+    );
+    canvas.drawRect(
+      Rect.fromCenter(center: hand, width: 6, height: 6),
+      Paint()..color = palette[2],
+    );
+  }
+
+  void _drawSword(Canvas canvas, Offset hand, String element) {
+    canvas.save();
+    canvas.translate(hand.dx, hand.dy);
+    // Raised guard -> forward cut. Parent transform mirrors the entire grip.
+    canvas.rotate(-.35 + _strike * 2.05);
+    void rect(double x, double y, double w, double h, Color color) =>
+        canvas.drawRect(Rect.fromLTWH(x, y, w, h), Paint()..color = color);
+    const outline = Color(0xFF253843);
+    final color = elementColor(element);
+    rect(-3, -7, 6, 14, outline);
+    rect(-1, -5, 2, 10, const Color(0xFFAD8156));
+    rect(-6, -36, 12, 25, outline);
+    rect(-4, -41, 8, 7, outline);
+    rect(-2, -44, 4, 5, outline);
+    rect(-4, -35, 8, 24, color);
+    rect(-2, -40, 4, 29, color);
+    rect(-2, -35, 2, 21, Color.lerp(color, Colors.white, .7)!);
+    rect(-10, -13, 20, 6, outline);
+    rect(-8, -11, 16, 2, const Color(0xFFE4C681));
+    rect(-2, -12, 4, 4, color);
     canvas.restore();
   }
 }

@@ -1,5 +1,28 @@
 # DECISIONS.md
 
+## DECISION-053
+Data: 2026-09-17
+Decisão: ampliar a apresentação existente com dois braços/mãos articulados,
+espada elemental temporária no ataque básico e cenário exclusivo da batalha.
+Sem novos assets, dependências, regras de alcance, dano ou custos de AP.
+
+Mãos ficam visíveis em repouso, oscilam na corrida e se erguem na canalização.
+A espada acompanha a mão, espelha com o avatar e usa a paleta do elemento
+do AttackEvent. Guarda, corte e retorno reutilizam a temporização existente.
+Conclusão/cancelamento liberam a arma; combos não equipam espada.
+
+Arena desenhada em Canvas com silhuetas em camadas, árvores, mureta de pedra,
+piso contínuo e vegetação discreta. Coordenadas proporcionais preservam o chão
+dos avatares em 85% da altura. O fundo dos menus não foi alterado.
+
+Validação: suíte do app com 271 testes passando; mais 3 testes de rasterização
+em 360x300/480x240 e tamanho vazio. Conferidas visualmente as duas imagens
+geradas. Cobertura dos 10 elementos nos dois lados e limpeza da arma.
+Treino/Multiplayer continuam nos componentes compartilhados; não houve
+alteração no engine, backend ou persistência. A identificação parcial de
+ataques remotos pelo polling continua sendo a limitação já documentada.
+Não houve teste manual em Android nem publicação de novo APK neste bloco.
+
 ## DECISION-052
 Data: 2026-09-17
 Decisão: polir o combate e, a pedido do usuário, adicionar canalização e

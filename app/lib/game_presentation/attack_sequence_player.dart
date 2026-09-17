@@ -94,19 +94,27 @@ class AttackSequencePlayer extends Component {
           attacker.setActionPose(
             offsetX: -direction * 6 * math.sin(p * math.pi),
             lean: -.08,
+            swordElement: event.elementIds.first,
           );
         case _AttackStep.elementalEffect:
           attacker.setActionPose(
             offsetX: travel * Curves.easeInOut.transform(p),
             lean: .12,
+            swordElement: event.elementIds.first,
             striding: true,
           );
         case _AttackStep.impact:
-          attacker.setActionPose(offsetX: travel, lean: .16, strike: p);
+          attacker.setActionPose(
+            offsetX: travel,
+            lean: .16,
+            strike: p,
+            swordElement: event.elementIds.first,
+          );
         case _AttackStep.damage:
           attacker.setActionPose(
             offsetX: travel * (1 - Curves.easeOut.transform(p)),
             lean: -.06 * (1 - p),
+            swordElement: p < .65 ? event.elementIds.first : null,
             strike: (1 - p * 4).clamp(0.0, 1.0),
             striding: true,
           );
@@ -246,7 +254,10 @@ class AttackSequencePlayer extends Component {
     final progress = _step == _AttackStep.preparation
         ? _stepElapsed / _preparationDuration * .4
         : .4 + _stepElapsed / _elementalEffectDuration * .6;
-    final center = Offset(attacker.position.x, attacker.position.y - 48);
+    final center = Offset(
+      attacker.position.x + (attacker.side == BattleSide.left ? 1 : -1) * 6,
+      attacker.position.y - 60,
+    );
     for (var i = 0; i < 12; i++) {
       final angle = i * math.pi / 6 + progress * math.pi;
       final radius = 36 - progress * 18;
@@ -273,21 +284,7 @@ class AttackSequencePlayer extends Component {
 
   void _renderMelee(Canvas canvas) {
     final direction = (_targetPosition.x - _attackerPosition.x).sign;
-    final point = Offset(
-      attacker.position.x + direction * 24,
-      attacker.position.y - 40,
-    );
     final color = elementColor(event.elementIds.first);
-    for (var i = 0; i < 3; i++) {
-      canvas.drawRect(
-        Rect.fromCenter(
-          center: point + Offset(-direction * i * 7, i * 3 - 3),
-          width: 10 - i * 2,
-          height: 10 - i * 2,
-        ),
-        Paint()..color = color.withValues(alpha: 1 - i * .25),
-      );
-    }
     if (_step == _AttackStep.impact) {
       final progress = _stepElapsed / _impactDuration;
       for (var i = 0; i < 5; i++) {

@@ -10,6 +10,7 @@ AttackSequencePlayer _buildPlayer({
   int damage = 20,
   bool melee = false,
   bool left = true,
+  String element = 'fire',
   void Function()? onImpact,
   void Function()? onComplete,
 }) {
@@ -25,7 +26,7 @@ AttackSequencePlayer _buildPlayer({
     event: AttackEvent(
       sequenceId: 1,
       attackerIsLeft: left,
-      elementIds: melee ? const ['fire'] : const ['fire', 'wind'],
+      elementIds: melee ? [element] : const ['fire', 'wind'],
       comboName: melee ? null : 'Tempestade Ígnea',
       damage: damage,
       appliedStatusNames: statusNames,
@@ -40,6 +41,41 @@ AttackSequencePlayer _buildPlayer({
 }
 
 void main() {
+  for (final element in [
+    'fire',
+    'water',
+    'wind',
+    'ice',
+    'nature',
+    'lightning',
+    'earth',
+    'shadow',
+    'light',
+    'poison',
+  ]) {
+    for (final left in [true, false]) {
+      test('sword follows $element, left=$left, and clears after action', () {
+        final player = _buildPlayer(melee: true, left: left, element: element);
+        player.update(.1);
+        expect(player.attacker.swordElement, element);
+        player.update(.3);
+        expect(player.attacker.swordElement, element);
+        player.update(1);
+        expect(player.attacker.swordElement, isNull);
+      });
+    }
+  }
+  test('cancel clears sword and channeling never equips one', () {
+    final melee = _buildPlayer(melee: true);
+    melee.update(.3);
+    melee.cancelVisuals();
+    expect(melee.attacker.swordElement, isNull);
+    melee.update(.1);
+    expect(melee.attacker.swordElement, isNull);
+    final channel = _buildPlayer();
+    channel.update(.3);
+    expect(channel.attacker.swordElement, isNull);
+  });
   for (final left in [true, false]) {
     test('melee approaches, hits and returns to rest (left=$left)', () {
       final player = _buildPlayer(melee: true, left: left);
@@ -68,10 +104,10 @@ void main() {
       expect(player.attacker.position.x.abs(), lessThan(5));
       player.cancelVisuals();
       expect(player.attacker.position.x, 0);
-    player.attacker.setActionPose(offsetX: 20);
-    player.update(5);
-    expect(player.target.isPlayingHitEffect, isFalse);
-    player.onRemove();
+      player.attacker.setActionPose(offsetX: 20);
+      player.update(5);
+      expect(player.target.isPlayingHitEffect, isFalse);
+      player.onRemove();
       expect(player.attacker.position.x, 20);
     },
   );

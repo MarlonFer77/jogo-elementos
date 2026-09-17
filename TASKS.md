@@ -4,7 +4,9 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Nenhuma — polimento com canalização e proximidade implementado e verificado.
+Nenhuma — mãos articuladas, espadas elementais e arena detalhada implementadas.
+Verificados 271 testes da suíte e 3 testes adicionais de renderização.
+Preparado para distribuição na v0.20.0+20.
 
 # NEXT
 
