@@ -111,13 +111,15 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
     final opponentHpBefore = _match.opponentCurrentHp;
     try {
       await _match.playElementIds(playedElementIds);
+      if (!mounted) return;
       setState(() {
         _selectedIds.clear();
         final triggeredId = _match.lastTriggeredCombinationId;
-        if (triggeredId != null && opponentHpBefore != null) {
+        if (opponentHpBefore != null) {
           _attackSequenceCounter++;
           final damage = opponentHpBefore - (_match.opponentCurrentHp ?? opponentHpBefore);
-          final combo = const CombinationCatalog().byId(triggeredId);
+          final combo = triggeredId == null
+              ? null : const CombinationCatalog().byId(triggeredId);
           _pendingAttack = AttackEvent(
             sequenceId: _attackSequenceCounter,
             attackerIsLeft: true,
@@ -131,6 +133,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
       });
       _maybePlayGameOverSound();
     } catch (_) {
+      if (!mounted) return;
       setState(() => _error = _match.lastError ?? 'Jogada inválida.');
     }
   }

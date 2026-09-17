@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 
@@ -34,11 +36,13 @@ class AttackSequencePlayer extends Component {
     required this.target,
     required Vector2 attackerPosition,
     required Vector2 targetPosition,
+    this.onImpact,
     this.onComplete,
   }) : _attackerPosition = attackerPosition,
        _targetPosition = targetPosition;
 
   final AttackEvent event;
+  final VoidCallback? onImpact;
   final VoidCallback? onComplete;
   bool _completionReported = false;
   final BattleCharacterComponent attacker;
@@ -49,8 +53,22 @@ class AttackSequencePlayer extends Component {
   _AttackStep _step = _AttackStep.preparation;
   double _stepElapsed = 0;
   bool _preparationStarted = false;
+  bool _visualsReleased = false;
 
   bool get isFinished => _step == _AttackStep.done;
+  bool get isMelee => event.comboName == null && event.elementIds.length == 1;
+
+  void cancelVisuals() {
+    if (_visualsReleased) return;
+    _visualsReleased = true;
+    attacker.setActionPose();
+  }
+
+  @override
+  void onRemove() {
+    cancelVisuals();
+    super.onRemove();
+  }
 
   /// Follow the arena resize without restarting the current attack.
   void updatePositions({
@@ -59,6 +77,60 @@ class AttackSequencePlayer extends Component {
   }) {
     _attackerPosition.setFrom(attackerPosition);
     _targetPosition.setFrom(targetPosition);
+    _applyMotion();
+  }
+
+  void _applyMotion() {
+    if (_visualsReleased) return;
+    final p = _stepDuration == 0
+        ? 1.0
+        : (_stepElapsed / _stepDuration).clamp(0.0, 1.0);
+    final delta = _targetPosition.x - _attackerPosition.x;
+    final direction = delta.sign;
+    final travel = math.max(0.0, delta.abs() - 52) * direction;
+    if (isMelee) {
+      switch (_step) {
+        case _AttackStep.preparation:
+          attacker.setActionPose(
+            offsetX: -direction * 6 * math.sin(p * math.pi),
+            lean: -.08,
+          );
+        case _AttackStep.elementalEffect:
+          attacker.setActionPose(
+            offsetX: travel * Curves.easeInOut.transform(p),
+            lean: .12,
+            striding: true,
+          );
+        case _AttackStep.impact:
+          attacker.setActionPose(offsetX: travel, lean: .16, strike: p);
+        case _AttackStep.damage:
+          attacker.setActionPose(
+            offsetX: travel * (1 - Curves.easeOut.transform(p)),
+            lean: -.06 * (1 - p),
+            strike: (1 - p * 4).clamp(0.0, 1.0),
+            striding: true,
+          );
+        case _AttackStep.stateApplied:
+        case _AttackStep.done:
+          attacker.setActionPose();
+      }
+    } else {
+      final charge = switch (_step) {
+        _AttackStep.preparation => p * .4,
+        _AttackStep.elementalEffect => .4 + p * .6,
+        _AttackStep.impact => 1 - p,
+        _ => 0.0,
+      };
+      attacker.setActionPose(
+        offsetX: _step == _AttackStep.impact
+            ? direction * 8 * math.sin(p * math.pi)
+            : -direction * 4 * charge,
+        lean: _step == _AttackStep.impact
+            ? .12 * math.sin(p * math.pi)
+            : -.08 * charge,
+        charge: charge,
+      );
+    }
   }
 
   double get _stepDuration {
@@ -99,6 +171,7 @@ class AttackSequencePlayer extends Component {
 
   @override
   void update(double dt) {
+    if (_visualsReleased) return;
     super.update(dt);
 
     var remaining = dt;
@@ -119,14 +192,17 @@ class AttackSequencePlayer extends Component {
         final wasStep = _step;
         _step = _nextStep(_step);
         if (wasStep == _AttackStep.impact) {
-          target.playHitEffect();
+          if (event.damage > 0) target.playHitEffect();
           sfxPlayer.play(SfxId.impact);
+          onImpact?.call();
         }
       }
     }
 
+    _applyMotion();
     if (_step == _AttackStep.done && !_completionReported) {
       _completionReported = true;
+      cancelVisuals();
       onComplete?.call();
       if (parent != null) removeFromParent();
     }
@@ -134,11 +210,22 @@ class AttackSequencePlayer extends Component {
 
   @override
   void render(Canvas canvas) {
+    if (_visualsReleased) return;
     super.render(canvas);
     switch (_step) {
       case _AttackStep.elementalEffect:
+        if (isMelee) {
+          _renderMelee(canvas);
+        } else {
+          _renderChannel(canvas);
+        }
+        break;
       case _AttackStep.impact:
-        _renderElementalBurst(canvas);
+        if (isMelee) {
+          _renderMelee(canvas);
+        } else {
+          _renderElementalBurst(canvas);
+        }
         break;
       case _AttackStep.damage:
         _renderDamageNumber(canvas);
@@ -147,8 +234,72 @@ class AttackSequencePlayer extends Component {
         _renderStateText(canvas);
         break;
       case _AttackStep.preparation:
+        if (!isMelee) _renderChannel(canvas);
+        break;
       case _AttackStep.done:
         break;
+    }
+  }
+
+  void _renderChannel(Canvas canvas) {
+    if (event.elementIds.isEmpty) return;
+    final progress = _step == _AttackStep.preparation
+        ? _stepElapsed / _preparationDuration * .4
+        : .4 + _stepElapsed / _elementalEffectDuration * .6;
+    final center = Offset(attacker.position.x, attacker.position.y - 48);
+    for (var i = 0; i < 12; i++) {
+      final angle = i * math.pi / 6 + progress * math.pi;
+      final radius = 36 - progress * 18;
+      final point = center + Offset(math.cos(angle), math.sin(angle)) * radius;
+      canvas.drawRect(
+        Rect.fromCenter(center: point, width: 4, height: 4),
+        Paint()
+          ..color = elementColor(event.elementIds[i % event.elementIds.length]),
+      );
+    }
+    for (var i = 0; i < event.elementIds.length; i++) {
+      final point =
+          center + Offset((i - (event.elementIds.length - 1) / 2) * 14, 0);
+      canvas.drawRect(
+        Rect.fromCenter(
+          center: point,
+          width: 6 + progress * 8,
+          height: 6 + progress * 8,
+        ),
+        Paint()..color = elementColor(event.elementIds[i]),
+      );
+    }
+  }
+
+  void _renderMelee(Canvas canvas) {
+    final direction = (_targetPosition.x - _attackerPosition.x).sign;
+    final point = Offset(
+      attacker.position.x + direction * 24,
+      attacker.position.y - 40,
+    );
+    final color = elementColor(event.elementIds.first);
+    for (var i = 0; i < 3; i++) {
+      canvas.drawRect(
+        Rect.fromCenter(
+          center: point + Offset(-direction * i * 7, i * 3 - 3),
+          width: 10 - i * 2,
+          height: 10 - i * 2,
+        ),
+        Paint()..color = color.withValues(alpha: 1 - i * .25),
+      );
+    }
+    if (_step == _AttackStep.impact) {
+      final progress = _stepElapsed / _impactDuration;
+      for (var i = 0; i < 5; i++) {
+        final point = Offset(
+          _targetPosition.x - direction * (12 + i * 4),
+          _targetPosition.y - 16 + i * 7 + (1 - progress) * 10,
+        );
+        canvas.drawRect(
+          Rect.fromCenter(center: point, width: 5, height: 9),
+          Paint()..color = color,
+        );
+      }
     }
   }
 
@@ -174,9 +325,34 @@ class AttackSequencePlayer extends Component {
       final elementId = event.elementIds[i];
       final radius = 14.0 * scale;
 
-      canvas.drawCircle(
-        Offset(x, centerY),
-        radius,
+      final direction = (_targetPosition.x - _attackerPosition.x).sign;
+      for (var trail = 3; trail >= 1; trail--) {
+        canvas.drawRect(
+          Rect.fromCenter(
+            center: Offset(x - direction * trail * 9, centerY),
+            width: radius * (1 - trail * .16),
+            height: radius * (1 - trail * .16),
+          ),
+          Paint()
+            ..color = elementColor(
+              elementId,
+            ).withValues(alpha: .6 - trail * .12),
+        );
+      }
+      canvas.drawRect(
+        Rect.fromCenter(
+          center: Offset(x, centerY),
+          width: radius * 2,
+          height: radius * 2,
+        ),
+        Paint()..color = const Color(0xFF253843),
+      );
+      canvas.drawRect(
+        Rect.fromCenter(
+          center: Offset(x, centerY),
+          width: radius * 2 - 4,
+          height: radius * 2 - 4,
+        ),
         Paint()..color = elementColor(elementId),
       );
       _drawText(
@@ -195,11 +371,12 @@ class AttackSequencePlayer extends Component {
 
     _drawText(
       canvas,
-      '-${event.damage}',
+      event.damage > 0 ? '-${event.damage}' : 'Sem dano',
       Offset(_targetPosition.x, riseY),
       fontSize: 20,
-      color: Color.fromRGBO(255, 82, 82, opacity),
+      color: Color.fromRGBO(119, 37, 33, opacity),
       bold: true,
+      plateOpacity: opacity,
     );
   }
 
@@ -223,6 +400,7 @@ class AttackSequencePlayer extends Component {
     double fontSize = 16,
     Color color = Colors.white,
     bool bold = false,
+    double? plateOpacity,
   }) {
     final painter = TextPainter(
       text: TextSpan(
@@ -235,6 +413,23 @@ class AttackSequencePlayer extends Component {
       ),
       textDirection: TextDirection.ltr,
     )..layout();
+    if (plateOpacity != null) {
+      final plate = Rect.fromCenter(
+        center: center,
+        width: painter.width + 12,
+        height: painter.height + 6,
+      );
+      canvas.drawRect(
+        plate.inflate(2),
+        Paint()
+          ..color = const Color(0xFF253843).withValues(alpha: plateOpacity),
+      );
+      canvas.drawRect(
+        plate,
+        Paint()
+          ..color = const Color(0xFFF8F2DA).withValues(alpha: plateOpacity),
+      );
+    }
     painter.paint(
       canvas,
       Offset(center.dx - painter.width / 2, center.dy - painter.height / 2),

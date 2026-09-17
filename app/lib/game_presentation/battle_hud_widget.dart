@@ -11,9 +11,12 @@ import 'status_visuals.dart';
 /// puro (não Canvas do Flame) — ver
 /// docs/superpowers/specs/2026-09-08-pixel-battle-arena-design.md.
 class BattleHudWidget extends StatelessWidget {
-  const BattleHudWidget({super.key, required this.view});
+  const BattleHudWidget({super.key, required this.view, this.actingIsLeft});
 
   final BattleSceneView view;
+
+  /// During presentation, highlight the actor until their animation ends.
+  final bool? actingIsLeft;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +32,7 @@ class BattleHudWidget extends StatelessWidget {
                   label: view.leftLabel,
                   currentHp: view.leftCurrentHp,
                   maxHp: view.leftMaxHp,
-                  isActive: view.isLeftTurn,
+                  isActive: actingIsLeft ?? view.isLeftTurn,
                   alignEnd: false,
                   statuses: view.leftStatuses,
                   ap: view.leftAp,
@@ -42,7 +45,7 @@ class BattleHudWidget extends StatelessWidget {
                   label: view.rightLabel,
                   currentHp: view.rightCurrentHp,
                   maxHp: view.rightMaxHp,
-                  isActive: !view.isLeftTurn,
+                  isActive: !(actingIsLeft ?? view.isLeftTurn),
                   alignEnd: true,
                   statuses: view.rightStatuses,
                   ap: view.rightAp,

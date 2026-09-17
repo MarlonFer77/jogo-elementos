@@ -139,6 +139,12 @@ void main() {
       await tester.tap(find.text('Jogar'));
       await tester.pump();
 
+      // Status is already resolved in the domain, but the HUD reveals it
+      // together with the hit, not before the projectile reaches its target.
+      expect(find.text('🔥'), findsNothing);
+      for (var i = 0; i < 7; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       await tester.tap(find.byTooltip('Resumo da batalha'));
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Efeitos aplicados: Queimadura'), findsOneWidget);

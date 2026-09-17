@@ -4,12 +4,13 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Nenhuma — preparação do Treino e layout responsivo implementados e verificados.
+Nenhuma — polimento com canalização e proximidade implementado e verificado.
 
 # NEXT
 
-Polimento do combate — feedback, transições, impacto e clareza das ações,
-conforme diretriz mestra de evolução aprovada pelo usuário.
+Status — definir e implementar efeito, duração, aplicação/remoção e feedback
+de Congelar, Silenciar, Lentidão, Buff e Debuff, com regras testáveis e
+consistência entre Treino e Multiplayer. Implementar incrementalmente.
 
 # BACKLOG
 
@@ -94,6 +95,14 @@ uma tarefa nova terminar revelando um gap novo.
   automática — uma nova versão do jogo exige gerar e reenviar um APK novo
 
 # DONE
+
+- Combate fluido: básicos com aproximação, golpe e recuo; combos com
+  canalização e projétil pixelado; pernas, poses, respiração e reação a dano.
+  HUD sincronizado com impacto; legenda e dano legíveis; rotação/cancelamento
+  sem poses presas. Básicos locais do Multiplayer também geram animação.
+  250 testes aprovados, análise estática limpa e preview visual verificado
+  com básicos/combo nas orientações vertical/horizontal. DECISION-052.
+  Preparado para distribuição na v0.19.0+19.
 
 - Preparação personalizada do Treino: etapas A/B, seleção de dois elementos,
   contador e entrada explícita na batalha. Campo e comandos lado a lado na

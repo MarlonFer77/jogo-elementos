@@ -1,5 +1,46 @@
 # DECISIONS.md
 
+## DECISION-052
+Data: 2026-09-17
+Decisão: polir o combate e, a pedido do usuário, adicionar canalização e
+proximidade como coreografia visual do combate por turnos, sem introduzir
+alcance, deslocamento tático, novos custos de AP ou regras paralelas.
+
+Ataque básico (um elemento, sem combo) usa antecipação, corrida curta,
+golpe junto ao adversário e retorno suave. Combos usam pose de canalização,
+partículas elementais que convergem e projétil com rastro pixelado.
+Personagens ganham pernas animadas durante deslocamento, braço no golpe/
+canalização, respiração, sombra e recuo ao receber dano. A arte existente
+é reutilizada; partes do sprite são preparadas uma vez, não recortadas a
+cada frame. Temporização total existente e controles por turnos preservados.
+
+BattleSceneWidget retém somente o snapshot visual anterior até o callback
+de impacto da sequência Flame. HP/AP/status do domínio já estão resolvidos;
+o HUD passa a exibi-los no impacto e mantém o atacante destacado até o fim.
+Legenda compacta identifica ataque/canalização e resultado. Dano flutuante
+ganha placa de contraste; dano zero mostra Sem dano sem reação de ferimento.
+Não afirma que houve escudo quando o evento não informa essa causa.
+
+Corrigido reposicionamento: a animação de repouso usava uma âncora antiga e
+podia desfazer o resize. Agora posição-base, trajetória e pose são atualizadas
+em conjunto. Cancelar/substituir uma sequência libera a pose uma vez e impede
+efeitos/callbacks atrasados. Uma partida nova pode reutilizar sequenceId sem
+reencenar o ataque anterior; polling repetido não repete animações.
+
+Componentes compartilhados beneficiam Treino e eventos identificados no
+Multiplayer. Ataques básicos locais agora também produzem AttackEvent após
+resposta bem-sucedida do servidor. A identificação de ataques remotos ainda
+é parcial: o protocolo não entrega todos os elementos/combo usados. Não
+foram inventadas informações remotas nem alterados motor/backend/persistência.
+
+Validação: 250 testes do app passaram e análise estática sem problemas.
+Cobertura inclui aproximação nos dois sentidos, recuo, troca de âncora durante
+golpe, cancelamento sem callback/reação atrasada, sincronização do HUD,
+repetição de polling, reconexão, novo combate reutilizando IDs, persistência
+e básico local no Multiplayer. Build web compilado e preview inspecionado:
+golpes básicos, canalização Fogo+Vento, dano 20/desbloqueio preservados e
+retorno às posições após rotação. APK/aparelho físico ainda não validados.
+
 ## DECISION-051
 Data: 2026-09-16
 Decisão: diferenciar visualmente a preparação inicial do Treino da batalha.

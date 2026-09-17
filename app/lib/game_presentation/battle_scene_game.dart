@@ -21,7 +21,8 @@ bool didTakeDamage({required int? previousHp, required int currentHp}) {
 /// pura — nenhuma regra de batalha mora aqui; o estado a renderizar vem de
 /// fora via [updateView].
 class BattleSceneGame extends FlameGame {
-  void Function()? onAttackComplete;
+  void Function(AttackEvent event)? onAttackImpact;
+  void Function(AttackEvent event)? onAttackComplete;
   BattleCharacterComponent? _left;
   BattleCharacterComponent? _right;
 
@@ -62,15 +63,15 @@ class BattleSceneGame extends FlameGame {
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
-    _left?.position = Vector2(size.x * 0.25, size.y * 0.85);
-    _right?.position = Vector2(size.x * 0.75, size.y * 0.85);
+    _left?.reposition(Vector2(size.x * 0.25, size.y * 0.85));
+    _right?.reposition(Vector2(size.x * 0.75, size.y * 0.85));
     final sequence = _activeSequence;
     if (sequence != null && _left != null && _right != null) {
       final attacker = sequence.event.attackerIsLeft ? _left! : _right!;
       final target = sequence.event.attackerIsLeft ? _right! : _left!;
       sequence.updatePositions(
-        attackerPosition: attacker.position - Vector2(0, 40),
-        targetPosition: target.position - Vector2(0, 40),
+        attackerPosition: attacker.restPosition - Vector2(0, 40),
+        targetPosition: target.restPosition - Vector2(0, 40),
       );
     }
     for (final child in children.whereType<PixelArenaBackground>()) {
@@ -96,6 +97,12 @@ class BattleSceneGame extends FlameGame {
     final right = _right!;
 
     final attack = view.lastAttack;
+    if (attack == null) {
+      _activeSequence?.cancelVisuals();
+      _activeSequence?.removeFromParent();
+      _activeSequence = null;
+      _lastPlayedSequenceId = null;
+    }
     if (attack != null && attack.sequenceId != _lastPlayedSequenceId) {
       _lastPlayedSequenceId = attack.sequenceId;
       _playAttackSequence(attack);
@@ -135,14 +142,24 @@ class BattleSceneGame extends FlameGame {
     final attacker = event.attackerIsLeft ? left : right;
     final target = event.attackerIsLeft ? right : left;
 
+    _activeSequence?.cancelVisuals();
     _activeSequence?.removeFromParent();
     final sequence = AttackSequencePlayer(
       event: event,
       attacker: attacker,
       target: target,
-      attackerPosition: attacker.position - Vector2(0, 40),
-      targetPosition: target.position - Vector2(0, 40),
-      onComplete: () => onAttackComplete?.call(),
+      attackerPosition: attacker.restPosition - Vector2(0, 40),
+      targetPosition: target.restPosition - Vector2(0, 40),
+      onImpact: () {
+        if (identical(_activeSequence?.event, event)) {
+          onAttackImpact?.call(event);
+        }
+      },
+      onComplete: () {
+        if (!identical(_activeSequence?.event, event)) return;
+        _activeSequence = null;
+        onAttackComplete?.call(event);
+      },
     );
     _activeSequence = sequence;
     add(sequence);

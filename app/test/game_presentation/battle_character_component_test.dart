@@ -3,6 +3,20 @@ import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('reposition updates the resting anchor during idle and hit effects', () {
+    final character = BattleCharacterComponent(
+      side: BattleSide.left,
+      position: Vector2(90, 200),
+    );
+    character.playHitEffect();
+    character.reposition(Vector2(180, 300));
+    character.update(.1);
+    expect(character.position.x, closeTo(180, 14));
+    character.update(1);
+    expect(character.position.x, 180);
+    expect(character.position.y, closeTo(300, 2));
+  });
+
   group('BattleCharacterComponent', () {
     test('starts with no hit effect playing', () {
       final component = BattleCharacterComponent(
@@ -26,24 +40,25 @@ void main() {
       expect(component.isPlayingHitEffect, isFalse);
     });
 
-    test('the shake offsets position.x during the effect and restores it after',
-        () {
-      final basePosition = Vector2(100, 200);
-      final component = BattleCharacterComponent(
-        side: BattleSide.left,
-        position: basePosition.clone(),
-      );
-
-      component.playHitEffect();
-      component.update(0.07);
-      expect(component.position.x, isNot(equals(basePosition.x)));
-
-      component.update(0.5);
-      expect(component.position.x, equals(basePosition.x));
-    });
-
     test(
-        'the idle bob moves position.y sinusoidally around the base '
+      'the shake offsets position.x during the effect and restores it after',
+      () {
+        final basePosition = Vector2(100, 200);
+        final component = BattleCharacterComponent(
+          side: BattleSide.left,
+          position: basePosition.clone(),
+        );
+
+        component.playHitEffect();
+        component.update(0.07);
+        expect(component.position.x, isNot(equals(basePosition.x)));
+
+        component.update(0.5);
+        expect(component.position.x, equals(basePosition.x));
+      },
+    );
+
+    test('the idle bob moves position.y sinusoidally around the base '
         'position, independent of the shake', () {
       final basePosition = Vector2(100, 200);
       final component = BattleCharacterComponent(

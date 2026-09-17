@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:app/game_domain/multiplayer_client.dart';
 import 'package:app/game_domain/multiplayer_match.dart';
 import 'package:app/game_presentation/pixel_menu_button.dart';
+import 'package:app/game_presentation/battle_scene_widget.dart';
 import 'package:app/game_presentation/skill_tree_layout.dart';
 import 'package:app/game_presentation/skill_tree_node_widget.dart';
 import 'package:app/ui/multiplayer_battle_screen.dart';
@@ -40,6 +41,46 @@ http.Response _matchResponse({
 }
 
 void main() {
+  testWidgets('successful basic attack produces a proximity animation event', (tester) async {
+    final client = MultiplayerClient(baseUrl: 'http://x', httpClient: MockClient((request) async {
+      if (request.url.path.endsWith('/join')) {
+        return _matchResponse(currentTurnId: 'ana', anaHp: 100, betoHp: 100);
+      }
+      if (request.url.path.endsWith('/turns')) {
+        return http.Response(jsonEncode({
+          'match': jsonDecode(_matchResponse(currentTurnId: 'beto', anaHp: 100, betoHp: 95).body),
+          'triggeredCombinationId': null,
+        }), 200);
+      }
+      throw StateError('unexpected request');
+    }));
+    final match = MultiplayerMatch(client: client, localPlayerId: 'ana');
+    await match.join('ABC123');
+    await tester.pumpWidget(MaterialApp(home: MultiplayerBattleScreen(match: match,
+        pollInterval: const Duration(hours: 1))));
+    await tester.pump();
+    await tester.ensureVisible(find.text('Escolher elementos'));
+    await tester.tap(find.text('Escolher elementos'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.text('🔥 Fogo'));
+    await tester.pump();
+    await tester.tap(find.text('Confirmar'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.ensureVisible(find.text('Jogar'));
+    await tester.tap(find.text('Jogar'));
+    await tester.pump();
+    await tester.pump();
+    final event = tester.widget<BattleSceneWidget>(find.byType(BattleSceneWidget)).view.lastAttack;
+    expect(event?.elementIds, ['fire']);
+    expect(event?.comboName, isNull);
+    expect(event?.damage, 5);
+    expect(match.opponentCurrentHp, 95);
+    await tester.pumpWidget(const SizedBox());
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'shows HP/turn for an in-progress match and plays a combo turn',
     (WidgetTester tester) async {
