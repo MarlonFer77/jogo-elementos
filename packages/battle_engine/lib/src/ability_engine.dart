@@ -7,6 +7,7 @@ import 'combination_modifier.dart';
 import 'targeted_status.dart';
 import 'turn_action.dart';
 import 'turn_engine.dart';
+import 'status_effects.dart';
 
 /// Resolves the use of an [Ability]: plays its base elements as a normal
 /// turn (via [TurnEngine], so combinations still trigger, combo damage and
@@ -49,8 +50,18 @@ class AbilityEngine {
     if (effect.statusesToApply.isNotEmpty) {
       final opponent = state.opponentOf(actor);
       for (final targeted in effect.statusesToApply) {
-        final target =
-            targeted.target == StatusTarget.actor ? actor : opponent;
+        final target = targeted.target == StatusTarget.actor ? actor : opponent;
+        if (targeted.status.effect == StatusEffects.burn) {
+          final existing = nextState
+              .statusesOf(target)
+              .where((s) => s.effect == StatusEffects.burn);
+          if (existing.any(
+            (s) => s.damagePerTick >= targeted.status.damagePerTick,
+          )) {
+            continue;
+          }
+          nextState = nextState.withStatusRemoved(target, StatusEffects.burn);
+        }
         nextState = nextState.withStatusApplied(target, targeted.status);
       }
     }

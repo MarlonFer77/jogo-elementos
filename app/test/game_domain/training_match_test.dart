@@ -150,8 +150,8 @@ void main() {
         initialApA: const ApPool(max: 5, current: 3),
         initialProgressA: _allElementsUnlocked(),
       );
-      match.playElementIds(['fire', 'wind']); // Jogador A, 20 damage
-      expect(match.playerBCurrentHp, equals(80));
+      match.playElementIds(['fire', 'wind']); // 14 immediate damage
+      expect(match.playerBCurrentHp, equals(86));
     });
 
     test('is not over and has no winner while both are alive', () {
@@ -200,7 +200,7 @@ void main() {
       match.unlockSkillForCurrentPlayer('vitality_training');
 
       expect(match.playerBMaxHp, equals(120));
-      expect(match.playerBCurrentHp, equals(100)); // 80 + 20, not 120
+      expect(match.playerBCurrentHp, equals(106)); // 86 + 20, not 120
     });
   });
 
@@ -546,7 +546,7 @@ void main() {
 
       match.playElementIds(['fire', 'wind']);
 
-      expect(match.playerBCurrentHp, equals(80));
+      expect(match.playerBCurrentHp, equals(86));
       expect(match.lastUnlockedAttackName, isNull); // não é desbloqueio novo
     });
 

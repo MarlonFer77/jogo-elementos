@@ -57,10 +57,7 @@ void main() {
 
       expect(result.triggeredCombination?.resultId, equals('ignited_storm'));
       expect(result.state.activeFieldEffects, hasLength(1));
-      expect(
-        result.state.activeFieldEffects.first.id,
-        equals('ignited_storm'),
-      );
+      expect(result.state.activeFieldEffects.first.id, equals('ignited_storm'));
     });
 
     test('playing an unknown combination advances the turn without adding '
@@ -86,12 +83,18 @@ void main() {
       var state = BattleState.start(playerA: playerA, playerB: playerB);
 
       state = engine
-          .playTurn(state, TurnAction(actor: playerA, elements: [Elements.fire]))
+          .playTurn(
+            state,
+            TurnAction(actor: playerA, elements: [Elements.fire]),
+          )
           .state;
       expect(state.currentTurn, equals(playerB));
 
       state = engine
-          .playTurn(state, TurnAction(actor: playerB, elements: [Elements.water]))
+          .playTurn(
+            state,
+            TurnAction(actor: playerB, elements: [Elements.water]),
+          )
           .state;
       expect(state.currentTurn, equals(playerA));
     });
@@ -173,8 +176,7 @@ void main() {
       expect(result.state.activeFieldEffects.single.area, equals(5));
     });
 
-    test('combinationModifiers are ignored when no combination triggers',
-        () {
+    test('combinationModifiers are ignored when no combination triggers', () {
       final state = BattleState.start(playerA: playerA, playerB: playerB);
       final action = TurnAction(actor: playerA, elements: [Elements.fire]);
 
@@ -204,8 +206,7 @@ void main() {
       expect(result.state.activeFieldEffects.single.area, equals(1));
     });
 
-    test('a known 2-element combination deals 20 damage to the opponent',
-        () {
+    test('Tempestade deals 14 direct damage to the opponent', () {
       final state = BattleState.start(
         playerA: playerA,
         playerB: playerB,
@@ -218,7 +219,7 @@ void main() {
 
       final result = engine.playTurn(state, action);
 
-      expect(result.state.hpOf(playerB).current, equals(80));
+      expect(result.state.hpOf(playerB).current, equals(86));
       expect(result.state.hpOf(playerA).current, equals(100));
     });
 
@@ -293,23 +294,26 @@ void main() {
       state = engine
           .playTurn(
             state,
-            TurnAction(actor: playerA, elements: [Elements.fire, Elements.wind]),
+            TurnAction(
+              actor: playerA,
+              elements: [Elements.fire, Elements.wind],
+            ),
           )
           .state; // blocked, shield consumed (4 seeded + 1 regen - 3 spent = 2 left)
       state = engine
-          .playTurn(
-            state,
-            TurnAction(actor: playerB, elements: [Elements.ice]),
-          )
+          .playTurn(state, TurnAction(actor: playerB, elements: [Elements.ice]))
           .state; // no-op action, just passes the turn back
       state = engine
           .playTurn(
             state,
-            TurnAction(actor: playerA, elements: [Elements.fire, Elements.wind]),
+            TurnAction(
+              actor: playerA,
+              elements: [Elements.fire, Elements.wind],
+            ),
           )
           .state; // 2 + 1 regen = 3, affordable again — not blocked this time
 
-      expect(state.hpOf(playerB).current, equals(80));
+      expect(state.hpOf(playerB).current, equals(86));
     });
 
     test('a status with damagePerTick damages its owner at the end of '
@@ -326,13 +330,19 @@ void main() {
           );
 
       state = engine
-          .playTurn(state, TurnAction(actor: playerA, elements: [Elements.fire]))
+          .playTurn(
+            state,
+            TurnAction(actor: playerA, elements: [Elements.fire]),
+          )
           .state;
       // playerB: 100 - 5 (a's basic damage) - 8 (first DOT tick) = 87
       expect(state.hpOf(playerB).current, equals(87));
 
       state = engine
-          .playTurn(state, TurnAction(actor: playerB, elements: [Elements.water]))
+          .playTurn(
+            state,
+            TurnAction(actor: playerB, elements: [Elements.water]),
+          )
           .state;
       // playerA: 100 - 5 (b's basic damage) = 95
       // playerB: 87 - 8 (second DOT tick, expires) = 79
@@ -345,7 +355,7 @@ void main() {
       final state = BattleState.start(
         playerA: playerA,
         playerB: playerB,
-        playerBMaxHp: 15,
+        playerBMaxHp: 14,
         ap: {playerA: const ApPool(max: 5, current: 3)},
       );
       final result = engine.playTurn(
@@ -360,14 +370,19 @@ void main() {
     test('DOT damage alone can set a winner', () {
       // playerBMaxHp is 10, not 5: a's basic damage (5) alone must not be
       // enough to defeat them — only the DOT tick (8) on top of it should.
-      var state = BattleState.start(
-        playerA: playerA,
-        playerB: playerB,
-        playerBMaxHp: 10,
-      ).withStatusApplied(
-        playerB,
-        ActiveStatus(effect: StatusEffects.burn, turnsRemaining: 1, damagePerTick: 8),
-      );
+      var state =
+          BattleState.start(
+            playerA: playerA,
+            playerB: playerB,
+            playerBMaxHp: 10,
+          ).withStatusApplied(
+            playerB,
+            ActiveStatus(
+              effect: StatusEffects.burn,
+              turnsRemaining: 1,
+              damagePerTick: 8,
+            ),
+          );
 
       final result = engine.playTurn(
         state,
@@ -382,18 +397,29 @@ void main() {
       // Both start at 8 HP (not 5): a's basic damage (5) to b alone must
       // not decide the winner ahead of the DOT tick this test is about —
       // it isolates the tie strictly to DOT tick ordering.
-      final state = BattleState.start(
-        playerA: playerA,
-        playerB: playerB,
-        playerAMaxHp: 8,
-        playerBMaxHp: 8,
-      ).withStatusApplied(
-        playerA,
-        ActiveStatus(effect: StatusEffects.burn, turnsRemaining: 1, damagePerTick: 8),
-      ).withStatusApplied(
-        playerB,
-        ActiveStatus(effect: StatusEffects.burn, turnsRemaining: 1, damagePerTick: 8),
-      );
+      final state =
+          BattleState.start(
+                playerA: playerA,
+                playerB: playerB,
+                playerAMaxHp: 8,
+                playerBMaxHp: 8,
+              )
+              .withStatusApplied(
+                playerA,
+                ActiveStatus(
+                  effect: StatusEffects.burn,
+                  turnsRemaining: 1,
+                  damagePerTick: 8,
+                ),
+              )
+              .withStatusApplied(
+                playerB,
+                ActiveStatus(
+                  effect: StatusEffects.burn,
+                  turnsRemaining: 1,
+                  damagePerTick: 8,
+                ),
+              );
 
       final result = engine.playTurn(
         state,
@@ -415,7 +441,10 @@ void main() {
       final finished = engine
           .playTurn(
             state,
-            TurnAction(actor: playerA, elements: [Elements.fire, Elements.wind]),
+            TurnAction(
+              actor: playerA,
+              elements: [Elements.fire, Elements.wind],
+            ),
           )
           .state;
       expect(finished.winner, equals(playerA));
@@ -436,10 +465,16 @@ void main() {
       var state = BattleState.start(playerA: playerA, playerB: playerB);
       for (var i = 0; i < 19; i++) {
         state = engine
-            .playTurn(state, TurnAction(actor: playerA, elements: [Elements.fire]))
+            .playTurn(
+              state,
+              TurnAction(actor: playerA, elements: [Elements.fire]),
+            )
             .state;
         state = engine
-            .playTurn(state, TurnAction(actor: playerB, elements: [Elements.ice]))
+            .playTurn(
+              state,
+              TurnAction(actor: playerB, elements: [Elements.ice]),
+            )
             .state;
       }
       final result = engine.playTurn(

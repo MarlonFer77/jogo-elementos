@@ -11,7 +11,7 @@ import 'multiplayer_models.dart';
 /// call again.
 class MultiplayerClient {
   MultiplayerClient({required this.baseUrl, http.Client? httpClient})
-      : _http = httpClient ?? http.Client();
+    : _http = httpClient ?? http.Client();
 
   final String baseUrl;
   final http.Client _http;
@@ -47,16 +47,27 @@ class MultiplayerClient {
     String matchId, {
     required String actorId,
     required List<String> elementIds,
+    bool defending = false,
+    bool preview = false,
   }) async {
     final response = await _http.post(
-      _uri('/matches/$matchId/turns'),
+      _uri('/matches/$matchId/${preview ? 'preview' : 'turns'}'),
       headers: _jsonHeaders,
-      body: jsonEncode({'actorId': actorId, 'elementIds': elementIds}),
+      body: jsonEncode({
+        'actorId': actorId,
+        'elementIds': elementIds,
+        if (defending) 'kind': 'defend',
+      }),
     );
     final body = _decode(response);
     return SubmitTurnResult(
       match: RemoteMatch.fromJson(body['match'] as Map<String, dynamic>),
       triggeredCombinationId: body['triggeredCombinationId'] as String?,
+      beforeState: preview
+          ? RemoteBattleState.fromJson(
+              body['beforeState'] as Map<String, dynamic>,
+            )
+          : null,
     );
   }
 

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../game_domain/attack_event.dart';
+import '../game_domain/action_preview.dart';
 import '../game_domain/battle_scene_view.dart';
 import '../game_domain/combination_catalog.dart';
 import '../game_domain/detect_opponent_attack.dart';
@@ -39,7 +40,8 @@ class MultiplayerBattleScreen extends StatefulWidget {
   final Duration _pollInterval;
 
   @override
-  State<MultiplayerBattleScreen> createState() => _MultiplayerBattleScreenState();
+  State<MultiplayerBattleScreen> createState() =>
+      _MultiplayerBattleScreenState();
 }
 
 class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
@@ -51,6 +53,56 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
   int _attackSequenceCounter = 0;
   Set<String> _previousFieldEffectIds = {};
   bool _playedGameOverSound = false;
+  bool _submitting = false;
+  bool _defending = false;
+  bool _previewLoading = false;
+  ActionPreview? _preview;
+  String? _previewError;
+  int _previewRequest = 0;
+
+  String get _previewStamp =>
+      '${_match.isMyTurn}/${_match.myCurrentHp}/${_match.opponentCurrentHp}/'
+      '${_match.myAp}/${_match.opponentAp}/${_match.unlockedNodeIdsForMe}/'
+      '${_match.myActiveStatuses.map((s) => '${s.id}:${s.remainingTurns}').join(',')}/'
+      '${_match.opponentActiveStatuses.map((s) => '${s.id}:${s.remainingTurns}').join(',')}';
+
+  Future<void> _requestPreview() async {
+    final request = ++_previewRequest;
+    final stamp = _previewStamp;
+    if (!mounted) return;
+    setState(() {
+      _preview = null;
+      _previewError = null;
+      _previewLoading = false;
+    });
+    if (!_match.isMyTurn ||
+        (_selectedIds.isEmpty && !_defending) ||
+        _submitting) {
+      return;
+    }
+    setState(() => _previewLoading = true);
+    try {
+      final preview = await _match
+          .previewAction(_selectedIds.toList(), defending: _defending)
+          .timeout(const Duration(seconds: 15));
+      if (mounted && request == _previewRequest && stamp == _previewStamp) {
+        setState(() => _preview = preview);
+      }
+    } catch (e) {
+      if (mounted && request == _previewRequest) {
+        setState(
+          () => _previewError =
+              e is MultiplayerException && e.message.contains('not enough AP')
+              ? 'AP insuficiente para essa combinação.'
+              : 'Prévia indisponível. A ação será validada pelo servidor.',
+        );
+      }
+    } finally {
+      if (mounted && request == _previewRequest) {
+        setState(() => _previewLoading = false);
+      }
+    }
+  }
 
   MultiplayerMatch get _match => widget.match;
 
@@ -68,6 +120,8 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
   }
 
   Future<void> _poll() async {
+    if (_submitting) return;
+    final stamp = _previewStamp;
     if (_match.isFinished) {
       _pollTimer?.cancel();
       return;
@@ -95,6 +149,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
         }
       });
       _maybePlayGameOverSound();
+      if (stamp != _previewStamp) unawaited(_requestPreview());
     }
   }
 
@@ -106,20 +161,31 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
   }
 
   Future<void> _playTurn() async {
-    setState(() => _error = null);
+    if (_submitting || !_match.isMyTurn || _match.isFinished) return;
+    final defending = _defending;
+    _previewRequest++;
+    setState(() {
+      _error = null;
+      _submitting = true;
+      _preview = null;
+      _previewLoading = false;
+    });
     final playedElementIds = _selectedIds.toList();
     final opponentHpBefore = _match.opponentCurrentHp;
     try {
-      await _match.playElementIds(playedElementIds);
+      await _match.playElementIds(playedElementIds, defending: defending);
       if (!mounted) return;
       setState(() {
         _selectedIds.clear();
+        _defending = false;
         final triggeredId = _match.lastTriggeredCombinationId;
         if (opponentHpBefore != null) {
           _attackSequenceCounter++;
-          final damage = opponentHpBefore - (_match.opponentCurrentHp ?? opponentHpBefore);
+          final damage =
+              opponentHpBefore - (_match.opponentCurrentHp ?? opponentHpBefore);
           final combo = triggeredId == null
-              ? null : const CombinationCatalog().byId(triggeredId);
+              ? null
+              : const CombinationCatalog().byId(triggeredId);
           _pendingAttack = AttackEvent(
             sequenceId: _attackSequenceCounter,
             attackerIsLeft: true,
@@ -127,6 +193,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
             comboName: combo?.name,
             damage: damage,
             appliedStatusNames: const [],
+            isDefend: defending,
           );
         }
         _previousFieldEffectIds = _match.activeFieldEffectIds.toSet();
@@ -135,6 +202,8 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _error = _match.lastError ?? 'Jogada inválida.');
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
@@ -157,24 +226,29 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
   }
 
   Future<void> _openSkillTree() async {
-    await Navigator.of(context).push(pixelSlideRoute((_) => SkillTreeScreen(
-      title: 'Habilidades',
-      unlockedNodeIds: _match.unlockedNodeIdsForMe,
-      canUnlockNow: _match.isInProgress && _match.isMyTurn,
-      onUnlock: (nodeId) async {
-        try {
-          await _match.unlockSkill(nodeId);
-          return null;
-        } on MultiplayerException catch (e) {
-          return e.message;
-        }
-      },
-    )));
+    await Navigator.of(context).push(
+      pixelSlideRoute(
+        (_) => SkillTreeScreen(
+          title: 'Habilidades',
+          unlockedNodeIds: _match.unlockedNodeIdsForMe,
+          canUnlockNow: _match.isInProgress && _match.isMyTurn,
+          onUnlock: (nodeId) async {
+            try {
+              await _match.unlockSkill(nodeId);
+              return null;
+            } on MultiplayerException catch (e) {
+              return e.message;
+            }
+          },
+        ),
+      ),
+    );
     setState(() {});
   }
 
   void _toggleElement(String id) {
     setState(() {
+      _defending = false;
       if (_selectedIds.contains(id)) {
         _selectedIds.remove(id);
       } else if (_selectedIds.length < 3) {
@@ -193,7 +267,10 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
-            title: PixelOutlinedText('Partida ${_match.matchId ?? ""}', fontSize: 20),
+            title: PixelOutlinedText(
+              'Partida ${_match.matchId ?? ""}',
+              fontSize: 20,
+            ),
             actions: [
               if (_match.isInProgress)
                 IconButton(
@@ -291,13 +368,38 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
       const SizedBox(height: 8),
       PixelMenuButton(
         label: 'Escolher elementos',
-        onPressed: _match.isMyTurn ? () => _openElementPicker(elements) : null,
+        onPressed: _match.isMyTurn && !_submitting
+            ? () => _openElementPicker(elements)
+            : null,
       ),
       const SizedBox(height: 16),
       PixelMenuButton(
-        label: 'Jogar',
-        onPressed: (_match.isMyTurn && _selectedIds.isNotEmpty) ? _playTurn : null,
+        label: _defending ? 'Confirmar defesa' : 'Jogar',
+        onPressed:
+            (!_submitting &&
+                _match.isMyTurn &&
+                (_selectedIds.isNotEmpty || _defending))
+            ? _playTurn
+            : null,
       ),
+      TextButton.icon(
+        icon: const Icon(Icons.shield_outlined),
+        label: const Text('Defender'),
+        onPressed: !_submitting && _match.isMyTurn
+            ? () {
+                setState(() {
+                  _defending = true;
+                  _selectedIds.clear();
+                });
+                unawaited(_requestPreview());
+              }
+            : null,
+      ),
+      if (_previewLoading) const Text('Calculando prévia…'),
+      if (_preview != null)
+        Text(_preview!.summary, style: const TextStyle(fontSize: 12)),
+      if (_previewError != null)
+        Text(_previewError!, style: const TextStyle(fontSize: 12)),
       if (_error != null)
         Padding(
           padding: const EdgeInsets.only(top: 8),
@@ -364,6 +466,8 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
           },
         );
       },
-    );
+    ).then((_) {
+      if (mounted) unawaited(_requestPreview());
+    });
   }
 }

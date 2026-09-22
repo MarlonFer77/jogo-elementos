@@ -105,7 +105,7 @@ test("a triggered combination damages the opponent, not the actor", () => {
     { actorId: "a", elementIds: ["fire", "wind"] },
     defaultCombinationBook,
   );
-  assert.deepEqual(hpOf(result.state, "b"), { max: 100, current: 80 });
+  assert.deepEqual(hpOf(result.state, "b"), { max: 100, current: 86 });
   assert.deepEqual(hpOf(result.state, "a"), { max: 100, current: 100 });
 });
 
@@ -196,7 +196,7 @@ test("Shield does not block a second hit after being consumed", () => {
     defaultCombinationBook,
   ).state; // 2 + 1 regen = 3, affordable again — not blocked this time
 
-  assert.equal(hpOf(state, "b").current, 80);
+  assert.equal(hpOf(state, "b").current, 86);
 });
 
 test(

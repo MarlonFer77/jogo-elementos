@@ -75,9 +75,10 @@ void main() {
 
   group('CombinationBook', () {
     test('resolves Fogo + Vento to Tempestade Ígnea', () {
-      final result = defaultCombinationBook.resolve(
-        [Elements.fire, Elements.wind],
-      );
+      final result = defaultCombinationBook.resolve([
+        Elements.fire,
+        Elements.wind,
+      ]);
       expect(result, isNotNull);
       expect(result!.resultId, equals('ignited_storm'));
     });
@@ -90,37 +91,44 @@ void main() {
     });
 
     test('resolves a 3-element combination (Terra + Fogo + Água = Lava)', () {
-      final result = defaultCombinationBook.resolve(
-        [Elements.earth, Elements.fire, Elements.water],
-      );
+      final result = defaultCombinationBook.resolve([
+        Elements.earth,
+        Elements.fire,
+        Elements.water,
+      ]);
       expect(result, isNotNull);
       expect(result!.resultId, equals('lava'));
     });
 
     test('returns null for an unknown combination', () {
-      final result = defaultCombinationBook.resolve(
-        [Elements.ice, Elements.shadow],
-      );
+      final result = defaultCombinationBook.resolve([
+        Elements.ice,
+        Elements.shadow,
+      ]);
       expect(result, isNull);
     });
 
     test('a 2-element subset of a known 3-element combo does not match', () {
-      final result = defaultCombinationBook.resolve(
-        [Elements.earth, Elements.fire],
-      );
+      final result = defaultCombinationBook.resolve([
+        Elements.earth,
+        Elements.fire,
+      ]);
       expect(result, isNull);
     });
 
     test('the built-in combinations carry their damage value', () {
-      final twoElement = defaultCombinationBook.resolve(
-        [Elements.fire, Elements.wind],
-      )!;
-      final threeElement = defaultCombinationBook.resolve(
-        [Elements.earth, Elements.fire, Elements.water],
-      )!;
+      final twoElement = defaultCombinationBook.resolve([
+        Elements.fire,
+        Elements.wind,
+      ])!;
+      final threeElement = defaultCombinationBook.resolve([
+        Elements.earth,
+        Elements.fire,
+        Elements.water,
+      ])!;
 
-      expect(twoElement.damage, equals(20));
-      expect(twoElement.result.damage, equals(20));
+      expect(twoElement.damage, equals(14));
+      expect(twoElement.result.damage, equals(14));
       expect(threeElement.damage, equals(35));
       expect(threeElement.result.damage, equals(35));
     });

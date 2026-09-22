@@ -9,6 +9,7 @@ import {
   withStatusesTicked,
   withStatusRemoved,
   apOf,
+  withStatusApplied,
 } from "./battle-state.js";
 import type { CombinationBook } from "./combination-book.js";
 import type { CombinationModifier } from "./combination-modifiers.js";
@@ -46,7 +47,8 @@ export function playTurn(
   if (state.winner !== null) {
     throw new TurnValidationError("the battle is already over");
   }
-  if (action.elementIds.length === 0) {
+  if ((action.kind === 'defend' && action.elementIds.length !== 0) ||
+      (action.kind !== 'defend' && (action.elementIds.length === 0 || action.elementIds.length > 3 || new Set(action.elementIds).size !== action.elementIds.length))) {
     throw new TurnValidationError("must play at least one element");
   }
   if (action.actorId !== state.currentTurnId) {
@@ -77,6 +79,7 @@ export function playTurn(
   }
 
   const opponentId = opponentOf(nextState, action.actorId);
+  const shieldBlocked = hasStatus(nextState, opponentId, SHIELD_STATUS_ID);
   nextState = {
     ...nextState,
     currentTurnId: opponentId,
@@ -92,6 +95,18 @@ export function playTurn(
   }
 
   nextState = tickStatusDamage(nextState, action.actorId);
+  if (nextState.winner === null) {
+    if (action.kind === 'defend') {
+      nextState = withStatusApplied(withStatusRemoved(nextState, action.actorId, 'guard'), action.actorId,
+        {effectId: 'guard', turnsRemaining: 1, damagePerTick: 0});
+    }
+    for (const targeted of combination?.statusesToApply ?? []) {
+      const target = targeted.target === 'actor' ? action.actorId : opponentId;
+      if (target === opponentId && shieldBlocked) continue;
+      if (hasStatus(nextState, target, targeted.status.effectId)) continue;
+      nextState = withStatusApplied(nextState, target, targeted.status);
+    }
+  }
 
   return {
     state: nextState,
@@ -106,6 +121,9 @@ function applyDamage(
 ): BattleState {
   if (hasStatus(state, targetId, SHIELD_STATUS_ID)) {
     return withStatusRemoved(state, targetId, SHIELD_STATUS_ID);
+  }
+  if (hasStatus(state, targetId, 'guard')) {
+    return withDamage(withStatusRemoved(state, targetId, 'guard'), targetId, Math.ceil(damage / 2));
   }
   return withDamage(state, targetId, damage);
 }

@@ -94,7 +94,7 @@ void main() {
       ),
     );
     match.playEquippedAttack('ignited_storm');
-    expect(match.playerBCurrentHp, 80);
+    expect(match.playerBCurrentHp, 86);
     expect(match.equippedElementIdsForPlayerA, ['ice', 'earth']);
     expect(match.startNewBattleKeepingProgress().equippedElementIdsForPlayerA, [
       'ice',

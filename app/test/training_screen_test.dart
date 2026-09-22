@@ -61,7 +61,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Última combinação: Tempestade Ígnea'), findsOneWidget);
       expect(find.text('Descobertas: 1/3'), findsOneWidget);
-      expect(find.textContaining('80/100 HP'), findsOneWidget);
+      expect(find.textContaining('86/100 HP'), findsOneWidget);
       expect(
         find.textContaining('Novo ataque desbloqueado: Tempestade Ígnea'),
         findsOneWidget,

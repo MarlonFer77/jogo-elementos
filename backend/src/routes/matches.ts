@@ -73,12 +73,15 @@ export async function handleSubmitTurn(
   res: ServerResponse,
   store: MatchStore,
   matchId: string,
+  preview = false,
 ): Promise<void> {
   try {
     const body = await readJsonBody(req);
     const action = parseTurnAction(body);
-    const { match, result } = store.applyTurn(matchId, action, defaultCombinationBook);
-    sendJson(res, 200, { match, triggeredCombinationId: result.triggeredCombinationId });
+    const beforeState = preview ? store.get(matchId).state : undefined;
+    const { match, result } = store.applyTurn(matchId, action, defaultCombinationBook, preview);
+    sendJson(res, 200, { match, triggeredCombinationId: result.triggeredCombinationId,
+      ...(preview ? {beforeState} : {}) });
   } catch (error) {
     sendErrorResponse(res, error);
   }

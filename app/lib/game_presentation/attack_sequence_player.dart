@@ -82,6 +82,10 @@ class AttackSequencePlayer extends Component {
 
   void _applyMotion() {
     if (_visualsReleased) return;
+    if (event.isDefend) {
+      attacker.setActionPose(charge: _step == _AttackStep.done ? 0 : .45);
+      return;
+    }
     final p = _stepDuration == 0
         ? 1.0
         : (_stepElapsed / _stepDuration).clamp(0.0, 1.0);
@@ -200,8 +204,8 @@ class AttackSequencePlayer extends Component {
         final wasStep = _step;
         _step = _nextStep(_step);
         if (wasStep == _AttackStep.impact) {
-          if (event.damage > 0) target.playHitEffect();
-          sfxPlayer.play(SfxId.impact);
+          if (event.damage > 0 && !event.isDefend) target.playHitEffect();
+          if (!event.isDefend) sfxPlayer.play(SfxId.impact);
           onImpact?.call();
         }
       }
@@ -220,6 +224,17 @@ class AttackSequencePlayer extends Component {
   void render(Canvas canvas) {
     if (_visualsReleased) return;
     super.render(canvas);
+    if (event.isDefend) {
+      _drawText(
+        canvas,
+        'Defesa · 50%',
+        Offset(attacker.position.x, attacker.position.y - 90),
+        fontSize: 13,
+        color: const Color(0xFF253843),
+        plateOpacity: 1,
+      );
+      return;
+    }
     switch (_step) {
       case _AttackStep.elementalEffect:
         if (isMelee) {

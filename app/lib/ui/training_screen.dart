@@ -61,6 +61,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
   String? _selectedAttackId;
   bool _executing = false;
   bool _showAbilities = false;
+  bool _defending = false;
   List<String>? _equippedElementsA;
   List<String>? _equippedElementsB;
   bool? _pendingEquipChoicePlayerA;
@@ -158,6 +159,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
     if (_executing || _match.isOver) return;
     final wasPlayerATurn = _match.isPlayerATurn;
     final actorName = _match.currentTurnName;
+    final defending = _defending;
     setState(() {
       _error = null;
       _lastUnlockedAttackText = null;
@@ -174,14 +176,17 @@ class _TrainingScreenState extends State<TrainingScreen> {
               .firstWhere((a) => a.id == attackId)
               .elementIds;
         }
-        if (attackId == null) {
+        if (defending) {
+          playedElementIds = [];
+          _match.defend();
+        } else if (attackId == null) {
           _match.playElementIds(playedElementIds);
         } else {
           _match.playEquippedAttack(attackId);
         }
         _executing = true;
         final actionName =
-            _match.lastTriggeredCombinationName ??
+            (defending ? 'Defender' : _match.lastTriggeredCombinationName) ??
             const ElementCatalog()
                 .all()
                 .where((e) => playedElementIds.contains(e.id))
@@ -190,6 +195,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
         _actionText = '$actorName usou $actionName!';
         _selectedAttackId = null;
         _selectedIds.clear();
+        _defending = false;
 
         final damage = wasPlayerATurn
             ? hpBBefore - _match.playerBCurrentHp
@@ -201,6 +207,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
           comboName: _match.lastTriggeredCombinationName,
           damage: damage,
           appliedStatusNames: _match.lastAppliedStatusNames,
+          isDefend: defending,
         );
         if (_match.discoveredCombinationIds.length != discoveredCountBefore) {
           unawaited(
@@ -423,7 +430,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                 SizedBox(
                   width: horizontal
                       ? constraints.maxWidth -
-                          (constraints.maxWidth * .45).clamp(280.0, 420.0)
+                            (constraints.maxWidth * .45).clamp(280.0, 420.0)
                       : null,
                   height: horizontal ? constraints.maxHeight : arenaHeight,
                   child: BattleSceneWidget(
@@ -537,9 +544,6 @@ class _TrainingScreenState extends State<TrainingScreen> {
     final selectedAttack = attacks
         .where((a) => a.id == _selectedAttackId)
         .firstOrNull;
-    final reason = selectedAttack == null
-        ? null
-        : _match.attackUnavailableReason(selectedAttack.id);
     return [
       BattleCommandGrid(
         children: _showAbilities
@@ -559,6 +563,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                           ? null
                           : () => setState(() {
                               _selectedAttackId = attacks[i].id;
+                              _defending = false;
                               _selectedIds.clear();
                               _error = null;
                             }),
@@ -595,6 +600,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                           ? null
                           : () => setState(() {
                               _selectedAttackId = null;
+                              _defending = false;
                               _selectedIds
                                 ..clear()
                                 ..add(equipped[i]);
@@ -631,11 +637,21 @@ class _TrainingScreenState extends State<TrainingScreen> {
         ),
       if (_error != null)
         Text(_error!, style: const TextStyle(color: Color(0xFF9D322E))),
-      if (selectedAttack != null)
-        Text(
-          reason ?? selectedAttack.description,
-          style: const TextStyle(fontSize: 12),
-        ),
+      TextButton.icon(
+        icon: const Icon(Icons.shield_outlined, size: 18),
+        label: Text(_defending ? 'Defesa selecionada' : 'Defender'),
+        onPressed: _executing
+            ? null
+            : () => setState(() {
+                _defending = true;
+                _selectedIds.clear();
+                _selectedAttackId = null;
+                _error = null;
+              }),
+      ),
+      if (_error == null &&
+          (_defending || _selectedIds.isNotEmpty || _selectedAttackId != null))
+        Text(_previewText(), style: const TextStyle(fontSize: 12)),
       if (_selectedIds.length > 1)
         Text(
           'Combinar: ${elements.where((e) => _selectedIds.contains(e.id)).map((e) => e.name).join(' + ')}',
@@ -670,7 +686,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
     final attack = _match.equippedAttacksForCurrentPlayer
         .where((a) => a.id == _selectedAttackId)
         .firstOrNull;
-    if (_selectedIds.isEmpty && attack == null) {
+    if (!_defending && _selectedIds.isEmpty && attack == null) {
       return const Text(
         'Escolha uma ação. +1 AP ao agir.',
         style: TextStyle(
@@ -682,17 +698,32 @@ class _TrainingScreenState extends State<TrainingScreen> {
     }
     return Padding(
       padding: const EdgeInsets.only(top: 6),
-      child: PixelMenuButton(
-        label: attack == null
-            ? 'Jogar'
-            : 'Usar habilidade · ${attack.apCost} AP',
-        primary: true,
-        onPressed:
-            _executing ||
-                (attack != null &&
-                    _match.attackUnavailableReason(attack.id) != null)
-            ? null
-            : _playTurn,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_error == null && _previewText().contains('\n'))
+            Text(
+              _previewText().split('\n').take(2).join(' · '),
+              key: const ValueKey('action-preview-compact'),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11),
+            ),
+          PixelMenuButton(
+            label: _defending
+                ? 'Confirmar defesa'
+                : attack == null
+                ? 'Jogar'
+                : 'Usar habilidade · ${attack.apCost} AP',
+            primary: true,
+            onPressed:
+                _executing ||
+                    (attack != null &&
+                        _match.attackUnavailableReason(attack.id) != null)
+                ? null
+                : _playTurn,
+          ),
+        ],
       ),
     );
   }
@@ -716,11 +747,30 @@ class _TrainingScreenState extends State<TrainingScreen> {
   );
 
   void _setCommandTab(bool abilities) => setState(() {
+    _defending = false;
     _showAbilities = abilities;
     _selectedAttackId = null;
     _selectedIds.clear();
     _error = null;
   });
+
+  String _previewText() {
+    try {
+      return _match
+          .previewAction(
+            _selectedIds.toList(),
+            defending: _defending,
+            attackId: _selectedAttackId,
+          )
+          .summary;
+    } on StateError catch (e) {
+      return e.message.contains('Not enough AP')
+          ? 'AP insuficiente para essa combinação.'
+          : e.message;
+    } on ArgumentError {
+      return 'Jogada inválida.';
+    }
+  }
 
   Future<T?> _sheet<T>(Widget Function(BuildContext) builder) =>
       showModalBottomSheet<T>(
@@ -873,6 +923,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
     );
     if (chosen == null || !mounted) return;
     setState(() {
+      _defending = false;
       _selectedAttackId = null;
       _selectedIds
         ..clear()

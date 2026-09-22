@@ -4,9 +4,8 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Nenhuma — mãos articuladas, espadas elementais e arena detalhada implementadas.
-Verificados 271 testes da suíte e 3 testes adicionais de renderização.
-Preparado para distribuição na v0.20.0+20.
+Publicar v0.21.0+21: Defender, prévia de ação e combos diferenciados.
+Implementação e testes locais concluídos; confirmar deploy do backend e APK.
 
 # NEXT
 

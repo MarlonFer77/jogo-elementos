@@ -154,5 +154,9 @@ export function parseTurnAction(value: unknown): TurnAction {
     throw new TurnValidationError("elementIds must be a list of strings");
   }
 
-  return { actorId: input.actorId, elementIds: input.elementIds as string[] };
+  if (input.kind !== undefined && input.kind !== 'attack' && input.kind !== 'defend') {
+    throw new TurnValidationError('unknown action kind');
+  }
+  return { actorId: input.actorId, elementIds: input.elementIds as string[],
+    ...(input.kind === undefined ? {} : { kind: input.kind }) };
 }

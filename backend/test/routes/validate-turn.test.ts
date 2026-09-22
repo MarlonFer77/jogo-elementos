@@ -143,7 +143,7 @@ test("a triggered combination damages the opponent and defaults to 100 HP", asyn
     assert.equal(response.status, 200);
     assert.deepEqual(body.state?.hp, {
       a: { max: 100, current: 100 },
-      b: { max: 100, current: 80 },
+      b: { max: 100, current: 86 },
     });
   });
 });
@@ -156,7 +156,7 @@ test("carries over HP sent by the client instead of resetting it", async () => {
       body: JSON.stringify({
         state: {
           ...baseState(),
-          hp: { a: { max: 100, current: 100 }, b: { max: 100, current: 20 } },
+          hp: { a: { max: 100, current: 100 }, b: { max: 100, current: 14 } },
         },
         action: { actorId: "a", elementIds: ["fire", "wind"] },
       }),

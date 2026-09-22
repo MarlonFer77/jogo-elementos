@@ -1,5 +1,5 @@
 import { emptyAbilityEffect } from "./ability-effect.js";
-import { opponentOf, withStatusApplied } from "./battle-state.js";
+import { opponentOf, withStatusApplied, withStatusRemoved, statusesOf } from "./battle-state.js";
 import type { CombinationBook } from "./combination-book.js";
 import type { CombinationModifier } from "./combination-modifiers.js";
 import type { Mutation } from "./mutations.js";
@@ -24,6 +24,7 @@ export function useAbility(
   combinationModifiers: readonly CombinationModifier[] = [],
 ): TurnResult {
   const turnResult = playTurn(state, action, combinationBook, combinationModifiers);
+  if (action.kind === 'defend') return turnResult;
 
   let effect = emptyAbilityEffect;
   for (const mutation of mutations) {
@@ -41,6 +42,10 @@ export function useAbility(
     const opponentId = opponentOf(state, action.actorId);
     for (const targeted of effect.statusesToApply) {
       const targetId = targeted.target === "actor" ? action.actorId : opponentId;
+      if (targeted.status.effectId === 'burn') {
+        if (statusesOf(nextState, targetId).some(s => s.effectId === 'burn' && s.damagePerTick >= targeted.status.damagePerTick)) continue;
+        nextState = withStatusRemoved(nextState, targetId, 'burn');
+      }
       nextState = withStatusApplied(nextState, targetId, targeted.status);
     }
   }

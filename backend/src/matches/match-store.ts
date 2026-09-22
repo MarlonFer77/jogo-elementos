@@ -81,6 +81,7 @@ export class MatchStore {
     id: string,
     action: TurnAction,
     combinationBook: CombinationBook,
+    preview = false,
   ): { match: Match; result: TurnResult } {
     const match = this.get(id);
     if (match.status !== "in_progress" || match.state === null) {
@@ -103,7 +104,7 @@ export class MatchStore {
       state: result.state,
       status: result.state.winner !== null ? "finished" : match.status,
     };
-    this.matches.set(id, updated);
+    if (!preview) this.matches.set(id, updated);
     return { match: updated, result };
   }
 

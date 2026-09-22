@@ -31,7 +31,7 @@ void main() {
       expect(match.attackUnavailableReason('ignited_storm'), isNull);
       match.playEquippedAttack('ignited_storm');
       expect(match.playerAAp, 0);
-      expect(match.playerBCurrentHp, 80);
+      expect(match.playerBCurrentHp, 86);
       expect(match.isPlayerATurn, false);
       expect(match.equippedAttacksForCurrentPlayer, isEmpty);
       expect(match.cumulativeTurnsPlayedA, 1);

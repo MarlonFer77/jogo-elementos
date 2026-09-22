@@ -3,6 +3,7 @@ import 'package:battle_engine/battle_engine.dart';
 import 'effect_badge_view.dart';
 import 'attack_catalog.dart';
 import 'skill_tree_catalog.dart';
+import 'action_preview.dart';
 
 /// A local, offline 1v1 match where the same device controls both sides —
 /// "Modo treino" (seção 12). No backend, no multiplayer, no AI opponent.
@@ -500,6 +501,13 @@ class TrainingMatch {
 
   void _resolveElements(List<String> elementIds) {
     final wasPlayerATurn = _isPlayerATurn;
+    final loadoutBeforeThisPlay = _currentLoadout;
+    final result = _simulateElements(elementIds);
+    _applyResolvedAction(result, wasPlayerATurn, loadoutBeforeThisPlay);
+  }
+
+  AbilityResult _simulateElements(List<String> elementIds) {
+    if (isOver) throw StateError('A partida terminou.');
     final elements = elementIds
         .map(
           (id) => Elements.all.firstWhere(
@@ -544,18 +552,37 @@ class TrainingMatch {
       combinationModifiers: progress.grantedCombinationModifiers,
     );
 
-    final result = _abilityEngine.useAbility(
+    return _abilityEngine.useAbility(
       _state,
       _state.currentTurn,
       build.abilityById('turn_action')!,
       combinationModifiers: build.combinationModifiers,
     );
+  }
 
+  void _applyResolvedAction(
+    AbilityResult result,
+    bool wasPlayerATurn,
+    AttackLoadout loadoutBeforeThisPlay,
+  ) {
     _state = result.state;
     _lastTriggeredCombinationName = result.triggeredCombination?.resultName;
     _lastAppliedStatusNames = result.effect.statusesToApply
         .map((targeted) => targeted.status.effect.name)
         .toList();
+    _lastAppliedStatusNames.addAll(
+      result.triggeredCombination?.statusesToApply
+              .where(
+                (t) => _state.hasStatus(
+                  t.target == StatusTarget.actor
+                      ? _state.opponentOf(_state.currentTurn)
+                      : _state.currentTurn,
+                  t.status.effect,
+                ),
+              )
+              .map((t) => t.status.effect.name) ??
+          const <String>[],
+    );
     if (result.triggeredCombination != null) {
       _discoveryBook = _discoveryBook.withDiscovered(
         result.triggeredCombination!,
@@ -589,5 +616,77 @@ class TrainingMatch {
     } else {
       _cumulativeTurnsB++;
     }
+  }
+
+  void defend() {
+    final actor = _state.currentTurn;
+    final result = _abilityEngine.turnEngine.playTurn(
+      _state,
+      TurnAction.defend(actor: actor),
+    );
+    _state = result.state;
+    _lastTriggeredCombinationName = null;
+    _lastAppliedStatusNames = isOver ? [] : ['Defesa'];
+    _lastUnlockedAttackId = null;
+    _lastUnlockedAttackName = null;
+    _lastUnlockedAttackNeededEquipChoice = false;
+    _turnsPlayed++;
+    if (actor == _playerA) {
+      _cumulativeTurnsA++;
+    } else {
+      _cumulativeTurnsB++;
+    }
+  }
+
+  ActionPreview previewAction(
+    List<String> ids, {
+    bool defending = false,
+    String? attackId,
+  }) {
+    if (attackId != null) {
+      final reason = attackUnavailableReason(attackId);
+      if (reason != null) throw StateError(reason);
+      ids = equippedAttacksForCurrentPlayer
+          .firstWhere((a) => a.id == attackId)
+          .elementIds;
+    } else if (!defending &&
+        ids.any((id) => !equippedElementIdsForCurrentPlayer.contains(id))) {
+      throw StateError('Equipe esse elemento em Trocar elementos.');
+    }
+    final actor = _state.currentTurn;
+    final opponent = _state.opponentOf(actor);
+    final next = defending
+        ? _abilityEngine.turnEngine
+              .playTurn(_state, TurnAction.defend(actor: actor))
+              .state
+        : _simulateElements(ids).state;
+    final combo = ids.length > 1
+        ? defaultCombinationBook.resolve(
+            ids
+                .map((id) => Elements.all.firstWhere((e) => e.id == id))
+                .toList(),
+          )
+        : null;
+    return ActionPreview(
+      apCost: defending || ids.length < 2
+          ? 0
+          : ids.length == 2
+          ? 3
+          : 5,
+      apAfter: next.apOf(actor).current,
+      opponentHpLoss:
+          _state.hpOf(opponent).current - next.hpOf(opponent).current,
+      selfHpLoss: _state.hpOf(actor).current - next.hpOf(actor).current,
+      effects: [
+        for (final target in [actor, opponent])
+          for (final status in next.statusesOf(target))
+            '${target == actor ? 'Você' : 'Adversário'}: ${status.effect.name}'
+                '${status.effect == StatusEffects.guard ? ' · próximo golpe −50%' : ''}'
+                '${status.damagePerTick > 0 ? ' · ${status.damagePerTick} dano/ação' : ''}'
+                '${status.turnsRemaining == null ? '' : ' · ${status.turnsRemaining} ação(ões)'}',
+        if (!defending && ids.length > 1 && combo == null)
+          'Combinação desconhecida: sem dano direto.',
+      ],
+    );
   }
 }

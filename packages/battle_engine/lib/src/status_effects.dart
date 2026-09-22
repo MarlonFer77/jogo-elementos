@@ -11,6 +11,12 @@ class StatusEffects {
     name: 'Queimadura',
     description: 'Sofre dano ao final de cada turno.',
   );
+  static const guard = StatusEffect(
+    id: 'guard',
+    name: 'Defesa',
+    description:
+        'Reduz o próximo golpe direto em 50%. Expira após a ação adversária; não reduz dano contínuo.',
+  );
   static const freeze = StatusEffect(
     id: 'freeze',
     name: 'Congelamento',
@@ -63,6 +69,7 @@ class StatusEffects {
   );
 
   static const List<StatusEffect> all = [
+    guard,
     burn,
     freeze,
     wet,

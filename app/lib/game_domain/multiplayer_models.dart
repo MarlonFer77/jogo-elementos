@@ -36,20 +36,29 @@ class RemoteHpPool {
   const RemoteHpPool({required this.max, required this.current});
 
   factory RemoteHpPool.fromJson(Map<String, dynamic> json) {
-    return RemoteHpPool(max: json['max'] as int, current: json['current'] as int);
+    return RemoteHpPool(
+      max: json['max'] as int,
+      current: json['current'] as int,
+    );
   }
 }
 
 class RemoteActiveStatus {
   final String effectId;
   final int? turnsRemaining;
+  final int damagePerTick;
 
-  const RemoteActiveStatus({required this.effectId, this.turnsRemaining});
+  const RemoteActiveStatus({
+    required this.effectId,
+    this.turnsRemaining,
+    this.damagePerTick = 0,
+  });
 
   factory RemoteActiveStatus.fromJson(Map<String, dynamic> json) {
     return RemoteActiveStatus(
       effectId: json['effectId'] as String,
       turnsRemaining: json['turnsRemaining'] as int?,
+      damagePerTick: json['damagePerTick'] as int? ?? 0,
     );
   }
 }
@@ -61,7 +70,10 @@ class RemoteApPool {
   const RemoteApPool({required this.max, required this.current});
 
   factory RemoteApPool.fromJson(Map<String, dynamic> json) {
-    return RemoteApPool(max: json['max'] as int, current: json['current'] as int);
+    return RemoteApPool(
+      max: json['max'] as int,
+      current: json['current'] as int,
+    );
   }
 }
 
@@ -87,7 +99,8 @@ class RemoteBattleState {
   });
 
   factory RemoteBattleState.fromJson(Map<String, dynamic> json) {
-    final combatantStatusesJson = json['combatantStatuses'] as Map<String, dynamic>?;
+    final combatantStatusesJson =
+        json['combatantStatuses'] as Map<String, dynamic>?;
     final apJson = json['ap'] as Map<String, dynamic>?;
     return RemoteBattleState(
       playerAId: json['playerAId'] as String,
@@ -97,7 +110,8 @@ class RemoteBattleState {
           .map((e) => RemoteFieldEffect.fromJson(e as Map<String, dynamic>))
           .toList(),
       hp: (json['hp'] as Map<String, dynamic>).map(
-        (id, pool) => MapEntry(id, RemoteHpPool.fromJson(pool as Map<String, dynamic>)),
+        (id, pool) =>
+            MapEntry(id, RemoteHpPool.fromJson(pool as Map<String, dynamic>)),
       ),
       combatantStatuses: combatantStatusesJson == null
           ? const {}
@@ -105,14 +119,21 @@ class RemoteBattleState {
               (id, statuses) => MapEntry(
                 id,
                 (statuses as List)
-                    .map((s) => RemoteActiveStatus.fromJson(s as Map<String, dynamic>))
+                    .map(
+                      (s) => RemoteActiveStatus.fromJson(
+                        s as Map<String, dynamic>,
+                      ),
+                    )
                     .toList(),
               ),
             ),
       ap: apJson == null
           ? const {}
           : apJson.map(
-              (id, pool) => MapEntry(id, RemoteApPool.fromJson(pool as Map<String, dynamic>)),
+              (id, pool) => MapEntry(
+                id,
+                RemoteApPool.fromJson(pool as Map<String, dynamic>),
+              ),
             ),
       winner: json['winner'] as String?,
     );
@@ -161,6 +182,11 @@ class RemoteMatch {
 class SubmitTurnResult {
   final RemoteMatch match;
   final String? triggeredCombinationId;
+  final RemoteBattleState? beforeState;
 
-  const SubmitTurnResult({required this.match, this.triggeredCombinationId});
+  const SubmitTurnResult({
+    required this.match,
+    this.triggeredCombinationId,
+    this.beforeState,
+  });
 }

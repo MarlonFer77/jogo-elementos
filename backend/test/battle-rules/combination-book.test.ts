@@ -8,11 +8,11 @@ test("resolves fire+wind to ignited_storm", () => {
   assert.equal(result?.id, "ignited_storm");
 });
 
-test("2-element combinations deal 20 damage, the 3-element one deals 35", () => {
-  assert.equal(defaultCombinationBook.resolve(["fire", "wind"])?.damage, 20);
+test("combinations have distinct direct damage and effects", () => {
+  assert.equal(defaultCombinationBook.resolve(["fire", "wind"])?.damage, 14);
   assert.equal(
     defaultCombinationBook.resolve(["water", "lightning"])?.damage,
-    20,
+    12,
   );
   assert.equal(
     defaultCombinationBook.resolve(["earth", "fire", "water"])?.damage,

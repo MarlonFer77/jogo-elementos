@@ -28,11 +28,13 @@ export class CombinationBook {
 export const defaultCombinationBook = new CombinationBook([
   {
     elementIds: new Set(["fire", "wind"]),
-    result: { id: "ignited_storm", area: 1, duration: null, damage: 20 },
+    result: { id: "ignited_storm", area: 1, duration: null, damage: 14,
+      statusesToApply: [{target: 'opponent', status: {effectId: 'burn', turnsRemaining: 2, damagePerTick: 3}}] },
   },
   {
     elementIds: new Set(["water", "lightning"]),
-    result: { id: "electrified_field", area: 1, duration: null, damage: 20 },
+    result: { id: "electrified_field", area: 1, duration: null, damage: 12,
+      statusesToApply: [{target: 'actor', status: {effectId: 'guard', turnsRemaining: 1, damagePerTick: 0}}] },
   },
   {
     elementIds: new Set(["earth", "fire", "water"]),

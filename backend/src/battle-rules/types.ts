@@ -20,6 +20,7 @@ export interface FieldEffect {
   readonly area: number;
   readonly duration: number | null;
   readonly damage: number;
+  readonly statusesToApply?: readonly import('./ability-effect.js').TargetedStatus[];
 }
 
 export interface ElementCombination {
@@ -64,6 +65,7 @@ export interface BattleState {
 }
 
 export interface TurnAction {
+  readonly kind?: 'attack' | 'defend';
   readonly actorId: string;
   readonly elementIds: readonly string[];
 }

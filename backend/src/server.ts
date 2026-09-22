@@ -62,6 +62,11 @@ export function createServer(): Server {
 
     const turnsParams =
       req.method === "POST" ? matchPath("/matches/:id/turns", pathname) : null;
+    const previewParams = req.method === 'POST' ? matchPath('/matches/:id/preview', pathname) : null;
+    if (previewParams) {
+      void handleSubmitTurn(req, res, matchStore, previewParams.id!, true);
+      return;
+    }
     if (turnsParams) {
       void handleSubmitTurn(req, res, matchStore, turnsParams.id!);
       return;

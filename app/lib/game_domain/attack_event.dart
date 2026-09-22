@@ -16,6 +16,7 @@ class AttackEvent {
   final String? comboName;
   final int damage;
   final List<String> appliedStatusNames;
+  final bool isDefend;
 
   const AttackEvent({
     required this.sequenceId,
@@ -24,5 +25,6 @@ class AttackEvent {
     this.comboName,
     required this.damage,
     required this.appliedStatusNames,
+    this.isDefend = false,
   });
 }

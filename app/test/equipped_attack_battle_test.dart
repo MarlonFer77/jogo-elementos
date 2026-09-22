@@ -44,7 +44,7 @@ void main() {
       button.onPressed!(); // second queued tap must not play for the opponent
       await tester.pump();
       expect(match.turnsPlayed, 1);
-      expect(match.playerBCurrentHp, 80);
+      expect(match.playerBCurrentHp, 86);
       expect(find.text('Ataque em execução…'), findsOneWidget);
       expect(
         tester

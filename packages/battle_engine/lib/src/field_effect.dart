@@ -1,3 +1,5 @@
+import 'targeted_status.dart';
+
 /// A named effect currently active on the battlefield (not tied to a
 /// specific combatant). Produced either by resolving an [ElementCombination]
 /// or by an ability [Mutation].
@@ -17,6 +19,7 @@ class FieldEffect {
   final int area;
   final int? duration;
   final int damage;
+  final List<TargetedStatus> statusesToApply;
 
   const FieldEffect({
     required this.id,
@@ -25,6 +28,7 @@ class FieldEffect {
     this.area = 1,
     this.duration,
     this.damage = 0,
+    this.statusesToApply = const [],
   });
 
   FieldEffect copyWith({int? area, int? duration, int? damage}) {
@@ -35,6 +39,7 @@ class FieldEffect {
       area: area ?? this.area,
       duration: duration ?? this.duration,
       damage: damage ?? this.damage,
+      statusesToApply: statusesToApply,
     );
   }
 

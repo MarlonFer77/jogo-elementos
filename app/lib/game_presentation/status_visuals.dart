@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' show Color;
 
 const Map<String, String> _statusIcons = {
+  'guard': '🛡️',
   'burn': '🔥',
   'freeze': '❄️',
   'wet': '💧',
@@ -15,6 +16,7 @@ const Map<String, String> _statusIcons = {
 };
 
 const Map<String, Color> _statusColors = {
+  'guard': Color(0xFF9CB78A),
   'burn': Color(0xFFFF7043),
   'freeze': Color(0xFF64B5F6),
   'wet': Color(0xFF4FC3F7),

@@ -5,6 +5,9 @@ import 'combination_modifier.dart';
 import 'status_effects.dart';
 import 'turn_action.dart';
 import 'turn_result.dart';
+import 'active_status.dart';
+import 'field_effect.dart';
+import 'targeted_status.dart';
 
 /// Resolves one turn at a time. Pure logic: given a state and an action,
 /// produces the next state — including AP (regen, cost, rejection),
@@ -75,6 +78,8 @@ class TurnEngine {
         : null;
 
     final opponent = nextState.opponentOf(action.actor);
+    final shieldBlocked = nextState.hasStatus(opponent, StatusEffects.shield);
+    FieldEffect? appliedEffect;
     nextState = nextState.copyWith(currentTurn: opponent);
 
     if (combination != null) {
@@ -82,6 +87,7 @@ class TurnEngine {
       for (final modifier in combinationModifiers) {
         fieldEffect = modifier.apply(fieldEffect);
       }
+      appliedEffect = fieldEffect;
       nextState = nextState.withFieldEffect(fieldEffect);
       nextState = _applyDamage(nextState, opponent, fieldEffect.damage);
     } else if (elementCount == 1) {
@@ -89,19 +95,41 @@ class TurnEngine {
     }
 
     nextState = _tickStatusDamage(nextState, action.actor);
+    // New effects begin AFTER this action's ticks, never tick immediately.
+    if (nextState.winner == null) {
+      if (action.isDefend) {
+        nextState = nextState
+            .withStatusRemoved(action.actor, StatusEffects.guard)
+            .withStatusApplied(
+              action.actor,
+              ActiveStatus(effect: StatusEffects.guard, turnsRemaining: 1),
+            );
+      }
+      for (final targeted
+          in appliedEffect?.statusesToApply ?? const <TargetedStatus>[]) {
+        final target = targeted.target == StatusTarget.actor
+            ? action.actor
+            : opponent;
+        if (target == opponent && shieldBlocked) continue;
+        // Do not stack or replace a stronger burn supplied by a build.
+        if (nextState.hasStatus(target, targeted.status.effect)) continue;
+        nextState = nextState.withStatusApplied(target, targeted.status);
+      }
+    }
 
     return TurnResult(state: nextState, triggeredCombination: combination);
   }
 
-  BattleState _applyDamage(
-    BattleState state,
-    Combatant target,
-    int damage,
-  ) {
+  BattleState _applyDamage(BattleState state, Combatant target, int damage) {
     if (damage <= 0) return state;
 
     if (state.hasStatus(target, StatusEffects.shield)) {
       return state.withStatusRemoved(target, StatusEffects.shield);
+    }
+    if (state.hasStatus(target, StatusEffects.guard)) {
+      return state
+          .withStatusRemoved(target, StatusEffects.guard)
+          .withDamage(target, (damage / 2).ceil());
     }
     return state.withDamage(target, damage);
   }

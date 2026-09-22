@@ -106,7 +106,9 @@ class _BattleSceneWidgetState extends State<BattleSceneWidget> {
             border: Border.all(color: const Color(0xFF253843), width: 2),
           ),
           child: Text(
-            _impactSeen
+            attack.isDefend
+                ? '$actor · Defesa preparada'
+                : _impactSeen
                 ? '$name · $result'
                 : channeling
                 ? 'Canalizando · $name'

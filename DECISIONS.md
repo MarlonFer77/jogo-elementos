@@ -1,5 +1,37 @@
 # DECISIONS.md
 
+## DECISION-054
+Data: 2026-09-18
+Decisão: acrescentar Defesa e prévia de ação, diferenciando os dois combos
+de 3 AP. Defesa não ataca nem dispara mutações; gera o mesmo +1 AP de uma
+ação normal, limitado ao máximo. Reduz o próximo dano direto pela metade
+(arredonda dano para cima) e expira após uma ação adversária, mesmo sem golpe.
+Não reduz DOT. Escudo existente conserva prioridade e bloqueio integral.
+
+Tempestade Ígnea: 14 direto + Queimadura de 3 por duas ações seguintes.
+Campo Eletrocutado: 12 direto + Defesa de 50% no lançador. Lava inalterada.
+Efeitos entram após os ticks existentes; Escudo bloqueia a queimadura do
+combo. Queimaduras não acumulam; uma mutação mais forte substitui a menor.
+Não se renova uma queimadura de força igual ou superior ainda ativa.
+
+Prévia usa a mesma resolução pura da execução. Treino não altera descobertas,
+AP, turnos nem progresso ao consultar. Multiplayer usa POST /matches/:id/preview
+sem gravar no MatchStore e recebe os snapshots autoritativos anterior/posterior.
+A ação real é sempre revalidada no servidor. Defesa usa kind=defend e lista
+vazia explícita; ataques antigos sem kind continuam aceitos. Payload misto,
+elementos duplicados e mais de três elementos são rejeitados.
+
+UI mantém confirmação, mostra custo/AP restante/perda de HP incluindo DOT,
+efeitos e duração. Resumo compacto fica junto ao botão no Treino. Defesa tem
+feedback próprio sem espada/projétil. Envio duplicado em andamento é bloqueado
+no cliente, e polling anterior ao envio não sobrescreve o resultado novo.
+Não há promessa de idempotência persistente ou autenticação nova neste bloco.
+
+Validação local: 222 testes do engine, 148 do backend, 279 do app mais 2
+adicionais de Multiplayer. Testes de UI em retrato/paisagem; sem validação
+manual em aparelho Android. Release preparada como v0.21.0+21; publicar
+somente após conferir o deploy do backend e o APK.
+
 ## DECISION-053
 Data: 2026-09-17
 Decisão: ampliar a apresentação existente com dois braços/mãos articulados,

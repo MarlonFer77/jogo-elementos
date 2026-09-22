@@ -38,6 +38,25 @@ async function postJson(url: string, body: unknown): Promise<Response> {
   });
 }
 
+test('preview is non-mutating, matches execution and rejects invalid defense', async () => {
+  await withServer(async (baseUrl) => {
+    const created = await (await postJson(`${baseUrl}/matches`, {playerAId:'a'})).json() as MatchBody;
+    const url = `${baseUrl}/matches/${created.id}`;
+    const before = await (await postJson(`${url}/join`,{playerBId:'b'})).json();
+    const action = {actorId:'a',elementIds:[],kind:'defend'};
+    const previewResponse = await postJson(`${url}/preview`,action);
+    assert.equal(previewResponse.status,200);
+    const preview = await previewResponse.json() as {match: unknown, beforeState: unknown};
+    assert.deepEqual(await (await fetch(url)).json(),before);
+    assert.equal((await postJson(`${url}/preview`,{...action,elementIds:['fire']})).status,400);
+    assert.equal((await postJson(`${url}/preview`,{...action,kind:'cheat'})).status,400);
+    assert.equal((await postJson(`${url}/preview`,{...action,actorId:'outsider'})).status,403);
+    const played = await (await postJson(`${url}/turns`,action)).json() as {match: unknown};
+    assert.deepEqual(played.match,preview.match);
+    assert.equal((await postJson(`${url}/turns`,action)).status,400);
+  });
+});
+
 test(
   "the full section-11 flow: create → join → action A → action B → " +
     "reconnect via GET",

@@ -1,5 +1,6 @@
 import 'element.dart';
 import 'field_effect.dart';
+import 'targeted_status.dart';
 
 /// Data-driven rule mapping a set of 2 or 3 distinct [Element]s to a
 /// resulting effect. Order of the input elements does not matter.
@@ -13,6 +14,7 @@ class ElementCombination {
   final String resultName;
   final String description;
   final int damage;
+  final List<TargetedStatus> statusesToApply;
 
   ElementCombination({
     required Iterable<Element> elements,
@@ -20,6 +22,7 @@ class ElementCombination {
     required this.resultName,
     required this.description,
     this.damage = 0,
+    this.statusesToApply = const [],
   }) : elements = Set.unmodifiable(Set.of(elements)) {
     if (this.elements.length < 2 || this.elements.length > 3) {
       throw ArgumentError.value(
@@ -32,9 +35,10 @@ class ElementCombination {
 
   /// The effect this combination places on the field when triggered.
   FieldEffect get result => FieldEffect(
-        id: resultId,
-        name: resultName,
-        description: description,
-        damage: damage,
-      );
+    id: resultId,
+    name: resultName,
+    description: description,
+    damage: damage,
+    statusesToApply: statusesToApply,
+  );
 }

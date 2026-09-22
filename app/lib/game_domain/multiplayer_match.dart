@@ -2,6 +2,7 @@ import 'effect_badge_view.dart';
 import 'multiplayer_client.dart';
 import 'multiplayer_exception.dart';
 import 'multiplayer_models.dart';
+import 'action_preview.dart';
 
 /// A multiplayer match seen from one player's device. Thin wrapper around
 /// [MultiplayerClient] + the last [RemoteMatch] fetched from the backend —
@@ -14,8 +15,10 @@ import 'multiplayer_models.dart';
 /// [refresh] on a timer (or after an action) to pick up the opponent's
 /// moves.
 class MultiplayerMatch {
-  MultiplayerMatch({required MultiplayerClient client, required this.localPlayerId})
-      : _client = client;
+  MultiplayerMatch({
+    required MultiplayerClient client,
+    required this.localPlayerId,
+  }) : _client = client;
 
   final MultiplayerClient _client;
   final String localPlayerId;
@@ -23,6 +26,8 @@ class MultiplayerMatch {
   RemoteMatch? _match;
   String? _lastError;
   String? _lastTriggeredCombinationId;
+  bool _submitting = false;
+  int _stateGeneration = 0;
 
   RemoteMatch? get match => _match;
   String? get matchId => _match?.id;
@@ -61,7 +66,10 @@ class MultiplayerMatch {
     if (playerId == null) return const [];
     final statuses = _match?.state?.combatantStatuses[playerId] ?? const [];
     return statuses
-        .map((s) => EffectBadgeView(id: s.effectId, remainingTurns: s.turnsRemaining))
+        .map(
+          (s) =>
+              EffectBadgeView(id: s.effectId, remainingTurns: s.turnsRemaining),
+        )
         .toList();
   }
 
@@ -116,10 +124,9 @@ class MultiplayerMatch {
   Future<void> reconnect(String matchId) async {
     _lastError = null;
     final fetched = await _client.getMatch(matchId);
-    if (fetched.playerAId != localPlayerId && fetched.playerBId != localPlayerId) {
-      throw MultiplayerException(
-        'você não faz parte da partida "$matchId"',
-      );
+    if (fetched.playerAId != localPlayerId &&
+        fetched.playerBId != localPlayerId) {
+      throw MultiplayerException('você não faz parte da partida "$matchId"');
     }
     _match = fetched;
   }
@@ -127,10 +134,13 @@ class MultiplayerMatch {
   /// Re-fetches the match from the server — the only way this side finds
   /// out about the opponent joining or playing (see class doc).
   Future<void> refresh() async {
+    if (_submitting) return;
+    final generation = _stateGeneration;
     final id = matchId;
     if (id == null) return;
     try {
-      _match = await _client.getMatch(id);
+      final fetched = await _client.getMatch(id);
+      if (!_submitting && generation == _stateGeneration) _match = fetched;
     } on MultiplayerException {
       // Transient network hiccup during polling: keep the last known
       // state and let the next poll try again.
@@ -141,24 +151,78 @@ class MultiplayerMatch {
   /// [MultiplayerException] if the backend rejects it (not your turn,
   /// match already over, etc.) — [lastError] carries the message for the
   /// UI to show.
-  Future<void> playElementIds(List<String> elementIds) async {
+  Future<void> playElementIds(
+    List<String> elementIds, {
+    bool defending = false,
+  }) async {
+    if (_submitting) throw StateError('Uma ação já está sendo enviada.');
     final id = matchId;
     if (id == null) {
       throw StateError('no match to play in — call create()/join() first');
     }
     try {
+      _submitting = true;
+      _stateGeneration++;
       _lastError = null;
       final result = await _client.submitTurn(
         id,
         actorId: localPlayerId,
         elementIds: elementIds,
+        defending: defending,
       );
       _match = result.match;
       _lastTriggeredCombinationId = result.triggeredCombinationId;
     } on MultiplayerException catch (e) {
       _lastError = e.message;
       rethrow;
+    } finally {
+      _submitting = false;
     }
+  }
+
+  Future<ActionPreview> previewAction(
+    List<String> ids, {
+    bool defending = false,
+  }) async {
+    final snapshot = _match?.state;
+    final id = matchId;
+    if (snapshot == null || id == null) {
+      throw StateError('Partida indisponível.');
+    }
+    final result = await _client.submitTurn(
+      id,
+      actorId: localPlayerId,
+      elementIds: ids,
+      defending: defending,
+      preview: true,
+    );
+    final after = result.match.state!;
+    final before = result.beforeState!;
+    final opponent = before.playerAId == localPlayerId
+        ? before.playerBId
+        : before.playerAId;
+    final pool = before.ap[localPlayerId];
+    final available = ((pool?.current ?? 0) + 1).clamp(0, pool?.max ?? 5);
+    return ActionPreview(
+      apCost: available - after.ap[localPlayerId]!.current,
+      apAfter: after.ap[localPlayerId]!.current,
+      opponentHpLoss:
+          before.hp[opponent]!.current - after.hp[opponent]!.current,
+      selfHpLoss:
+          before.hp[localPlayerId]!.current - after.hp[localPlayerId]!.current,
+      effects: [
+        for (final entry in after.combatantStatuses.entries)
+          for (final status in entry.value)
+            '${entry.key == localPlayerId ? 'Você' : 'Adversário'}: '
+                '${status.effectId == 'guard'
+                    ? 'Defesa 50%'
+                    : status.effectId == 'burn'
+                    ? 'Queimadura'
+                    : status.effectId}'
+                '${status.damagePerTick > 0 ? ' · ${status.damagePerTick} dano/ação' : ''}'
+                '${status.turnsRemaining == null ? '' : ' · ${status.turnsRemaining} ação(ões)'}',
+      ],
+    );
   }
 
   /// Unlocks [nodeId] for [localPlayerId]. Only works on [localPlayerId]'s
@@ -171,11 +235,17 @@ class MultiplayerMatch {
   Future<void> unlockSkill(String nodeId) async {
     final id = matchId;
     if (id == null) {
-      throw StateError('no match to unlock a skill in — call create()/join() first');
+      throw StateError(
+        'no match to unlock a skill in — call create()/join() first',
+      );
     }
     try {
       _lastError = null;
-      _match = await _client.unlockSkill(id, playerId: localPlayerId, nodeId: nodeId);
+      _match = await _client.unlockSkill(
+        id,
+        playerId: localPlayerId,
+        nodeId: nodeId,
+      );
     } on MultiplayerException catch (e) {
       _lastError = e.message;
       rethrow;
@@ -190,7 +260,10 @@ class MultiplayerMatch {
   /// opponent the same way the first one was (no matchmaking — ver
   /// ARCHITECTURE.md's Multiplayer section).
   Future<MultiplayerMatch> startRematch() async {
-    final rematch = MultiplayerMatch(client: _client, localPlayerId: localPlayerId);
+    final rematch = MultiplayerMatch(
+      client: _client,
+      localPlayerId: localPlayerId,
+    );
     await rematch.create();
     return rematch;
   }
