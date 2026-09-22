@@ -1,13 +1,10 @@
 /**
  * Minimal, deliberate mirror of parts of packages/battle_engine (Dart) —
  * only what's needed to validate a submitted TurnAction server-side. Not a
- * port of the whole engine: statuses (Shield, damage-over-time) are
- * mirrored since they affect dano/HP/vitória directly, but abilities,
- * skill tree and builds are not — nothing in Multiplayer applies a status
- * yet, so `combatantStatuses` stays reachable only through direct state
- * construction (tests, or a future ability-aware endpoint), not through
- * `TurnAction` itself. See DECISION-013/DECISION-014/DECISION-024 in
- * DECISIONS.md.
+ * port of the whole engine: statuses that affect authoritative resolution
+ * (Shield, damage-over-time, Congelamento) are mirrored, while the broader
+ * client-side presentation model remains outside this module. See
+ * DECISION-013/DECISION-014/DECISION-024/DECISION-055 in DECISIONS.md.
  */
 
 /** A field effect placed by a resolved combination. No display text (name,
@@ -65,7 +62,7 @@ export interface BattleState {
 }
 
 export interface TurnAction {
-  readonly kind?: 'attack' | 'defend';
+  readonly kind?: 'attack' | 'defend' | 'thaw';
   readonly actorId: string;
   readonly elementIds: readonly string[];
 }

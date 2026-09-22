@@ -48,6 +48,7 @@ class MultiplayerClient {
     required String actorId,
     required List<String> elementIds,
     bool defending = false,
+    bool thawing = false,
     bool preview = false,
   }) async {
     final response = await _http.post(
@@ -56,7 +57,7 @@ class MultiplayerClient {
       body: jsonEncode({
         'actorId': actorId,
         'elementIds': elementIds,
-        if (defending) 'kind': 'defend',
+        if (defending || thawing) 'kind': thawing ? 'thaw' : 'defend',
       }),
     );
     final body = _decode(response);

@@ -3,6 +3,17 @@ import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('frozen presentation state can be toggled independently', () {
+    final component = BattleCharacterComponent(
+      side: BattleSide.left,
+      position: Vector2.zero(),
+    );
+    expect(component.isFrozen, isFalse);
+    component.setFrozen(true);
+    expect(component.isFrozen, isTrue);
+    component.setFrozen(false);
+    expect(component.isFrozen, isFalse);
+  });
   test('reposition updates the resting anchor during idle and hit effects', () {
     final character = BattleCharacterComponent(
       side: BattleSide.left,

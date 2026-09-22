@@ -13,6 +13,7 @@ AttackEvent? detectOpponentAttack({
   required int myHpBefore,
   required int myHpAfter,
   required int sequenceId,
+  List<String> appliedStatusNames = const [],
 }) {
   final newlyAppeared = newFieldEffectIds.difference(previousFieldEffectIds);
   if (newlyAppeared.isEmpty) return null;
@@ -29,6 +30,6 @@ AttackEvent? detectOpponentAttack({
     elementIds: combo.elementIds,
     comboName: combo.name,
     damage: damage,
-    appliedStatusNames: const [],
+    appliedStatusNames: appliedStatusNames,
   );
 }

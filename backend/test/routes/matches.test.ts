@@ -57,6 +57,33 @@ test('preview is non-mutating, matches execution and rejects invalid defense', a
   });
 });
 
+test('freeze is authoritative and thaw consumes the frozen player action', async () => {
+  await withServer(async (baseUrl) => {
+    const created = await (await postJson(`${baseUrl}/matches`, {playerAId:'a'})).json() as MatchBody;
+    const url = `${baseUrl}/matches/${created.id}`;
+    await postJson(`${url}/join`,{playerBId:'b'});
+    await postJson(`${url}/turns`,{actorId:'a',elementIds:['fire']});
+    await postJson(`${url}/turns`,{actorId:'b',elementIds:['fire']});
+    await postJson(`${url}/turns`,{actorId:'a',elementIds:['fire']});
+    await postJson(`${url}/turns`,{actorId:'b',elementIds:['fire']});
+
+    const frozen = await (await postJson(`${url}/turns`,{
+      actorId:'a',elementIds:['water','ice'],
+    })).json() as {match: MatchBody, triggeredCombinationId: string};
+    assert.equal(frozen.triggeredCombinationId,'glacial_prison');
+    assert.equal(frozen.match.state?.combatantStatuses?.b?.[0]?.effectId,'freeze');
+    assert.equal((await postJson(`${url}/turns`,{actorId:'b',elementIds:['fire']})).status,400);
+
+    const thaw = {actorId:'b',elementIds:[],kind:'thaw'};
+    const preview = await (await postJson(`${url}/preview`,thaw)).json() as {match: MatchBody};
+    assert.equal(preview.match.state?.currentTurnId,'a');
+    assert.equal((await (await fetch(url)).json() as MatchBody).state?.currentTurnId,'b');
+    const played = await (await postJson(`${url}/turns`,thaw)).json() as {match: MatchBody};
+    assert.equal(played.match.state?.currentTurnId,'a');
+    assert.equal(played.match.state?.combatantStatuses?.b?.length,0);
+  });
+});
+
 test(
   "the full section-11 flow: create → join → action A → action B → " +
     "reconnect via GET",

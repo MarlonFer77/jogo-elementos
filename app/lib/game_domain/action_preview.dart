@@ -5,6 +5,7 @@ class ActionPreview {
   final int opponentHpLoss;
   final int selfHpLoss;
   final List<String> effects;
+  final bool regeneratesAp;
 
   const ActionPreview({
     required this.apCost,
@@ -12,10 +13,12 @@ class ActionPreview {
     required this.opponentHpLoss,
     required this.selfHpLoss,
     this.effects = const [],
+    this.regeneratesAp = true,
   });
 
   String get summary =>
-      'Custo $apCost AP · restam $apAfter AP (inclui +1 ao agir)\n'
+      'Custo $apCost AP · restam $apAfter AP '
+      '${regeneratesAp ? '(inclui +1 ao agir)' : '(sem regenerar ao descongelar)'}\n'
       'HP previsto: adversário −$opponentHpLoss'
       '${selfHpLoss > 0 ? ' · você −$selfHpLoss' : ''}'
       '${effects.isEmpty ? '' : '\n${effects.join(' · ')}'}';

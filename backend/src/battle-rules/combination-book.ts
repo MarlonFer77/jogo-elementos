@@ -37,6 +37,11 @@ export const defaultCombinationBook = new CombinationBook([
       statusesToApply: [{target: 'actor', status: {effectId: 'guard', turnsRemaining: 1, damagePerTick: 0}}] },
   },
   {
+    elementIds: new Set(["water", "ice"]),
+    result: { id: "glacial_prison", area: 1, duration: null, damage: 10,
+      statusesToApply: [{target: 'opponent', status: {effectId: 'freeze', turnsRemaining: null, damagePerTick: 0}}] },
+  },
+  {
     elementIds: new Set(["earth", "fire", "water"]),
     result: { id: "lava", area: 1, duration: null, damage: 35 },
   },

@@ -24,7 +24,7 @@ export function useAbility(
   combinationModifiers: readonly CombinationModifier[] = [],
 ): TurnResult {
   const turnResult = playTurn(state, action, combinationBook, combinationModifiers);
-  if (action.kind === 'defend') return turnResult;
+  if (action.kind === 'defend' || action.kind === 'thaw') return turnResult;
 
   let effect = emptyAbilityEffect;
   for (const mutation of mutations) {

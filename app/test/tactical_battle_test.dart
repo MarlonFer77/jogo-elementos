@@ -86,4 +86,51 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
   }
+
+  testWidgets('frozen player only gets the break-free action', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final progress = SkillProgress(
+      defaultSkillTree,
+      unlockedNodeIds: ElementUnlocks.all.map((unlock) => unlock.id).toList(),
+    );
+    final match = TrainingMatch(
+      initialApA: const ApPool(max: 5, current: 3),
+      initialApB: const ApPool(max: 5, current: 2),
+      initialProgressA: progress,
+      initialProgressB: progress,
+    );
+    match.playElementIds(['water', 'ice']);
+    final key = GlobalKey();
+
+    await tester.pumpWidget(
+      RepaintBoundary(
+        key: key,
+        child: MaterialApp(home: TrainingScreen(initialMatch: match)),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('CONGELADO'), findsOneWidget);
+    expect(find.text('Quebrar gelo'), findsOneWidget);
+    expect(find.text('Defender'), findsNothing);
+    if (Platform.environment['ELEMENTOS_ART_PREVIEW'] == '1') {
+      await tester.runAsync(() async {
+        final image =
+            await (key.currentContext!.findRenderObject()
+                    as RenderRepaintBoundary)
+                .toImage();
+        final data = await image.toByteData(format: ui.ImageByteFormat.png);
+        Directory('build/art-preview').createSync(recursive: true);
+        File(
+          'build/art-preview/freeze.png',
+        ).writeAsBytesSync(data!.buffer.asUint8List());
+        image.dispose();
+      });
+    }
+    await tester.ensureVisible(find.text('Quebrar gelo'));
+    await tester.tap(find.text('Quebrar gelo'));
+    await tester.pump();
+    expect(match.currentTurnName, 'Jogador A');
+    expect(match.playerBAp, 2);
+    expect(match.currentPlayerIsFrozen, isFalse);
+  });
 }

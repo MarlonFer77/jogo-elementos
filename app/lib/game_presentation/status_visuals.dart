@@ -33,6 +33,7 @@ const Map<String, Color> _statusColors = {
 const Map<String, String> _fieldEffectIcons = {
   'ignited_storm': '🌪️',
   'electrified_field': '🌩️',
+  'glacial_prison': '🧊',
   'lava': '🌋',
 };
 

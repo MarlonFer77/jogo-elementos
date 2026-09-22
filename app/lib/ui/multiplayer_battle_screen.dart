@@ -76,14 +76,18 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
       _previewLoading = false;
     });
     if (!_match.isMyTurn ||
-        (_selectedIds.isEmpty && !_defending) ||
+        (_selectedIds.isEmpty && !_defending && !_match.amIFrozen) ||
         _submitting) {
       return;
     }
     setState(() => _previewLoading = true);
     try {
       final preview = await _match
-          .previewAction(_selectedIds.toList(), defending: _defending)
+          .previewAction(
+            _selectedIds.toList(),
+            defending: _defending,
+            thawing: _match.amIFrozen,
+          )
           .timeout(const Duration(seconds: 15));
       if (mounted && request == _previewRequest && stamp == _previewStamp) {
         setState(() => _preview = preview);
@@ -127,6 +131,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
       return;
     }
     final myHpBefore = _match.myCurrentHp;
+    final myStatusesBefore = _match.myActiveStatuses.map((s) => s.id).toSet();
     final previousFieldEffectIds = _previousFieldEffectIds;
     await _match.refresh();
     if (mounted) {
@@ -142,6 +147,10 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
             myHpBefore: myHpBefore,
             myHpAfter: _match.myCurrentHp ?? myHpBefore,
             sequenceId: _attackSequenceCounter,
+            appliedStatusNames: _match.myActiveStatuses
+                .where((status) => !myStatusesBefore.contains(status.id))
+                .map((status) => _statusName(status.id))
+                .toList(),
           );
           if (detected != null) {
             _pendingAttack = detected;
@@ -163,6 +172,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
   Future<void> _playTurn() async {
     if (_submitting || !_match.isMyTurn || _match.isFinished) return;
     final defending = _defending;
+    final thawing = _match.amIFrozen;
     _previewRequest++;
     setState(() {
       _error = null;
@@ -172,8 +182,15 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
     });
     final playedElementIds = _selectedIds.toList();
     final opponentHpBefore = _match.opponentCurrentHp;
+    final opponentStatusesBefore = _match.opponentActiveStatuses
+        .map((s) => s.id)
+        .toSet();
     try {
-      await _match.playElementIds(playedElementIds, defending: defending);
+      await _match.playElementIds(
+        thawing ? const [] : playedElementIds,
+        defending: defending && !thawing,
+        thawing: thawing,
+      );
       if (!mounted) return;
       setState(() {
         _selectedIds.clear();
@@ -189,11 +206,15 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
           _pendingAttack = AttackEvent(
             sequenceId: _attackSequenceCounter,
             attackerIsLeft: true,
-            elementIds: playedElementIds,
+            elementIds: thawing ? const [] : playedElementIds,
             comboName: combo?.name,
             damage: damage,
-            appliedStatusNames: const [],
-            isDefend: defending,
+            appliedStatusNames: _match.opponentActiveStatuses
+                .where((status) => !opponentStatusesBefore.contains(status.id))
+                .map((status) => _statusName(status.id))
+                .toList(),
+            isDefend: defending && !thawing,
+            isFrozenRecovery: thawing,
           );
         }
         _previousFieldEffectIds = _match.activeFieldEffectIds.toSet();
@@ -360,32 +381,45 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
       ),
       const SizedBox(height: 16),
       Text(
-        _match.isMyTurn ? 'Sua vez' : 'Vez do oponente',
+        _match.isMyTurn
+            ? _match.amIFrozen
+                  ? 'Sua vez · CONGELADO'
+                  : 'Sua vez'
+            : 'Vez do oponente',
         style: Theme.of(context).textTheme.titleLarge,
       ),
+      if (_match.isMyTurn && _match.amIFrozen)
+        const Text(
+          'Você perde esta ação para quebrar o gelo. AP não regenera.',
+          style: TextStyle(fontSize: 12),
+        ),
       const Divider(height: 32),
       Text(_selectedElementsSummary(elements)),
       const SizedBox(height: 8),
       PixelMenuButton(
         label: 'Escolher elementos',
-        onPressed: _match.isMyTurn && !_submitting
+        onPressed: _match.isMyTurn && !_match.amIFrozen && !_submitting
             ? () => _openElementPicker(elements)
             : null,
       ),
       const SizedBox(height: 16),
       PixelMenuButton(
-        label: _defending ? 'Confirmar defesa' : 'Jogar',
+        label: _match.amIFrozen
+            ? 'Quebrar gelo'
+            : _defending
+            ? 'Confirmar defesa'
+            : 'Jogar',
         onPressed:
             (!_submitting &&
                 _match.isMyTurn &&
-                (_selectedIds.isNotEmpty || _defending))
+                (_match.amIFrozen || _selectedIds.isNotEmpty || _defending))
             ? _playTurn
             : null,
       ),
       TextButton.icon(
         icon: const Icon(Icons.shield_outlined),
         label: const Text('Defender'),
-        onPressed: !_submitting && _match.isMyTurn
+        onPressed: !_submitting && _match.isMyTurn && !_match.amIFrozen
             ? () {
                 setState(() {
                   _defending = true;
@@ -413,6 +447,13 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
     if (selected.isEmpty) return 'Nenhum elemento escolhido';
     return 'Elementos: ${selected.map((e) => '${e.symbol} ${e.name}').join(', ')}';
   }
+
+  String _statusName(String id) => switch (id) {
+    'freeze' => 'Congelamento',
+    'burn' => 'Queimadura',
+    'guard' => 'Defesa',
+    _ => id,
+  };
 
   void _openElementPicker(List<ElementOption> elements) {
     showModalBottomSheet<void>(

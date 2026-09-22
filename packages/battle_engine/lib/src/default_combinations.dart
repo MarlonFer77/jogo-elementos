@@ -43,6 +43,17 @@ final defaultCombinationBook = CombinationBook([
     ],
   ),
   ElementCombination(
+    elements: [Elements.water, Elements.ice],
+    resultId: 'glacial_prison',
+    resultName: 'Prisão Glacial',
+    description:
+        '10 de dano + Congelamento: o alvo perde a próxima ação para quebrar o gelo, sem regenerar AP. Escudo bloqueia ambos.',
+    damage: 10,
+    statusesToApply: [
+      TargetedStatus(status: ActiveStatus(effect: StatusEffects.freeze)),
+    ],
+  ),
+  ElementCombination(
     elements: [Elements.earth, Elements.fire, Elements.water],
     resultId: 'lava',
     resultName: 'Lava',

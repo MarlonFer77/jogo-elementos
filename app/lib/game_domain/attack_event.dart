@@ -17,6 +17,7 @@ class AttackEvent {
   final int damage;
   final List<String> appliedStatusNames;
   final bool isDefend;
+  final bool isFrozenRecovery;
 
   const AttackEvent({
     required this.sequenceId,
@@ -26,5 +27,6 @@ class AttackEvent {
     required this.damage,
     required this.appliedStatusNames,
     this.isDefend = false,
+    this.isFrozenRecovery = false,
   });
 }

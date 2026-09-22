@@ -638,9 +638,33 @@ class TrainingMatch {
     }
   }
 
+  bool get currentPlayerIsFrozen =>
+      _state.hasStatus(_state.currentTurn, StatusEffects.freeze);
+
+  void thaw() {
+    final actor = _state.currentTurn;
+    final result = _abilityEngine.turnEngine.playTurn(
+      _state,
+      TurnAction.thaw(actor: actor),
+    );
+    _state = result.state;
+    _lastTriggeredCombinationName = null;
+    _lastAppliedStatusNames = ['Congelamento quebrado'];
+    _lastUnlockedAttackId = null;
+    _lastUnlockedAttackName = null;
+    _lastUnlockedAttackNeededEquipChoice = false;
+    _turnsPlayed++;
+    if (actor == _playerA) {
+      _cumulativeTurnsA++;
+    } else {
+      _cumulativeTurnsB++;
+    }
+  }
+
   ActionPreview previewAction(
     List<String> ids, {
     bool defending = false,
+    bool thawing = false,
     String? attackId,
   }) {
     if (attackId != null) {
@@ -650,12 +674,17 @@ class TrainingMatch {
           .firstWhere((a) => a.id == attackId)
           .elementIds;
     } else if (!defending &&
+        !thawing &&
         ids.any((id) => !equippedElementIdsForCurrentPlayer.contains(id))) {
       throw StateError('Equipe esse elemento em Trocar elementos.');
     }
     final actor = _state.currentTurn;
     final opponent = _state.opponentOf(actor);
-    final next = defending
+    final next = thawing
+        ? _abilityEngine.turnEngine
+              .playTurn(_state, TurnAction.thaw(actor: actor))
+              .state
+        : defending
         ? _abilityEngine.turnEngine
               .playTurn(_state, TurnAction.defend(actor: actor))
               .state
@@ -668,7 +697,7 @@ class TrainingMatch {
           )
         : null;
     return ActionPreview(
-      apCost: defending || ids.length < 2
+      apCost: defending || thawing || ids.length < 2
           ? 0
           : ids.length == 2
           ? 3
@@ -678,15 +707,17 @@ class TrainingMatch {
           _state.hpOf(opponent).current - next.hpOf(opponent).current,
       selfHpLoss: _state.hpOf(actor).current - next.hpOf(actor).current,
       effects: [
+        if (thawing) 'Congelamento removido · ação perdida.',
         for (final target in [actor, opponent])
           for (final status in next.statusesOf(target))
             '${target == actor ? 'Você' : 'Adversário'}: ${status.effect.name}'
                 '${status.effect == StatusEffects.guard ? ' · próximo golpe −50%' : ''}'
                 '${status.damagePerTick > 0 ? ' · ${status.damagePerTick} dano/ação' : ''}'
                 '${status.turnsRemaining == null ? '' : ' · ${status.turnsRemaining} ação(ões)'}',
-        if (!defending && ids.length > 1 && combo == null)
+        if (!defending && !thawing && ids.length > 1 && combo == null)
           'Combinação desconhecida: sem dano direto.',
       ],
+      regeneratesAp: !thawing,
     );
   }
 }

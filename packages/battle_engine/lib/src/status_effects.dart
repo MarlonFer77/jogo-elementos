@@ -20,7 +20,7 @@ class StatusEffects {
   static const freeze = StatusEffect(
     id: 'freeze',
     name: 'Congelamento',
-    description: 'Impede de agir enquanto durar.',
+    description: 'Perde a próxima ação para quebrar o gelo, sem regenerar AP.',
   );
   static const wet = StatusEffect(
     id: 'wet',

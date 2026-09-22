@@ -138,4 +138,46 @@ void main() {
     );
     expect(s.statusesOf(b).single.damagePerTick, 8);
   });
+
+  test(
+    'glacial prison freezes the opponent until they spend an action thawing',
+    () {
+      final frozen = attack(start(), [Elements.water, Elements.ice]);
+      expect(frozen.hpOf(b).current, 90);
+      expect(frozen.currentTurn, b);
+      expect(frozen.hasStatus(b, StatusEffects.freeze), isTrue);
+      expect(
+        () => attack(frozen, [Elements.fire]),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('frozen'),
+          ),
+        ),
+      );
+
+      final thawed = engine.playTurn(frozen, TurnAction.thaw(actor: b)).state;
+      expect(thawed.currentTurn, a);
+      expect(thawed.hasStatus(b, StatusEffects.freeze), isFalse);
+      expect(thawed.apOf(b).current, 4, reason: 'thaw never regenerates AP');
+    },
+  );
+
+  test('thaw is rejected unless the current actor is frozen', () {
+    expect(
+      () => engine.playTurn(start(), TurnAction.thaw(actor: a)),
+      throwsStateError,
+    );
+  });
+
+  test('shield blocks both glacial prison damage and freeze', () {
+    final shielded = start().withStatusApplied(
+      b,
+      ActiveStatus(effect: StatusEffects.shield),
+    );
+    final next = attack(shielded, [Elements.water, Elements.ice]);
+    expect(next.hpOf(b).current, 100);
+    expect(next.hasStatus(b, StatusEffects.freeze), isFalse);
+  });
 }

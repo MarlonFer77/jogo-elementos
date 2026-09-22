@@ -60,7 +60,7 @@ void main() {
       await tester.tap(find.byTooltip('Resumo da batalha'));
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Última combinação: Tempestade Ígnea'), findsOneWidget);
-      expect(find.text('Descobertas: 1/3'), findsOneWidget);
+      expect(find.text('Descobertas: 1/4'), findsOneWidget);
       expect(find.textContaining('86/100 HP'), findsOneWidget);
       expect(
         find.textContaining('Novo ataque desbloqueado: Tempestade Ígnea'),
@@ -408,10 +408,7 @@ void main() {
     'opens Ataques Combinados automatically when unlocking with 3 slots '
     'already full',
     (WidgetTester tester) async {
-      // O jogo só define 3 combinações reais hoje (ignited_storm,
-      // electrified_field, lava) — não dá pra encher 3 vagas com
-      // combos reais e ainda sobrar um 4º real pra descobrir. Os 2
-      // ids "fake_a"/"fake_b" preenchem 2 das 3 vagas de propósito
+      // Os ids "fake_a"/"fake_b" preenchem 2 das 3 vagas de propósito
       // (`AttackLoadout` não valida que um id equipado corresponda a
       // uma `ElementCombination` real — é só contagem); a 3ª vaga é
       // preenchida com "electrified_field" (também não jogado nesta

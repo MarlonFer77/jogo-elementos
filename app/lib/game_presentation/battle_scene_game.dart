@@ -96,6 +96,9 @@ class BattleSceneGame extends FlameGame {
     final left = _left!;
     final right = _right!;
 
+    left.setFrozen(view.leftStatuses.any((status) => status.id == 'freeze'));
+    right.setFrozen(view.rightStatuses.any((status) => status.id == 'freeze'));
+
     final attack = view.lastAttack;
     if (attack == null) {
       _activeSequence?.cancelVisuals();

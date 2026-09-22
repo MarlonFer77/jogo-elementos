@@ -26,6 +26,9 @@ class TurnEngine {
   /// Resolves [action] against [state]:
   /// - rejects it if the battle already has a [BattleState.winner]
   /// - rejects it if it's not [TurnAction.actor]'s turn
+  /// - if the actor is frozen, rejects every action except
+  ///   [TurnAction.thaw], which removes freeze and passes the turn without
+  ///   regenerating AP
   /// - regenerates 1 AP for [TurnAction.actor] (clamped at their max)
   /// - if 2 or 3 elements were played, rejects the whole action (no AP
   ///   spent, no damage, turn doesn't pass) if the actor can't afford it
@@ -60,7 +63,17 @@ class TurnEngine {
       throw StateError('It is not ${action.actor}\'s turn');
     }
 
-    var nextState = state.withApRegenerated(action.actor);
+    final actorIsFrozen = state.hasStatus(action.actor, StatusEffects.freeze);
+    if (actorIsFrozen && !action.isThaw) {
+      throw StateError('The actor is frozen and must thaw');
+    }
+    if (!actorIsFrozen && action.isThaw) {
+      throw StateError('The actor is not frozen');
+    }
+
+    var nextState = action.isThaw
+        ? state.withStatusRemoved(action.actor, StatusEffects.freeze)
+        : state.withApRegenerated(action.actor);
 
     final elementCount = action.elements.length;
     if (elementCount >= 2) {
@@ -82,7 +95,10 @@ class TurnEngine {
     FieldEffect? appliedEffect;
     nextState = nextState.copyWith(currentTurn: opponent);
 
-    if (combination != null) {
+    if (action.isThaw) {
+      // Breaking free consumes the action, but never regenerates AP, deals
+      // damage, triggers a combination or applies build effects.
+    } else if (combination != null) {
       var fieldEffect = combination.result;
       for (final modifier in combinationModifiers) {
         fieldEffect = modifier.apply(fieldEffect);

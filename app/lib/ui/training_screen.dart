@@ -160,6 +160,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
     final wasPlayerATurn = _match.isPlayerATurn;
     final actorName = _match.currentTurnName;
     final defending = _defending;
+    final thawing = _match.currentPlayerIsFrozen;
     setState(() {
       _error = null;
       _lastUnlockedAttackText = null;
@@ -169,14 +170,17 @@ class _TrainingScreenState extends State<TrainingScreen> {
       final hpBBefore = _match.playerBCurrentHp;
       final discoveredCountBefore = _match.discoveredCombinationIds.length;
       try {
-        if (attackId != null) {
+        if (!thawing && attackId != null) {
           final reason = _match.attackUnavailableReason(attackId);
           if (reason != null) throw StateError(reason);
           playedElementIds = _match.equippedAttacksForCurrentPlayer
               .firstWhere((a) => a.id == attackId)
               .elementIds;
         }
-        if (defending) {
+        if (thawing) {
+          playedElementIds = [];
+          _match.thaw();
+        } else if (defending) {
           playedElementIds = [];
           _match.defend();
         } else if (attackId == null) {
@@ -185,13 +189,14 @@ class _TrainingScreenState extends State<TrainingScreen> {
           _match.playEquippedAttack(attackId);
         }
         _executing = true;
-        final actionName =
-            (defending ? 'Defender' : _match.lastTriggeredCombinationName) ??
-            const ElementCatalog()
-                .all()
-                .where((e) => playedElementIds.contains(e.id))
-                .map((e) => e.name)
-                .join(' + ');
+        final actionName = thawing
+            ? 'Quebrar o gelo'
+            : (defending ? 'Defender' : _match.lastTriggeredCombinationName) ??
+                  const ElementCatalog()
+                      .all()
+                      .where((e) => playedElementIds.contains(e.id))
+                      .map((e) => e.name)
+                      .join(' + ');
         _actionText = '$actorName usou $actionName!';
         _selectedAttackId = null;
         _selectedIds.clear();
@@ -208,6 +213,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
           damage: damage,
           appliedStatusNames: _match.lastAppliedStatusNames,
           isDefend: defending,
+          isFrozenRecovery: thawing,
         );
         if (_match.discoveredCombinationIds.length != discoveredCountBefore) {
           unawaited(
@@ -538,6 +544,16 @@ class _TrainingScreenState extends State<TrainingScreen> {
   ];
 
   List<Widget> _battleCommands() {
+    if (_match.currentPlayerIsFrozen) {
+      return const [
+        PixelOutlinedText('CONGELADO', fontSize: 18),
+        SizedBox(height: 6),
+        Text(
+          'Este jogador perde a ação para quebrar o gelo. AP não regenera.',
+          style: TextStyle(fontSize: 12),
+        ),
+      ];
+    }
     final elements = const ElementCatalog().all();
     final equipped = _match.equippedElementIdsForCurrentPlayer;
     final attacks = _match.equippedAttacksForCurrentPlayer;
@@ -683,6 +699,28 @@ class _TrainingScreenState extends State<TrainingScreen> {
   );
 
   Widget _actionCommand() {
+    if (_match.currentPlayerIsFrozen) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _previewText().split('\n').take(2).join(' · '),
+              key: const ValueKey('freeze-preview-compact'),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11),
+            ),
+            PixelMenuButton(
+              label: 'Quebrar gelo',
+              primary: true,
+              onPressed: _executing ? null : _playTurn,
+            ),
+          ],
+        ),
+      );
+    }
     final attack = _match.equippedAttacksForCurrentPlayer
         .where((a) => a.id == _selectedAttackId)
         .firstOrNull;
@@ -760,6 +798,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
           .previewAction(
             _selectedIds.toList(),
             defending: _defending,
+            thawing: _match.currentPlayerIsFrozen,
             attackId: _selectedAttackId,
           )
           .summary;

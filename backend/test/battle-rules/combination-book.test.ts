@@ -31,6 +31,13 @@ test("resolves the 3-element combination earth+fire+water to lava", () => {
   assert.equal(result?.id, "lava");
 });
 
+test("resolves water+ice to glacial prison with freeze", () => {
+  const result = defaultCombinationBook.resolve(["water", "ice"]);
+  assert.equal(result?.id, "glacial_prison");
+  assert.equal(result?.damage, 10);
+  assert.equal(result?.statusesToApply?.[0]?.status.effectId, "freeze");
+});
+
 test("returns null for an unknown combination", () => {
   const result = defaultCombinationBook.resolve(["ice", "shadow"]);
   assert.equal(result, null);

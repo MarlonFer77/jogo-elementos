@@ -4,14 +4,13 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Publicar v0.21.0+21: Defender, prévia de ação e combos diferenciados.
-Implementação e testes locais concluídos; confirmar deploy do backend e APK.
+Publicar v0.22.0+22: Prisão Glacial e Congelamento funcional.
+Implementação e testes locais concluídos; falta confirmar deploy e APK.
 
 # NEXT
 
-Status — definir e implementar efeito, duração, aplicação/remoção e feedback
-de Congelar, Silenciar, Lentidão, Buff e Debuff, com regras testáveis e
-consistência entre Treino e Multiplayer. Implementar incrementalmente.
+Status — implementar Silêncio como próximo efeito funcional, preservando o
+mesmo padrão de regra autoritativa, prévia e feedback do Congelamento.
 
 # BACKLOG
 
@@ -96,6 +95,20 @@ uma tarefa nova terminar revelando um gap novo.
   automática — uma nova versão do jogo exige gerar e reenviar um APK novo
 
 # DONE
+
+- Congelamento funcional: Água + Gelo cria Prisão Glacial (10 de dano),
+  aplicando Congelamento se Escudo não bloquear. O alvo perde a próxima ação
+  para quebrar o gelo, sem regenerar AP; ataques/Defesa são rejeitados até
+  isso acontecer. Treino e Multiplayer mostram badge, camada azul/cristais no
+  personagem, aviso, prévia e comando exclusivo “Quebrar gelo”. Mirror Dart/
+  TypeScript e rotas autoritativas sincronizados. 226 testes no engine, 153 no
+  backend e 286 no app; análises estáticas limpas. Ver DECISION-055.
+  Preparado para distribuição na v0.22.0+22.
+
+- v0.21.0+21 publicada: backend validado no Render com prévia de Defesa sem
+  mutar a partida; APK Android de 52.879.521 bytes publicado no GitHub Release
+  `v0.21.0` após build verde no Actions. Defender, prévia autoritativa e combos
+  diferenciados disponíveis em produção. Ver DECISION-054.
 
 - Combate fluido: básicos com aproximação, golpe e recuo; combos com
   canalização e projétil pixelado; pernas, poses, respiração e reação a dano.

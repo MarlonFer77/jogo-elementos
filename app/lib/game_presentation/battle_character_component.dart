@@ -50,6 +50,7 @@ class BattleCharacterComponent extends PositionComponent {
   double _charge = 0;
   double _strike = 0;
   bool _striding = false;
+  bool _frozen = false;
   String? _swordElement;
 
   /// The weapon belongs only to the current visual action, never to a build.
@@ -80,6 +81,10 @@ class BattleCharacterComponent extends PositionComponent {
 
   /// Se o pulso de preparação está tocando agora.
   bool get isPlayingPreparationPulse => _prepPulseRemaining > 0;
+
+  bool get isFrozen => _frozen;
+
+  void setFrozen(bool value) => _frozen = value;
 
   /// Move both the resting anchor and the live sprite when the arena resizes.
   void reposition(Vector2 value) {
@@ -189,6 +194,28 @@ class BattleCharacterComponent extends PositionComponent {
     _drawArm(canvas, palette, const Offset(16, 30), backHand);
     _drawArm(canvas, palette, const Offset(46, 30), frontHand);
     if (armed) _drawSword(canvas, frontHand, _swordElement!);
+
+    if (_frozen) {
+      final frost = Paint()..color = const Color(0x5564B5F6);
+      canvas.drawRect(Rect.fromLTWH(7, 18, size.x - 14, size.y - 20), frost);
+      final ice = Paint()..color = const Color(0xFFB3E5FC);
+      for (final center in const [
+        Offset(8, 24),
+        Offset(55, 20),
+        Offset(12, 62),
+        Offset(52, 58),
+      ]) {
+        canvas.drawPath(
+          Path()
+            ..moveTo(center.dx, center.dy - 6)
+            ..lineTo(center.dx + 4, center.dy)
+            ..lineTo(center.dx, center.dy + 6)
+            ..lineTo(center.dx - 4, center.dy)
+            ..close(),
+          ice,
+        );
+      }
+    }
 
     if (isPlayingHitEffect) {
       final flashOpacity = (_hitEffectRemaining / _hitEffectDuration).clamp(

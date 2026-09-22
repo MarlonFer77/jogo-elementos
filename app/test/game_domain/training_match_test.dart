@@ -67,6 +67,36 @@ void main() {
     expect(() => match.playElementIds(['ghost']), throwsArgumentError);
   });
 
+  test(
+    'Prisão Glacial forces the next player to thaw without regenerating AP',
+    () {
+      final match = TrainingMatch(
+        initialApA: const ApPool(max: 5, current: 3),
+        initialApB: const ApPool(max: 5, current: 2),
+        initialProgressA: _allElementsUnlocked(),
+        initialProgressB: _allElementsUnlocked(),
+      );
+
+      match.playElementIds(['water', 'ice']);
+      expect(match.lastTriggeredCombinationName, 'Prisão Glacial');
+      expect(match.playerBCurrentHp, 90);
+      expect(match.currentPlayerIsFrozen, isTrue);
+      expect(() => match.playElementIds(['fire']), throwsStateError);
+
+      final preview = match.previewAction([], thawing: true);
+      expect(preview.apAfter, 2);
+      expect(preview.regeneratesAp, isFalse);
+      expect(
+        preview.effects,
+        contains('Congelamento removido · ação perdida.'),
+      );
+      match.thaw();
+      expect(match.currentTurnName, 'Jogador A');
+      expect(match.currentPlayerIsFrozen, isFalse);
+      expect(match.playerBAp, 2);
+    },
+  );
+
   group('skill tree integration', () {
     test('unlocking a node adds it to the current player\'s granted list', () {
       final match = TrainingMatch();

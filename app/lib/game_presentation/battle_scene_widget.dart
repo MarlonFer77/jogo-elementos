@@ -106,7 +106,9 @@ class _BattleSceneWidgetState extends State<BattleSceneWidget> {
             border: Border.all(color: const Color(0xFF253843), width: 2),
           ),
           child: Text(
-            attack.isDefend
+            attack.isFrozenRecovery
+                ? '$actor · Congelamento quebrado'
+                : attack.isDefend
                 ? '$actor · Defesa preparada'
                 : _impactSeen
                 ? '$name · $result'

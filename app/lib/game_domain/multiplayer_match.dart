@@ -77,6 +77,8 @@ class MultiplayerMatch {
 
   List<EffectBadgeView> get opponentActiveStatuses => _statusesOf(_opponentId);
 
+  bool get amIFrozen => myActiveStatuses.any((status) => status.id == 'freeze');
+
   List<EffectBadgeView> get activeFieldEffectBadges =>
       _match?.state?.activeFieldEffects
           .map((e) => EffectBadgeView(id: e.id, remainingTurns: e.duration))
@@ -154,6 +156,7 @@ class MultiplayerMatch {
   Future<void> playElementIds(
     List<String> elementIds, {
     bool defending = false,
+    bool thawing = false,
   }) async {
     if (_submitting) throw StateError('Uma ação já está sendo enviada.');
     final id = matchId;
@@ -169,6 +172,7 @@ class MultiplayerMatch {
         actorId: localPlayerId,
         elementIds: elementIds,
         defending: defending,
+        thawing: thawing,
       );
       _match = result.match;
       _lastTriggeredCombinationId = result.triggeredCombinationId;
@@ -183,6 +187,7 @@ class MultiplayerMatch {
   Future<ActionPreview> previewAction(
     List<String> ids, {
     bool defending = false,
+    bool thawing = false,
   }) async {
     final snapshot = _match?.state;
     final id = matchId;
@@ -194,6 +199,7 @@ class MultiplayerMatch {
       actorId: localPlayerId,
       elementIds: ids,
       defending: defending,
+      thawing: thawing,
       preview: true,
     );
     final after = result.match.state!;
@@ -202,7 +208,9 @@ class MultiplayerMatch {
         ? before.playerBId
         : before.playerAId;
     final pool = before.ap[localPlayerId];
-    final available = ((pool?.current ?? 0) + 1).clamp(0, pool?.max ?? 5);
+    final available = thawing
+        ? pool?.current ?? 0
+        : ((pool?.current ?? 0) + 1).clamp(0, pool?.max ?? 5);
     return ActionPreview(
       apCost: available - after.ap[localPlayerId]!.current,
       apAfter: after.ap[localPlayerId]!.current,
@@ -211,6 +219,7 @@ class MultiplayerMatch {
       selfHpLoss:
           before.hp[localPlayerId]!.current - after.hp[localPlayerId]!.current,
       effects: [
+        if (thawing) 'Congelamento removido · ação perdida.',
         for (final entry in after.combatantStatuses.entries)
           for (final status in entry.value)
             '${entry.key == localPlayerId ? 'Você' : 'Adversário'}: '
@@ -218,10 +227,13 @@ class MultiplayerMatch {
                     ? 'Defesa 50%'
                     : status.effectId == 'burn'
                     ? 'Queimadura'
+                    : status.effectId == 'freeze'
+                    ? 'Congelamento · perde a próxima ação'
                     : status.effectId}'
                 '${status.damagePerTick > 0 ? ' · ${status.damagePerTick} dano/ação' : ''}'
                 '${status.turnsRemaining == null ? '' : ' · ${status.turnsRemaining} ação(ões)'}',
       ],
+      regeneratesAp: !thawing,
     );
   }
 

@@ -56,3 +56,22 @@ test('combo and skill burn do not stack; stronger burn wins', () => {
   assert.equal(s.combatantStatuses.b!.length,1);
   assert.equal(s.combatantStatuses.b![0]!.damagePerTick,8);
 });
+test('glacial prison freezes until the target spends an action thawing without AP regeneration', () => {
+  const frozen=attack(start(),['water','ice']);
+  assert.equal(hpOf(frozen,'b').current,90);
+  assert.equal(hasStatus(frozen,'b','freeze'),true);
+  assert.throws(()=>attack(frozen,['fire']),/frozen/);
+  const thawed=playTurn(frozen,{actorId:'b',elementIds:[],kind:'thaw'},defaultCombinationBook).state;
+  assert.equal(thawed.currentTurnId,'a');
+  assert.equal(hasStatus(thawed,'b','freeze'),false);
+  assert.equal(thawed.ap.b!.current,4);
+});
+test('thaw fails when actor is not frozen', () => {
+  assert.throws(()=>playTurn(start(),{actorId:'a',elementIds:[],kind:'thaw'},defaultCombinationBook),/not frozen/);
+});
+test('shield blocks both glacial prison damage and freeze', () => {
+  const shielded=withStatusApplied(start(),'b',{effectId:'shield',turnsRemaining:null,damagePerTick:0});
+  const next=attack(shielded,['water','ice']);
+  assert.equal(hpOf(next,'b').current,100);
+  assert.equal(hasStatus(next,'b','freeze'),false);
+});

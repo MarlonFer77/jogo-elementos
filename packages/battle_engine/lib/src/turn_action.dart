@@ -8,14 +8,22 @@ class TurnAction {
   final Combatant actor;
   final List<Element> elements;
   final bool isDefend;
+  final bool isThaw;
 
   TurnAction.defend({required this.actor})
     : elements = const [],
-      isDefend = true;
+      isDefend = true,
+      isThaw = false;
+
+  TurnAction.thaw({required this.actor})
+    : elements = const [],
+      isDefend = false,
+      isThaw = true;
 
   TurnAction({required this.actor, required Iterable<Element> elements})
     : elements = List.unmodifiable(elements),
-      isDefend = false {
+      isDefend = false,
+      isThaw = false {
     if (this.elements.isEmpty ||
         this.elements.length > 3 ||
         this.elements.toSet().length != this.elements.length) {

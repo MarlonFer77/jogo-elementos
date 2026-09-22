@@ -1,5 +1,35 @@
 # DECISIONS.md
 
+## DECISION-055
+Data: 2026-09-22
+Decisão: implementar Congelamento como primeiro incremento do bloco de Status,
+usando uma ação explícita de recuperação em vez de pular o turno de forma
+invisível. A nova combinação Água + Gelo, “Prisão Glacial”, custa os mesmos 3
+AP de qualquer combo de dois elementos, causa 10 de dano direto e aplica
+Congelamento ao oponente. Escudo conserva sua regra de prioridade: bloqueia o
+dano e também impede a aplicação do estado.
+
+Um combatente congelado não pode atacar nem Defender. Sua única ação válida é
+`thaw`/“Quebrar gelo”: remove Congelamento, passa o turno, não causa dano, não
+dispara mutações e não regenera AP. O estado usa duração nula internamente
+porque sua remoção é orientada pela ação `thaw`, não pelo tick genérico; na
+experiência do jogador dura exatamente até a próxima ação daquele combatente.
+Prévia e execução usam a mesma resolução pura. No Multiplayer, o backend
+revalida tudo e a prévia continua sem gravar no MatchStore.
+
+Treino e Multiplayer mostram badge de gelo, personagem com camada azul e
+cristais, aviso textual e apenas o botão “Quebrar gelo” quando for a vez do
+afetado. A recuperação tem feedback próprio na sequência/caption, sem espada,
+projétil, som de impacto ou reação de dano. A detecção por polling também leva
+o nome do novo estado para a animação do ataque adversário. O catálogo de
+combinações passa de 3 para 4 entradas; Livro de Descobertas e ataques
+equipáveis consomem a nova entrada automaticamente.
+
+Mirror Dart/TypeScript sincronizado. Validação: `dart analyze` e 226 testes do
+engine; `tsc --noEmit` e 153 testes do backend; `flutter analyze` e 286 testes
+do app. Captura renderizada em retrato confirmou layout, badge e gelo sobre o
+sprite. Preparado como v0.22.0+22; Silêncio é o próximo incremento de Status.
+
 ## DECISION-054
 Data: 2026-09-18
 Decisão: acrescentar Defesa e prévia de ação, diferenciando os dois combos

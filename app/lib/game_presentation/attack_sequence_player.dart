@@ -82,7 +82,7 @@ class AttackSequencePlayer extends Component {
 
   void _applyMotion() {
     if (_visualsReleased) return;
-    if (event.isDefend) {
+    if (event.isDefend || event.isFrozenRecovery) {
       attacker.setActionPose(charge: _step == _AttackStep.done ? 0 : .45);
       return;
     }
@@ -204,8 +204,12 @@ class AttackSequencePlayer extends Component {
         final wasStep = _step;
         _step = _nextStep(_step);
         if (wasStep == _AttackStep.impact) {
-          if (event.damage > 0 && !event.isDefend) target.playHitEffect();
-          if (!event.isDefend) sfxPlayer.play(SfxId.impact);
+          if (event.damage > 0 && !event.isDefend && !event.isFrozenRecovery) {
+            target.playHitEffect();
+          }
+          if (!event.isDefend && !event.isFrozenRecovery) {
+            sfxPlayer.play(SfxId.impact);
+          }
           onImpact?.call();
         }
       }
@@ -224,13 +228,15 @@ class AttackSequencePlayer extends Component {
   void render(Canvas canvas) {
     if (_visualsReleased) return;
     super.render(canvas);
-    if (event.isDefend) {
+    if (event.isDefend || event.isFrozenRecovery) {
       _drawText(
         canvas,
-        'Defesa · 50%',
+        event.isFrozenRecovery ? 'Gelo quebrado' : 'Defesa · 50%',
         Offset(attacker.position.x, attacker.position.y - 90),
         fontSize: 13,
-        color: const Color(0xFF253843),
+        color: event.isFrozenRecovery
+            ? const Color(0xFF1976D2)
+            : const Color(0xFF253843),
         plateOpacity: 1,
       );
       return;

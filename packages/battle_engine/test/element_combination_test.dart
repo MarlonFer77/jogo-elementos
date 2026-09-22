@@ -100,6 +100,19 @@ void main() {
       expect(result!.resultId, equals('lava'));
     });
 
+    test('resolves Água + Gelo to Prisão Glacial with freeze', () {
+      final result = defaultCombinationBook.resolve([
+        Elements.water,
+        Elements.ice,
+      ]);
+      expect(result?.resultId, 'glacial_prison');
+      expect(result?.damage, 10);
+      expect(
+        result?.statusesToApply.single.status.effect,
+        StatusEffects.freeze,
+      );
+    });
+
     test('returns null for an unknown combination', () {
       final result = defaultCombinationBook.resolve([
         Elements.ice,

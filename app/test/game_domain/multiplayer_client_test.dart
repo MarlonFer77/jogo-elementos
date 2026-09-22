@@ -42,48 +42,50 @@ void main() {
   });
 
   group('joinMatch', () {
-    test('posts playerBId and parses the in-progress match with state',
-        () async {
-      late http.Request captured;
-      final client = MultiplayerClient(
-        baseUrl: 'http://localhost:3000',
-        httpClient: MockClient((request) async {
-          captured = request;
-          return http.Response(
-            jsonEncode({
-              'id': 'ABC123',
-              'playerAId': 'ana',
-              'playerBId': 'beto',
-              'status': 'in_progress',
-              'state': {
+    test(
+      'posts playerBId and parses the in-progress match with state',
+      () async {
+        late http.Request captured;
+        final client = MultiplayerClient(
+          baseUrl: 'http://localhost:3000',
+          httpClient: MockClient((request) async {
+            captured = request;
+            return http.Response(
+              jsonEncode({
+                'id': 'ABC123',
                 'playerAId': 'ana',
                 'playerBId': 'beto',
-                'currentTurnId': 'ana',
-                'activeFieldEffects': [],
-                'hp': {
-                  'ana': {'max': 100, 'current': 100},
-                  'beto': {'max': 100, 'current': 100},
+                'status': 'in_progress',
+                'state': {
+                  'playerAId': 'ana',
+                  'playerBId': 'beto',
+                  'currentTurnId': 'ana',
+                  'activeFieldEffects': [],
+                  'hp': {
+                    'ana': {'max': 100, 'current': 100},
+                    'beto': {'max': 100, 'current': 100},
+                  },
+                  'winner': null,
                 },
-                'winner': null,
-              },
-            }),
-            200,
-          );
-        }),
-      );
+              }),
+              200,
+            );
+          }),
+        );
 
-      final match = await client.joinMatch('ABC123', 'beto');
+        final match = await client.joinMatch('ABC123', 'beto');
 
-      expect(captured.method, 'POST');
-      expect(
-        captured.url.toString(),
-        'http://localhost:3000/matches/ABC123/join',
-      );
-      expect(jsonDecode(captured.body), {'playerBId': 'beto'});
-      expect(match.status, 'in_progress');
-      expect(match.state?.currentTurnId, 'ana');
-      expect(match.state?.hp['beto']?.current, 100);
-    });
+        expect(captured.method, 'POST');
+        expect(
+          captured.url.toString(),
+          'http://localhost:3000/matches/ABC123/join',
+        );
+        expect(jsonDecode(captured.body), {'playerBId': 'beto'});
+        expect(match.status, 'in_progress');
+        expect(match.state?.currentTurnId, 'ana');
+        expect(match.state?.hp['beto']?.current, 100);
+      },
+    );
   });
 
   group('getMatch', () {
@@ -109,17 +111,75 @@ void main() {
       final match = await client.getMatch('ABC123');
 
       expect(captured.method, 'GET');
-      expect(
-        captured.url.toString(),
-        'http://localhost:3000/matches/ABC123',
-      );
+      expect(captured.url.toString(), 'http://localhost:3000/matches/ABC123');
       expect(match.id, 'ABC123');
     });
   });
 
   group('submitTurn', () {
-    test('posts actorId/elementIds and parses match + triggeredCombinationId',
-        () async {
+    test(
+      'posts actorId/elementIds and parses match + triggeredCombinationId',
+      () async {
+        late http.Request captured;
+        final client = MultiplayerClient(
+          baseUrl: 'http://localhost:3000',
+          httpClient: MockClient((request) async {
+            captured = request;
+            return http.Response(
+              jsonEncode({
+                'match': {
+                  'id': 'ABC123',
+                  'playerAId': 'ana',
+                  'playerBId': 'beto',
+                  'status': 'in_progress',
+                  'state': {
+                    'playerAId': 'ana',
+                    'playerBId': 'beto',
+                    'currentTurnId': 'beto',
+                    'activeFieldEffects': [
+                      {
+                        'id': 'ignited_storm',
+                        'area': 1,
+                        'duration': null,
+                        'damage': 20,
+                      },
+                    ],
+                    'hp': {
+                      'ana': {'max': 100, 'current': 100},
+                      'beto': {'max': 100, 'current': 80},
+                    },
+                    'winner': null,
+                  },
+                },
+                'triggeredCombinationId': 'ignited_storm',
+              }),
+              200,
+            );
+          }),
+        );
+
+        final result = await client.submitTurn(
+          'ABC123',
+          actorId: 'ana',
+          elementIds: ['fire', 'wind'],
+        );
+
+        expect(captured.method, 'POST');
+        expect(
+          captured.url.toString(),
+          'http://localhost:3000/matches/ABC123/turns',
+        );
+        expect(jsonDecode(captured.body), {
+          'actorId': 'ana',
+          'elementIds': ['fire', 'wind'],
+        });
+        expect(result.triggeredCombinationId, 'ignited_storm');
+        expect(result.match.state?.hp['beto']?.current, 80);
+        expect(result.match.state?.activeFieldEffects.single.damage, 20);
+      },
+    );
+
+    test('posts thaw as an explicit zero-element action', () async {
       late http.Request captured;
       final client = MultiplayerClient(
         baseUrl: 'http://localhost:3000',
@@ -136,46 +196,37 @@ void main() {
                   'playerAId': 'ana',
                   'playerBId': 'beto',
                   'currentTurnId': 'beto',
-                  'activeFieldEffects': [
-                    {
-                      'id': 'ignited_storm',
-                      'area': 1,
-                      'duration': null,
-                      'damage': 20,
-                    },
-                  ],
+                  'activeFieldEffects': [],
                   'hp': {
                     'ana': {'max': 100, 'current': 100},
-                    'beto': {'max': 100, 'current': 80},
+                    'beto': {'max': 100, 'current': 90},
                   },
+                  'ap': {
+                    'ana': {'max': 5, 'current': 2},
+                    'beto': {'max': 5, 'current': 2},
+                  },
+                  'combatantStatuses': {'ana': [], 'beto': []},
                   'winner': null,
                 },
               },
-              'triggeredCombinationId': 'ignited_storm',
+              'triggeredCombinationId': null,
             }),
             200,
           );
         }),
       );
 
-      final result = await client.submitTurn(
+      await client.submitTurn(
         'ABC123',
-        actorId: 'ana',
-        elementIds: ['fire', 'wind'],
-      );
-
-      expect(captured.method, 'POST');
-      expect(
-        captured.url.toString(),
-        'http://localhost:3000/matches/ABC123/turns',
+        actorId: 'beto',
+        elementIds: const [],
+        thawing: true,
       );
       expect(jsonDecode(captured.body), {
-        'actorId': 'ana',
-        'elementIds': ['fire', 'wind'],
+        'actorId': 'beto',
+        'elementIds': <dynamic>[],
+        'kind': 'thaw',
       });
-      expect(result.triggeredCombinationId, 'ignited_storm');
-      expect(result.match.state?.hp['beto']?.current, 80);
-      expect(result.match.state?.activeFieldEffects.single.damage, 20);
     });
   });
 
@@ -236,26 +287,32 @@ void main() {
   });
 
   group('error handling', () {
-    test('throws MultiplayerException with the backend message and status',
-        () async {
-      final client = MultiplayerClient(
-        baseUrl: 'http://localhost:3000',
-        httpClient: MockClient((request) async {
-          return http.Response(
-            jsonEncode({'error': 'match "GHOST1" not found'}),
-            404,
-          );
-        }),
-      );
+    test(
+      'throws MultiplayerException with the backend message and status',
+      () async {
+        final client = MultiplayerClient(
+          baseUrl: 'http://localhost:3000',
+          httpClient: MockClient((request) async {
+            return http.Response(
+              jsonEncode({'error': 'match "GHOST1" not found'}),
+              404,
+            );
+          }),
+        );
 
-      await expectLater(
-        () => client.getMatch('GHOST1'),
-        throwsA(
-          isA<MultiplayerException>()
-              .having((e) => e.statusCode, 'statusCode', 404)
-              .having((e) => e.message, 'message', 'match "GHOST1" not found'),
-        ),
-      );
-    });
+        await expectLater(
+          () => client.getMatch('GHOST1'),
+          throwsA(
+            isA<MultiplayerException>()
+                .having((e) => e.statusCode, 'statusCode', 404)
+                .having(
+                  (e) => e.message,
+                  'message',
+                  'match "GHOST1" not found',
+                ),
+          ),
+        );
+      },
+    );
   });
 }

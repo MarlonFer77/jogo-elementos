@@ -6,8 +6,17 @@ void main() {
   group('statusIcon', () {
     test('resolves every known status id to a distinct icon', () {
       const ids = [
-        'burn', 'freeze', 'wet', 'poison', 'shock', 'slow', 'shield',
-        'silence', 'buff', 'debuff', 'area_effect',
+        'burn',
+        'freeze',
+        'wet',
+        'poison',
+        'shock',
+        'slow',
+        'shield',
+        'silence',
+        'buff',
+        'debuff',
+        'area_effect',
       ];
       final icons = ids.map(statusIcon).toSet();
       expect(icons.length, ids.length);
@@ -29,9 +38,10 @@ void main() {
   });
 
   group('fieldEffectIcon', () {
-    test('resolves the 3 known field effects', () {
+    test('resolves the known field effects', () {
       expect(fieldEffectIcon('ignited_storm'), '🌪️');
       expect(fieldEffectIcon('electrified_field'), '🌩️');
+      expect(fieldEffectIcon('glacial_prison'), '🧊');
       expect(fieldEffectIcon('lava'), '🌋');
     });
 

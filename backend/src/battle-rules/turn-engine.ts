@@ -14,7 +14,7 @@ import {
 import type { CombinationBook } from "./combination-book.js";
 import type { CombinationModifier } from "./combination-modifiers.js";
 import { TurnValidationError } from "./errors.js";
-import { SHIELD_STATUS_ID } from "./status-effects.js";
+import { FREEZE_STATUS_ID, SHIELD_STATUS_ID } from "./status-effects.js";
 import type { BattleState, TurnAction, TurnResult } from "./types.js";
 
 const BASIC_DAMAGE = 5;
@@ -47,15 +47,26 @@ export function playTurn(
   if (state.winner !== null) {
     throw new TurnValidationError("the battle is already over");
   }
-  if ((action.kind === 'defend' && action.elementIds.length !== 0) ||
-      (action.kind !== 'defend' && (action.elementIds.length === 0 || action.elementIds.length > 3 || new Set(action.elementIds).size !== action.elementIds.length))) {
+  const isPassiveAction = action.kind === 'defend' || action.kind === 'thaw';
+  if ((isPassiveAction && action.elementIds.length !== 0) ||
+      (!isPassiveAction && (action.elementIds.length === 0 || action.elementIds.length > 3 || new Set(action.elementIds).size !== action.elementIds.length))) {
     throw new TurnValidationError("must play at least one element");
   }
   if (action.actorId !== state.currentTurnId) {
     throw new TurnValidationError(`it is not "${action.actorId}"'s turn`);
   }
 
-  let nextState = withApRegenerated(state, action.actorId);
+  const actorIsFrozen = hasStatus(state, action.actorId, FREEZE_STATUS_ID);
+  if (actorIsFrozen && action.kind !== 'thaw') {
+    throw new TurnValidationError('the actor is frozen and must thaw');
+  }
+  if (!actorIsFrozen && action.kind === 'thaw') {
+    throw new TurnValidationError('the actor is not frozen');
+  }
+
+  let nextState = action.kind === 'thaw'
+    ? withStatusRemoved(state, action.actorId, FREEZE_STATUS_ID)
+    : withApRegenerated(state, action.actorId);
 
   const elementCount = action.elementIds.length;
   if (elementCount >= 2) {
@@ -88,7 +99,9 @@ export function playTurn(
       : nextState.activeFieldEffects,
   };
 
-  if (combination && combination.damage > 0) {
+  if (action.kind === 'thaw') {
+    // Breaking free consumes the action without AP regeneration or damage.
+  } else if (combination && combination.damage > 0) {
     nextState = applyDamage(nextState, opponentId, combination.damage);
   } else if (elementCount === 1) {
     nextState = applyDamage(nextState, opponentId, BASIC_DAMAGE);
