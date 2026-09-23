@@ -1,4 +1,4 @@
-# Multiplayer — protótipo local
+# Multiplayer — protótipo publicado
 
 ## Firestore (v0.23.0)
 
@@ -48,9 +48,8 @@ Android existente. Não desabilitar TLS nem abrir firewall automaticamente.
 ## Antes de produção pública
 
 - Atualizar backend e APK juntos: o novo contrato rejeita clientes antigos.
-- Escolher armazenamento durável dentro do orçamento. Arquivo em disco efêmero
-  não preserva dados após substituição da instância; não considerar isso resolvido
-  no Render apenas por definir uma variável. Nenhum recurso foi provisionado.
+- Firestore configurado no Render; manter cobrança desativada e acompanhar quotas.
+  Arquivo local continua sendo apenas alternativa de desenvolvimento.
 - Arquivo suporta uma instância apenas; não usar réplicas simultâneas.
 - Definir backups, retenção/limpeza de salas, rate limiting e limites de uso.
 - Usar HTTPS. Credencial de instalação não é login, conta ou recuperação em outro
@@ -59,6 +58,9 @@ Android existente. Não desabilitar TLS nem abrir firewall automaticamente.
 - Migrar fixtures antigas para o contrato com credencial, revisão e preparação.
 - Validar dois aparelhos físicos, suspensão do Android, rede móvel e balanceamento.
 
-Validação feita: testes locais de dois clientes HTTP, persistência/reinício,
-progressão entre partidas e widgets nas duas orientações. Não houve deploy,
-geração de APK ou teste físico nesta etapa.
+v0.23.0 publicada em 2026-09-23: APK do GitHub Actions e backend no Render.
+Validação: testes locais de dois clientes HTTP, persistência/reinício, progressão
+e widgets nas duas orientações; Firestore real recuperado em nova instância;
+smoke no Render com criação, entrada, preparação, ataque e leitura autenticada.
+Credencial exclusiva importada no Render; arquivos temporários locais removidos.
+Testes físicos serão feitos pelo usuário com ambos os aparelhos atualizados.

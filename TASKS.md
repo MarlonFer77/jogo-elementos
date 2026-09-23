@@ -4,12 +4,15 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Publicação v0.23.0 em preparação: adaptador Firestore transacional implementado;
-projeto elements-1173d acessível, banco Standard/free tier existente e cobrança
-desativada confirmados. Conta elementos-render criada com roles/datastore.user.
-Pendente autorização explícita para arquivo temporário da chave/importação Render.
-Testes físicos serão feitos pelo usuário. Build preparada em branch separada;
-não publicar master/APK até confirmar backend configurado.
+v0.23.0 publicada em 2026-09-23 com APK do CI (run 35857481276).
+Backend 00a0117 no Render, protocolo 2 e Firestore ativos. Conta exclusiva com
+roles/datastore.user; segredo salvo no Render e cópias temporárias locais apagadas.
+Cobrança Firebase desativada; nenhum plano pago ativado.
+Smoke online aprovado: criar, entrar, preparar ambos, atacar e recuperar estado.
+Recuperação por nova instância do adaptador Firestore também aprovada.
+Próximo: usuário validar dois celulares com v0.23.0, reconexão e orientações.
+Protótipo fechado: identidade por instalação; faltam rate limiting/retenção e
+recuperação de conta antes de abertura pública. Checkpoints abaixo são históricos.
 
 Checkpoint anterior:
 
