@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../game_domain/battle_scene_view.dart';
 import '../game_domain/effect_badge_view.dart';
 import 'status_visuals.dart';
+import '../game_domain/status_catalog.dart';
 
 /// Painel de HP fixo no topo da cena, estilo jogo de luta: nome + barra de
 /// HP de cada lado, com o lado ativo destacado (borda + seta), e badges
@@ -213,10 +214,14 @@ class _HudPanel extends StatelessWidget {
               alignment: alignEnd ? WrapAlignment.end : WrapAlignment.start,
               children: [
                 for (final badge in statuses)
-                  _EffectBadge(
-                    icon: statusIcon(badge.id),
-                    color: statusColor(badge.id),
-                    remainingTurns: badge.remainingTurns,
+                  Tooltip(
+                    message:
+                        '${statusName(badge.id)}: ${statusDescription(badge.id)}',
+                    child: _EffectBadge(
+                      icon: statusIcon(badge.id),
+                      color: statusColor(badge.id),
+                      remainingTurns: badge.remainingTurns,
+                    ),
                   ),
               ],
             ),

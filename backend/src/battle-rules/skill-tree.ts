@@ -1,7 +1,9 @@
 import { combinationModifiersById, type CombinationModifier } from "./combination-modifiers.js";
 import { mutationsById, type Mutation } from "./mutations.js";
+export const elementIds = ['fire', 'water', 'wind', 'ice', 'nature', 'lightning', 'earth', 'shadow', 'light', 'poison'] as const;
 
 type SkillGrantRef =
+  | { readonly kind: "element"; readonly id: string }
   | { readonly kind: "mutation"; readonly id: string }
   | { readonly kind: "combinationModifier"; readonly id: string }
   | { readonly kind: "maxHpBonus"; readonly id: string };
@@ -29,6 +31,7 @@ export interface SkillTreeNodeDef {
  * of a backend deployment would ever construct at runtime.
  */
 export const defaultSkillTreeNodes: readonly SkillTreeNodeDef[] = [
+  ...elementIds.map(id => ({id: `unlock_${id}`, prerequisites: [], grant: {kind: 'element' as const, id}})),
   { id: "ember_mastery", prerequisites: [], grant: { kind: "mutation", id: "combustion" } },
   { id: "wildfire_path", prerequisites: ["ember_mastery"], grant: { kind: "mutation", id: "wildfire" } },
   { id: "unstable_core_training", prerequisites: [], grant: { kind: "mutation", id: "unstable_core" } },

@@ -205,7 +205,20 @@ class TrainingMatch {
   }
 
   int get availableApForAction =>
-      _state.apOf(_currentCombatant).withRegenerated().current;
+      TurnEngine.availableAp(_state, _currentCombatant);
+
+  int attackApCost(int elementCount) =>
+      TurnEngine.actionCost(_state, _currentCombatant, elementCount);
+
+  bool get currentPlayerIsSilenced =>
+      _state.hasStatus(_currentCombatant, StatusEffects.silence);
+  String? get currentActionWarning => currentPlayerIsSilenced
+      ? '${StatusEffects.silence.name}: ${StatusEffects.silence.description}'
+      : _state.hasStatus(_currentCombatant, StatusEffects.slow)
+      ? '${StatusEffects.slow.name}: ${StatusEffects.slow.description}'
+      : _state.hasStatus(_currentCombatant, StatusEffects.shock)
+      ? '${StatusEffects.shock.name}: ${StatusEffects.shock.description}'
+      : null;
 
   List<AttackOption> get equippedAttacksForCurrentPlayer {
     final catalog = allAttackOptions(
@@ -221,6 +234,9 @@ class TrainingMatch {
 
   String? attackUnavailableReason(String id) {
     if (isOver) return 'A partida terminou.';
+    if (currentPlayerIsSilenced) {
+      return 'Silêncio: use um elemento básico ou Defender.';
+    }
     final attacks = allAttackOptions(
       unlockedIds: _currentLoadout.unlockedCombinationIds.toList(),
       equippedIds: _currentLoadout.equippedCombinationIds,
@@ -233,7 +249,13 @@ class TrainingMatch {
     )) {
       return 'Elemento necessário bloqueado.';
     }
-    final missing = attack.apCost - availableApForAction;
+    final missing =
+        TurnEngine.actionCost(
+          _state,
+          _currentCombatant,
+          attack.elementIds.length,
+        ) -
+        availableApForAction;
     if (missing > 0) return 'Falta${missing == 1 ? '' : 'm'} $missing AP.';
     return null;
   }
@@ -697,11 +719,9 @@ class TrainingMatch {
           )
         : null;
     return ActionPreview(
-      apCost: defending || thawing || ids.length < 2
+      apCost: defending || thawing
           ? 0
-          : ids.length == 2
-          ? 3
-          : 5,
+          : TurnEngine.actionCost(_state, actor, ids.length),
       apAfter: next.apOf(actor).current,
       opponentHpLoss:
           _state.hpOf(opponent).current - next.hpOf(opponent).current,
@@ -717,7 +737,7 @@ class TrainingMatch {
         if (!defending && !thawing && ids.length > 1 && combo == null)
           'Combinação desconhecida: sem dano direto.',
       ],
-      regeneratesAp: !thawing,
+      regeneratesAp: !thawing && !_state.hasStatus(actor, StatusEffects.slow),
     );
   }
 }

@@ -7,4 +7,7 @@
 /// For local backend development, pass a `MultiplayerClient` pointing at
 /// `http://localhost:3000` explicitly instead of relying on this default
 /// (every screen that takes one already accepts an override).
-const defaultMultiplayerBaseUrl = 'https://jogo-elementos-backend.onrender.com';
+const defaultMultiplayerBaseUrl = String.fromEnvironment(
+  'MULTIPLAYER_BASE_URL',
+  defaultValue: 'https://jogo-elementos-backend.onrender.com',
+);

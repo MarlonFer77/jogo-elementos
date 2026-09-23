@@ -11,15 +11,25 @@ export interface CombinationModifier {
 /** Mirrors CombinationModifiers.propagation. */
 export const propagation: CombinationModifier = {
   id: "propagation",
-  apply: (effect) => ({ ...effect, area: effect.area + 2 }),
+  apply: (effect) => ({ ...effect, area: effect.area + 2,
+    statusesToApply: effect.statusesToApply?.map(entry => entry.target !== 'opponent' || entry.status.damagePerTick === 0 ? entry :
+      {...entry, status: {...entry.status, damagePerTick: entry.status.damagePerTick + 1}}),
+  }),
 };
 
 /** Mirrors CombinationModifiers.volatility. */
 export const volatility: CombinationModifier = {
   id: "volatility",
   apply: (effect) => {
-    if (effect.duration === null) return effect;
-    return { ...effect, duration: Math.max(0, effect.duration - 1) };
+    let converted = false;
+    const statusesToApply = effect.statusesToApply?.map(entry => {
+      const turns = entry.status.turnsRemaining;
+      if (entry.target !== 'opponent' || entry.status.damagePerTick === 0 || turns === null || turns <= 1) return entry;
+      converted = true;
+      return {...entry, status: {...entry.status, turnsRemaining: turns - 1}};
+    });
+    return { ...effect, duration: effect.duration === null ? null : Math.max(0, effect.duration - 1),
+      damage: effect.damage + (converted ? 4 : 0), statusesToApply };
   },
 };
 

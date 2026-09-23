@@ -11,5 +11,6 @@ export function isExpired(status: ActiveStatus): boolean {
  * instance if it has no duration. */
 export function tick(status: ActiveStatus): ActiveStatus {
   if (status.turnsRemaining === null) return status;
-  return { ...status, turnsRemaining: status.turnsRemaining - 1 };
+  return { ...status, turnsRemaining: status.turnsRemaining - 1,
+    damagePerTick: status.effectId === 'poison' && status.damagePerTick > 0 ? status.damagePerTick + 1 : status.damagePerTick };
 }

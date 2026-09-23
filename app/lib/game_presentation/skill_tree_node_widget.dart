@@ -49,6 +49,11 @@ class SkillTreeNodeWidget extends StatelessWidget {
               child: Text(icon, style: const TextStyle(fontSize: 24)),
             ),
             const SizedBox(height: 4),
+            Text(switch (state) {
+              SkillTreeNodeState.unlocked => '✓ Obtida',
+              SkillTreeNodeState.available => 'Consultar evolução',
+              SkillTreeNodeState.locked => 'Requer anterior',
+            }, style: const TextStyle(fontSize: 9)),
             SizedBox(
               width: 72,
               child: Text(

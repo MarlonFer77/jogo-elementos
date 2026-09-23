@@ -42,7 +42,9 @@ class ActiveStatus {
     return ActiveStatus(
       effect: effect,
       turnsRemaining: turnsRemaining! - 1,
-      damagePerTick: damagePerTick,
+      damagePerTick: effect.id == 'poison' && damagePerTick > 0
+          ? damagePerTick + 1
+          : damagePerTick,
     );
   }
 }

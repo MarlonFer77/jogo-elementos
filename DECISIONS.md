@@ -1,5 +1,63 @@
 # DECISIONS.md
 
+## DECISION-058
+Data: 2026-09-22
+Paridade multiplayer incremental: servidor passa a controlar preparação de 2
+elementos, slots 4/3, descobertas, restrições de desbloqueio e progressão.
+HTTP exige credencial aleatória de 256 bits persistida por instalação/URL e
+revisão para cada mutação. Credenciais são armazenadas como SHA-256 no servidor,
+nunca retornadas com a sala. Isto é identidade de sessão, não conta recuperável.
+Revisões rejeitam repetição/stale state antes da ação; após timeout, consultar
+a sala, sem reenvio automático. Polling continua e ignora respostas antigas.
+Última ação explícita evita perder animações de combos já presentes no campo.
+Snapshot opcional MATCH_STORE_FILE é escrito antes do commit em memória via
+arquivo temporário + rename. Corrupção bloqueia abertura, não apaga progresso.
+Suporta apenas uma instância com disco retido; não substitui banco multi-instância.
+Progresso reaproveitado de partidas concluídas com mesmo nome/credencial;
+partidas em andamento são retomadas por código. Dados do Treino não são confiados
+ao servidor. Novo APK e backend precisam ser distribuídos coordenadamente;
+APKs antigos sem autenticação/revisão são rejeitados, sem caminho inseguro legado.
+Sem deploy, release ou serviço pago. Primeiro protótipo para validação fechada,
+não declaração de prontidão para produção pública.
+
+## DECISION-057
+Data: 2026-09-22
+Árvore: melhorar o catálogo existente sem novos nós ou migração de saves.
+Propagação mantém área +2 e adiciona +1 ao tick dos status ofensivos de dano
+dos combos. Instabilidade mantém seu ajuste de duração do campo e converte
+uma ação de cada DOT finito com 2+ ações em +4 de dano direto por combo,
+não por status. Não afeta controle, proteção ou passivas; prévia usa o engine.
+O segundo nó permanece opcional: trocar dano prolongado por impacto não é
+automaticamente melhor. IDs e pré-requisitos continuam iguais no backend.
+Tela compartilhada mostra papel/progresso dos ramos e alerta honestamente que
+crítico/multigolpe ainda não resolvem dano e Área em Chamas não tem DOT próprio.
+Não foi criada uma branch de AP artificial: Defesa/Vitalidade explicam sua
+relação com preparação de combos. Novas mecânicas de AP ficam para outro bloco.
+Detalhes têm rolagem, estado adquirido e proteção local contra envio duplicado.
+Validação limitada aos modificadores e à tela (16 testes), além de typecheck.
+Sem publicação; avaliação manual em aparelhos e balanceamento continuam pendentes.
+
+## DECISION-056
+Data: 2026-09-22
+Decisão: completar os sete status de combate restantes e adicionar 16 receitas
+(20 no total), sem migrar persistência, mudar os 3 slots ou publicar.
+Silêncio bloqueia combos; Lentidão remove regeneração; Choque cobra +1 AP em
+combos, todos durante a próxima ação do alvo. Básicos/Defender continuam válidos.
+Fortalecimento +25% e Enfraquecimento -25% modificam somente dano direto.
+Molhado recebe +25% de dano de Raio e é consumido no contato não bloqueado.
+Modificadores percentuais são aditivos, arredondados para cima antes da Defesa.
+Veneno aumenta seu tick em 1 por ação (ex.: 2/3/4), sem empilhar aplicações.
+Durações contam ações globais, como o engine existente: Buff/Molhado duram 2,
+controles 1, Veneno 3. Novos efeitos só entram depois dos ticks da ação atual.
+Escudo bloqueia dano direto e status ofensivos; não bloqueia dano contínuo.
+Efeito de Área continua marcador de campo, não um status de combatente.
+Receitas preservam as quatro antigas; novas opções abrangem todos os elementos,
+controle, proteção, amplificação e dano contínuo. Valores são balanceamento
+inicial: precisam de partidas humanas antes de publicação.
+Engine Dart e backend TS usam as mesmas regras; HUD explica os status,
+prévia considera custos/efeitos reais, e Treino mostra custo alterado por Choque.
+
+
 ## DECISION-055
 Data: 2026-09-22
 Decisão: implementar Congelamento como primeiro incremento do bloco de Status,

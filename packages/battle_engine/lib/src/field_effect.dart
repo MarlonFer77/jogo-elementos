@@ -31,7 +31,12 @@ class FieldEffect {
     this.statusesToApply = const [],
   });
 
-  FieldEffect copyWith({int? area, int? duration, int? damage}) {
+  FieldEffect copyWith({
+    int? area,
+    int? duration,
+    int? damage,
+    List<TargetedStatus>? statusesToApply,
+  }) {
     return FieldEffect(
       id: id,
       name: name,
@@ -39,7 +44,7 @@ class FieldEffect {
       area: area ?? this.area,
       duration: duration ?? this.duration,
       damage: damage ?? this.damage,
-      statusesToApply: statusesToApply,
+      statusesToApply: statusesToApply ?? this.statusesToApply,
     );
   }
 

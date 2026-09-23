@@ -4,13 +4,54 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Publicar v0.22.0+22: Prisão Glacial e Congelamento funcional.
-Implementação e testes locais concluídos; falta confirmar deploy e APK.
+Publicação v0.23.0 em preparação: adaptador Firestore transacional implementado;
+projeto elements-1173d acessível, banco Standard/free tier existente e cobrança
+desativada confirmados. Conta elementos-render criada com roles/datastore.user.
+Pendente autorização explícita para arquivo temporário da chave/importação Render.
+Testes físicos serão feitos pelo usuário. Build preparada em branch separada;
+não publicar master/APK até confirmar backend configurado.
+
+Checkpoint anterior:
+
+Multiplayer: protótipo integrado localmente, sem publicação.
+Servidor controla preparação, 4 elementos, 3 ataques, descobertas, progressão
+e habilidades/status. Credencial por instalação + revisão obrigatória.
+Frontend reutiliza preparação, Skill Tree, ataques, arena e feedback; controles
+nas duas orientações, reconexão com última sala lembrada e avisos de conexão.
+Snapshot atômico opcional via MATCH_STORE_FILE; progresso de partidas concluídas
+reutilizado com a mesma credencial e nome. Sem importar progresso local do Treino.
+Validação pontual: 2 testes HTTP/persistência + 2 widgets de orientação aprovados;
+typecheck aprovado. Não foi rodada suíte completa nem teste em aparelhos físicos.
+Contrato novo exige atualizar fixtures antigas de multiplayer (credencial,
+revisão e preparação) antes de voltar a usar a suíte legada como gate de release.
+Publicação bloqueada até escolher armazenamento durável e validar dois aparelhos;
+ver docs/multiplayer-prototype.md. Nenhuma infraestrutura alterada.
+
+Checkpoint anterior:
+
+Árvore de habilidades: incremento concluído, sem publicar. Tela compartilhada
+mostra identidade/progresso dos ramos, estados e limitações dos nós ainda inertes.
+Detalhes roláveis e desbloqueio protegido contra envio duplicado.
+Propagação fortalece DOT de combos; Instabilidade troca duração por dano imediato.
+IDs/pré-requisitos/persistência preservados. Validação pontual: 7 testes Dart,
+5 backend, 4 da tela compartilhada; typecheck aprovado. Sem suíte completa.
+
+Checkpoint anterior:
+
+INLINE: completar status e ampliar combos. Sem publicar.
+Checkpoint 1: regras definidas (Silêncio, Lentidão, Buff/Debuff, Molhado,
+Choque e Veneno); 16 novas receitas, total 20.
+Checkpoint 2 concluído: engine/backend/UI, prévias, custos e avisos integrados.
+Checkpoint 3 concluído: engine 233, backend 160 e app 289 testes aprovados;
+análise do app e typecheck do backend sem problemas. Capturas de layout de
+defesa em 360x640 e 568x320 inspecionadas (fontes de teste, não arte final).
+Validação manual em aparelhos e balanceamento pendentes. Sem commit/release/deploy.
 
 # NEXT
 
-Status — implementar Silêncio como próximo efeito funcional, preservando o
-mesmo padrão de regra autoritativa, prévia e feedback do Congelamento.
+Validar o protótipo multiplayer em dois aparelhos e decidir persistência durável
+dentro do orçamento R$ 0. Migrar fixtures legadas do protocolo e revisar limites
+de acesso/armazenamento antes de publicação pública. Publicação não autorizada.
 
 # BACKLOG
 
@@ -21,14 +62,15 @@ uma tarefa nova terminar revelando um gap novo.
 **Battle Engine (packages/battle_engine)**
 - `hitCount`/`critChanceBonus` (Fragmentação/Núcleo Instável) inertes —
   precisa desenhar como múltiplos hits/crítico interagem com Escudo
-- Congelar, Silenciar, Lentidão, Buff, Debuff sem nenhum comportamento
-- Conversão de estado (ex: Molhado -> Choque) sem ponto de extensão (DECISION-005/008)
+- Conversões adicionais de status: Molhado já amplifica Raio e é consumido;
+  outras conversões ainda precisam de desenho de gameplay.
 - Dano de campo é hit único — Lava não continua queimando enquanto ativa
 - Artefatos não implementado (`MaxHpBonus` é o modelo pronto pra isso)
 
 **Backend (backend/)**
-- `MatchStore` em memória — sem Firestore, perde tudo ao reiniciar
-- Sem autenticação — identidade é só a string que o cliente manda
+- Persistência durável de produção não configurada; snapshot local opcional
+  não resolve disco efêmero nem múltiplas instâncias.
+- Credencial por instalação implementada; contas e recuperação ainda ausentes.
 - Sem push em tempo real — só polling (cliente já poll a cada 2s)
 - CORS liberado pra `*` — ok sem deploy real, reavaliar quando existir um (DECISION-021)
 

@@ -35,6 +35,22 @@ const Map<String, String> _fieldEffectIcons = {
   'electrified_field': '🌩️',
   'glacial_prison': '🧊',
   'lava': '🌋',
+  'silent_gale': '🤐',
+  'quagmire': '🐌',
+  'solar_flame': '☀️',
+  'eclipse': '🌘',
+  'rain_dance': '🌧️',
+  'toxic_bloom': '☠️',
+  'static_gale': '⚡',
+  'crystal_wall': '💎',
+  'living_ward': '🌿',
+  'caustic_flame': '🔥',
+  'winter_gale': '❄️',
+  'toxic_hex': '☠️',
+  'solar_tempest': '☀️',
+  'sacred_grove': '🌳',
+  'thunderstorm': '🌩️',
+  'plague_garden': '☠️',
 };
 
 /// Ícone (emoji) de um badge de status ativo por jogador. `?` como

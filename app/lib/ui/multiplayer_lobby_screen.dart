@@ -20,7 +20,7 @@ import 'multiplayer_battle_screen.dart';
 /// (ver DECISION-016).
 class MultiplayerLobbyScreen extends StatefulWidget {
   const MultiplayerLobbyScreen({super.key, MultiplayerClient? client})
-      : _client = client;
+    : _client = client;
 
   final MultiplayerClient? _client;
 
@@ -35,6 +35,19 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
   final _codeController = TextEditingController();
   bool _loading = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _client
+        .lastSession()
+        .then((session) {
+          if (!mounted) return;
+          if (_nameController.text.isEmpty) _nameController.text = session.$1;
+          if (_codeController.text.isEmpty) _codeController.text = session.$2;
+        })
+        .catchError((Object _) {});
+  }
 
   @override
   void dispose() {
@@ -94,11 +107,18 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
     try {
       await action();
       if (!mounted) return;
-      await Navigator.of(context).push(
-        pixelSlideRoute((_) => MultiplayerBattleScreen(match: match)),
-      );
+      await Navigator.of(
+        context,
+      ).push(pixelSlideRoute((_) => MultiplayerBattleScreen(match: match)));
     } on MultiplayerException catch (e) {
-      setState(() => _error = e.message);
+      if (mounted) setState(() => _error = e.message);
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _error =
+              'Não foi possível conectar. Confira a conexão e tente novamente.',
+        );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -122,7 +142,10 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  PixelTextField(controller: _nameController, label: 'Seu nome'),
+                  PixelTextField(
+                    controller: _nameController,
+                    label: 'Seu nome',
+                  ),
                   const SizedBox(height: 16),
                   PixelMenuButton(
                     label: 'Criar partida',
@@ -151,7 +174,10 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
                   if (_error != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 16),
-                      child: Text(_error!, style: const TextStyle(color: Colors.red)),
+                      child: Text(
+                        _error!,
+                        style: const TextStyle(color: Colors.red),
+                      ),
                     ),
                 ],
               ),

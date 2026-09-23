@@ -8,6 +8,7 @@ import 'turn_result.dart';
 import 'active_status.dart';
 import 'field_effect.dart';
 import 'targeted_status.dart';
+import 'elements.dart';
 
 /// Resolves one turn at a time. Pure logic: given a state and an action,
 /// produces the next state — including AP (regen, cost, rejection),
@@ -22,6 +23,18 @@ class TurnEngine {
   static const _comboApCost = {2: 3, 3: 5};
 
   const TurnEngine(this.combinationBook);
+
+  static int availableAp(BattleState state, Combatant actor) =>
+      state.hasStatus(actor, StatusEffects.slow) ||
+          state.hasStatus(actor, StatusEffects.freeze)
+      ? state.apOf(actor).current
+      : state.apOf(actor).withRegenerated().current;
+
+  static int actionCost(BattleState state, Combatant actor, int count) =>
+      count < 2
+      ? 0
+      : _comboApCost[count]! +
+            (state.hasStatus(actor, StatusEffects.shock) ? 1 : 0);
 
   /// Resolves [action] against [state]:
   /// - rejects it if the battle already has a [BattleState.winner]
@@ -71,13 +84,19 @@ class TurnEngine {
       throw StateError('The actor is not frozen');
     }
 
+    if (action.elements.length > 1 &&
+        state.hasStatus(action.actor, StatusEffects.silence)) {
+      throw StateError('Silêncio: use um elemento básico ou Defender.');
+    }
     var nextState = action.isThaw
         ? state.withStatusRemoved(action.actor, StatusEffects.freeze)
+        : state.hasStatus(action.actor, StatusEffects.slow)
+        ? state
         : state.withApRegenerated(action.actor);
 
     final elementCount = action.elements.length;
     if (elementCount >= 2) {
-      final cost = _comboApCost[elementCount]!;
+      final cost = actionCost(state, action.actor, elementCount);
       if (!nextState.apOf(action.actor).canAfford(cost)) {
         throw StateError(
           'Not enough AP for a $elementCount-element combination',
@@ -105,9 +124,23 @@ class TurnEngine {
       }
       appliedEffect = fieldEffect;
       nextState = nextState.withFieldEffect(fieldEffect);
-      nextState = _applyDamage(nextState, opponent, fieldEffect.damage);
+      nextState = _applyDamage(
+        nextState,
+        opponent,
+        _modifiedDamage(state, action, fieldEffect.damage),
+      );
     } else if (elementCount == 1) {
-      nextState = _applyDamage(nextState, opponent, _basicDamage);
+      nextState = _applyDamage(
+        nextState,
+        opponent,
+        _modifiedDamage(state, action, _basicDamage),
+      );
+    }
+
+    if (!shieldBlocked &&
+        (elementCount == 1 || (appliedEffect?.damage ?? 0) > 0) &&
+        action.elements.contains(Elements.lightning)) {
+      nextState = nextState.withStatusRemoved(opponent, StatusEffects.wet);
     }
 
     nextState = _tickStatusDamage(nextState, action.actor);
@@ -148,6 +181,16 @@ class TurnEngine {
           .withDamage(target, (damage / 2).ceil());
     }
     return state.withDamage(target, damage);
+  }
+
+  int _modifiedDamage(BattleState state, TurnAction action, int damage) {
+    var percent = 100;
+    if (state.hasStatus(action.actor, StatusEffects.buff)) percent += 25;
+    if (state.hasStatus(action.actor, StatusEffects.debuff)) percent -= 25;
+    if (action.elements.contains(Elements.lightning) &&
+        state.hasStatus(state.opponentOf(action.actor), StatusEffects.wet))
+      percent += 25;
+    return (damage * percent / 100).ceil();
   }
 
   /// Ticks damage-over-time statuses for both combatants. [actor] is

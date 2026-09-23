@@ -25,22 +25,26 @@ class StatusEffects {
   static const wet = StatusEffect(
     id: 'wet',
     name: 'Molhado',
-    description: 'Mais vulnerável a efeitos elétricos.',
+    description:
+        'Recebe +25% de dano direto de Raio; consumido ao atingir. Dura 2 ações.',
   );
   static const poison = StatusEffect(
     id: 'poison',
     name: 'Veneno',
-    description: 'Sofre dano crescente ao final de cada turno.',
+    description:
+        'Dano ao fim de cada ação; aumenta em 1 por aplicação de dano. Não acumula.',
   );
   static const shock = StatusEffect(
     id: 'shock',
     name: 'Choque',
-    description: 'Chance de perder a ação do turno.',
+    description:
+        'Combos custam +1 AP na próxima ação. Básicos e Defender continuam livres.',
   );
   static const slow = StatusEffect(
     id: 'slow',
     name: 'Lentidão',
-    description: 'Reduz a iniciativa/ordem de ação.',
+    description:
+        'Não regenera AP na próxima ação. Não altera a ordem dos turnos.',
   );
   static const shield = StatusEffect(
     id: 'shield',
@@ -50,17 +54,20 @@ class StatusEffects {
   static const silence = StatusEffect(
     id: 'silence',
     name: 'Silêncio',
-    description: 'Impede o uso de habilidades.',
+    description:
+        'Bloqueia combos na próxima ação. Permite básicos e Defender; passivas permanecem.',
   );
   static const buff = StatusEffect(
     id: 'buff',
     name: 'Fortalecimento',
-    description: 'Aumenta um atributo temporariamente.',
+    description:
+        '+25% de dano direto até o fim da próxima ação do dono; não altera dano contínuo.',
   );
   static const debuff = StatusEffect(
     id: 'debuff',
     name: 'Enfraquecimento',
-    description: 'Reduz um atributo temporariamente.',
+    description:
+        '−25% de dano direto na próxima ação; não altera dano contínuo.',
   );
   static const areaEffect = StatusEffect(
     id: 'area_effect',

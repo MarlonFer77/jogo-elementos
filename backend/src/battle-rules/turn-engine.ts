@@ -64,13 +64,16 @@ export function playTurn(
     throw new TurnValidationError('the actor is not frozen');
   }
 
+  if (action.elementIds.length > 1 && hasStatus(state, action.actorId, 'silence')) {
+    throw new TurnValidationError('Silêncio: use um elemento básico ou Defender.');
+  }
   let nextState = action.kind === 'thaw'
     ? withStatusRemoved(state, action.actorId, FREEZE_STATUS_ID)
-    : withApRegenerated(state, action.actorId);
+    : hasStatus(state, action.actorId, 'slow') ? state : withApRegenerated(state, action.actorId);
 
   const elementCount = action.elementIds.length;
   if (elementCount >= 2) {
-    const cost = COMBO_AP_COST[elementCount]!;
+    const cost = COMBO_AP_COST[elementCount]! + (hasStatus(state, action.actorId, 'shock') ? 1 : 0);
     if (!canAfford(apOf(nextState, action.actorId), cost)) {
       throw new TurnValidationError(
         `not enough AP for a ${elementCount}-element combination`,
@@ -102,9 +105,12 @@ export function playTurn(
   if (action.kind === 'thaw') {
     // Breaking free consumes the action without AP regeneration or damage.
   } else if (combination && combination.damage > 0) {
-    nextState = applyDamage(nextState, opponentId, combination.damage);
+    nextState = applyDamage(nextState, opponentId, modifiedDamage(state, action, combination.damage));
   } else if (elementCount === 1) {
-    nextState = applyDamage(nextState, opponentId, BASIC_DAMAGE);
+    nextState = applyDamage(nextState, opponentId, modifiedDamage(state, action, BASIC_DAMAGE));
+  }
+  if (!shieldBlocked && (elementCount === 1 || (combination?.damage ?? 0) > 0) && action.elementIds.includes('lightning')) {
+    nextState = withStatusRemoved(nextState, opponentId, 'wet');
   }
 
   nextState = tickStatusDamage(nextState, action.actorId);
@@ -125,6 +131,14 @@ export function playTurn(
     state: nextState,
     triggeredCombinationId: combination?.id ?? null,
   };
+}
+
+function modifiedDamage(state: BattleState, action: TurnAction, damage: number): number {
+  let percent = 100;
+  if (hasStatus(state, action.actorId, 'buff')) percent += 25;
+  if (hasStatus(state, action.actorId, 'debuff')) percent -= 25;
+  if (action.elementIds.includes('lightning') && hasStatus(state, opponentOf(state, action.actorId), 'wet')) percent += 25;
+  return Math.ceil(damage * percent / 100);
 }
 
 function applyDamage(

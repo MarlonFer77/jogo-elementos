@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "firebase-admin": "^14.4.0",
     "tsx": "^4.23.13"
   },
   "devDependencies": {

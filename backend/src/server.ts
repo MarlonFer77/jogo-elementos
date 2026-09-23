@@ -4,6 +4,7 @@ import { matchPath } from "./http/route.js";
 import { MatchStore } from "./matches/match-store.js";
 import {
   handleCreateMatch,
+  handleConfigure,
   handleGetMatch,
   handleJoinMatch,
   handleSubmitTurn,
@@ -17,8 +18,7 @@ import { handleValidateTurn } from "./routes/validate-turn.js";
  * its own in-memory `MatchStore`, which also keeps tests isolated from
  * each other.
  */
-export function createServer(): Server {
-  const matchStore = new MatchStore();
+export function createServer(matchStore = new MatchStore({filePath: process.env.MATCH_STORE_FILE})): Server {
 
   return createHttpServer((req, res) => {
     const pathname = new URL(req.url ?? "/", "http://localhost").pathname;
@@ -29,7 +29,7 @@ export function createServer(): Server {
     // this server's. See DECISION-021.
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
     if (req.method === "OPTIONS") {
       res.writeHead(204);
@@ -39,7 +39,7 @@ export function createServer(): Server {
 
     if (req.method === "GET" && pathname === "/health") {
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "ok" }));
+      res.end(JSON.stringify({ status: "ok", protocol: 2, persistence: process.env.MATCH_STORE === 'firestore' ? 'firestore' : 'local' }));
       return;
     }
 
@@ -53,6 +53,11 @@ export function createServer(): Server {
       return;
     }
 
+    const configureParams = req.method === 'POST' ? matchPath('/matches/:id/configure', pathname) : null;
+    if (configureParams) {
+      void handleConfigure(req, res, matchStore, configureParams.id!);
+      return;
+    }
     const joinParams =
       req.method === "POST" ? matchPath("/matches/:id/join", pathname) : null;
     if (joinParams) {
@@ -82,7 +87,7 @@ export function createServer(): Server {
     const matchParams =
       req.method === "GET" ? matchPath("/matches/:id", pathname) : null;
     if (matchParams) {
-      handleGetMatch(res, matchStore, matchParams.id!);
+      handleGetMatch(req, res, matchStore, matchParams.id!);
       return;
     }
 

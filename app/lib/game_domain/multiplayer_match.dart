@@ -3,6 +3,7 @@ import 'multiplayer_client.dart';
 import 'multiplayer_exception.dart';
 import 'multiplayer_models.dart';
 import 'action_preview.dart';
+import 'status_catalog.dart';
 
 /// A multiplayer match seen from one player's device. Thin wrapper around
 /// [MultiplayerClient] + the last [RemoteMatch] fetched from the backend —
@@ -28,6 +29,49 @@ class MultiplayerMatch {
   String? _lastTriggeredCombinationId;
   bool _submitting = false;
   int _stateGeneration = 0;
+  bool _refreshing = false;
+  String? connectionError;
+  Map<String, dynamic> get progress =>
+      (_match?.players[localPlayerId] as Map<String, dynamic>?) ?? const {};
+  bool get needsPreparation => progress['ready'] != true;
+  bool get bothReady =>
+      _match?.players.length == 2 &&
+      _match!.players.values.every((p) => p['ready'] == true);
+  List<String> get equippedElements =>
+      (progress['elements'] as List? ?? []).cast<String>();
+  List<String> get equippedAttacks =>
+      (progress['attacks'] as List? ?? []).cast<String>();
+  List<String> get discoveries =>
+      (progress['discoveries'] as List? ?? []).cast<String>();
+  String? elementUnlockHint(String nodeId) {
+    if (!nodeId.startsWith('unlock_') ||
+        unlockedNodeIdsForMe.contains(nodeId)) {
+      return null;
+    }
+    final required =
+        (unlockedNodeIdsForMe.where((id) => id.startsWith('unlock_')).length -
+            1) *
+        10;
+    final remaining = required - (progress['turns'] as int? ?? 0);
+    return remaining > 0 ? 'Faltam $remaining turnos para desbloquear.' : null;
+  }
+
+  Future<void> configure(String kind, List<String> ids) async {
+    if (_submitting) throw StateError('Aguarde a operação atual.');
+    _submitting = true;
+    _stateGeneration++;
+    try {
+      _match = await _client.configure(
+        matchId!,
+        localPlayerId,
+        kind,
+        ids,
+        _match!.revision,
+      );
+    } finally {
+      _submitting = false;
+    }
+  }
 
   RemoteMatch? get match => _match;
   String? get matchId => _match?.id;
@@ -136,16 +180,27 @@ class MultiplayerMatch {
   /// Re-fetches the match from the server — the only way this side finds
   /// out about the opponent joining or playing (see class doc).
   Future<void> refresh() async {
-    if (_submitting) return;
+    if (_submitting || _refreshing) return;
     final generation = _stateGeneration;
     final id = matchId;
     if (id == null) return;
     try {
+      _refreshing = true;
       final fetched = await _client.getMatch(id);
-      if (!_submitting && generation == _stateGeneration) _match = fetched;
-    } on MultiplayerException {
+      if (!_submitting &&
+          generation == _stateGeneration &&
+          fetched.revision >= (_match?.revision ?? 0)) {
+        _match = fetched;
+      }
+      connectionError = null;
+    } catch (error) {
+      connectionError = error is MultiplayerException && error.statusCode == 404
+          ? 'Sala não encontrada. O servidor pode ter reiniciado; crie uma nova partida.'
+          : 'Conexão interrompida. Tentando reconectar…';
       // Transient network hiccup during polling: keep the last known
       // state and let the next poll try again.
+    } finally {
+      _refreshing = false;
     }
   }
 
@@ -173,6 +228,7 @@ class MultiplayerMatch {
         elementIds: elementIds,
         defending: defending,
         thawing: thawing,
+        revision: _match!.revision,
       );
       _match = result.match;
       _lastTriggeredCombinationId = result.triggeredCombinationId;
@@ -201,6 +257,7 @@ class MultiplayerMatch {
       defending: defending,
       thawing: thawing,
       preview: true,
+      revision: _match!.revision,
     );
     final after = result.match.state!;
     final before = result.beforeState!;
@@ -208,7 +265,12 @@ class MultiplayerMatch {
         ? before.playerBId
         : before.playerAId;
     final pool = before.ap[localPlayerId];
-    final available = thawing
+    final regenerates =
+        !thawing &&
+        !(before.combatantStatuses[localPlayerId] ?? []).any(
+          (s) => s.effectId == 'slow',
+        );
+    final available = !regenerates
         ? pool?.current ?? 0
         : ((pool?.current ?? 0) + 1).clamp(0, pool?.max ?? 5);
     return ActionPreview(
@@ -223,17 +285,11 @@ class MultiplayerMatch {
         for (final entry in after.combatantStatuses.entries)
           for (final status in entry.value)
             '${entry.key == localPlayerId ? 'Você' : 'Adversário'}: '
-                '${status.effectId == 'guard'
-                    ? 'Defesa 50%'
-                    : status.effectId == 'burn'
-                    ? 'Queimadura'
-                    : status.effectId == 'freeze'
-                    ? 'Congelamento · perde a próxima ação'
-                    : status.effectId}'
+                '${status.effectId == 'guard' ? 'Defesa 50%' : statusName(status.effectId)}'
                 '${status.damagePerTick > 0 ? ' · ${status.damagePerTick} dano/ação' : ''}'
                 '${status.turnsRemaining == null ? '' : ' · ${status.turnsRemaining} ação(ões)'}',
       ],
-      regeneratesAp: !thawing,
+      regeneratesAp: regenerates,
     );
   }
 
@@ -245,6 +301,7 @@ class MultiplayerMatch {
   /// prerequisites not met, already unlocked...) — [lastError] carries
   /// the message for the UI to show.
   Future<void> unlockSkill(String nodeId) async {
+    if (_submitting) throw StateError('Aguarde a operação atual.');
     final id = matchId;
     if (id == null) {
       throw StateError(
@@ -252,15 +309,20 @@ class MultiplayerMatch {
       );
     }
     try {
+      _submitting = true;
+      _stateGeneration++;
       _lastError = null;
       _match = await _client.unlockSkill(
         id,
         playerId: localPlayerId,
         nodeId: nodeId,
+        revision: _match!.revision,
       );
     } on MultiplayerException catch (e) {
       _lastError = e.message;
       rethrow;
+    } finally {
+      _submitting = false;
     }
   }
 

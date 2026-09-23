@@ -37,6 +37,7 @@ class SkillTreeScreen extends StatefulWidget {
 
 class _SkillTreeScreenState extends State<SkillTreeScreen> {
   late List<String> _unlockedNodeIds = List.of(widget.unlockedNodeIds);
+  bool _unlockPending = false;
 
   @override
   Widget build(BuildContext context) {
@@ -93,42 +94,80 @@ class _SkillTreeScreenState extends State<SkillTreeScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return PixelSheetPanel(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                PixelOutlinedText(node.name, fontSize: 18),
-                const SizedBox(height: 8),
-                Text(node.description),
-                const SizedBox(height: 12),
-                if (state == SkillTreeNodeState.locked)
-                  Text('Requer: ${_prerequisiteNames(node)}')
-                else if (state == SkillTreeNodeState.available && hint != null)
-                  Text(hint)
-                else if (state == SkillTreeNodeState.available && !widget.canUnlockNow)
-                  const Text('Só dá pra desbloquear na sua vez.')
-                else if (state == SkillTreeNodeState.available)
-                  PixelMenuButton(
-                    label: 'Desbloquear',
-                    onPressed: () async {
-                      final error = await widget.onUnlock(node.id);
-                      if (error != null) {
-                        if (!sheetContext.mounted) return;
-                        ScaffoldMessenger.of(sheetContext).showSnackBar(
-                          SnackBar(content: Text(error)),
-                        );
-                        return;
-                      }
-                      setState(() => _unlockedNodeIds = [..._unlockedNodeIds, node.id]);
-                      sfxPlayer.play(SfxId.unlock);
-                      if (!sheetContext.mounted) return;
-                      Navigator.of(sheetContext).pop();
-                    },
-                  ),
-              ],
+        return StatefulBuilder(
+          builder: (context, updateSheet) => PixelSheetPanel(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    PixelOutlinedText(node.name, fontSize: 18),
+                    const SizedBox(height: 8),
+                    Text(node.description),
+                    if (skillTreeNodeCaveat(node.id) case final warning?) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        warning,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                    if (state == SkillTreeNodeState.unlocked)
+                      const Text('Desbloqueada • progresso salvo'),
+                    const SizedBox(height: 12),
+                    if (state == SkillTreeNodeState.locked)
+                      Text('Requer: ${_prerequisiteNames(node)}')
+                    else if (state == SkillTreeNodeState.available &&
+                        hint != null)
+                      Text(hint)
+                    else if (state == SkillTreeNodeState.available &&
+                        !widget.canUnlockNow)
+                      const Text('Só dá pra desbloquear na sua vez.')
+                    else if (state == SkillTreeNodeState.available)
+                      PixelMenuButton(
+                        label: _unlockPending
+                            ? 'Desbloqueando…'
+                            : 'Desbloquear',
+                        onPressed: _unlockPending
+                            ? null
+                            : () async {
+                                if (_unlockPending) return;
+                                updateSheet(() => _unlockPending = true);
+                                String? error;
+                                try {
+                                  error = await widget.onUnlock(node.id);
+                                } catch (_) {
+                                  error =
+                                      'Não foi possível desbloquear. Tente novamente.';
+                                } finally {
+                                  _unlockPending = false;
+                                  if (sheetContext.mounted) updateSheet(() {});
+                                }
+                                if (!mounted) return;
+                                if (error != null) {
+                                  if (!sheetContext.mounted) return;
+                                  ScaffoldMessenger.of(
+                                    sheetContext,
+                                  ).showSnackBar(
+                                    SnackBar(content: Text(error)),
+                                  );
+                                  return;
+                                }
+                                setState(
+                                  () => _unlockedNodeIds = [
+                                    ..._unlockedNodeIds,
+                                    node.id,
+                                  ],
+                                );
+                                sfxPlayer.play(SfxId.unlock);
+                                if (!sheetContext.mounted) return;
+                                Navigator.of(sheetContext).pop();
+                              },
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
         );
@@ -171,8 +210,21 @@ class _BranchColumn extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
+          SizedBox(
+            width: 150,
+            child: Text(
+              skillTreeBranchIdentity(branch),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 11),
+            ),
+          ),
+          Text(
+            '${nodes.where((n) => unlockedNodeIds.contains(n.id)).length}/${nodes.length} desbloqueadas',
+            style: const TextStyle(fontSize: 11),
+          ),
+          const SizedBox(height: 12),
           for (final node in nodes) ...[
-            if (node != nodes.first)
+            if (node.prerequisites.isNotEmpty)
               Container(width: 3, height: 16, color: const Color(0xFF2B2B2B)),
             SkillTreeNodeWidget(
               name: node.name,

@@ -17,12 +17,14 @@ class ElementStarterScreen extends StatefulWidget {
     required this.onConfirm,
     this.step = 1,
     this.confirmLabel = 'Confirmar',
+    this.modeLabel = 'TREINO',
   });
 
   final String playerLabel;
   final ValueChanged<List<String>> onConfirm;
   final int step;
   final String confirmLabel;
+  final String modeLabel;
 
   @override
   State<ElementStarterScreen> createState() => _ElementStarterScreenState();
@@ -51,9 +53,9 @@ class _ElementStarterScreenState extends State<ElementStarterScreen> {
         backgroundColor: const Color(0xFF344C56),
         foregroundColor: const Color(0xFFF8F2DA),
         toolbarHeight: 44,
-        title: const Text(
-          'TREINO · PREPARAÇÃO',
-          style: TextStyle(fontFamily: 'monospace', fontSize: 16),
+        title: Text(
+          '${widget.modeLabel} · PREPARAÇÃO',
+          style: const TextStyle(fontFamily: 'monospace', fontSize: 16),
         ),
       ),
       body: SafeArea(
@@ -97,8 +99,12 @@ class _ElementStarterScreenState extends State<ElementStarterScreen> {
                       runSpacing: 6,
                       children: [
                         for (final (index, label) in [
-                          'Jogador A',
-                          'Jogador B',
+                          widget.modeLabel == 'TREINO'
+                              ? 'Jogador A'
+                              : 'Sua escolha',
+                          widget.modeLabel == 'TREINO'
+                              ? 'Jogador B'
+                              : 'Oponente pronto',
                           'Batalha',
                         ].indexed)
                           Container(

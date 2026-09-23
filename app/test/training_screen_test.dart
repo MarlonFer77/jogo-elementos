@@ -60,7 +60,7 @@ void main() {
       await tester.tap(find.byTooltip('Resumo da batalha'));
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Última combinação: Tempestade Ígnea'), findsOneWidget);
-      expect(find.text('Descobertas: 1/4'), findsOneWidget);
+      expect(find.text('Descobertas: 1/20'), findsOneWidget);
       expect(find.textContaining('86/100 HP'), findsOneWidget);
       expect(
         find.textContaining('Novo ataque desbloqueado: Tempestade Ígnea'),

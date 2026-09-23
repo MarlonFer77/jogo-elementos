@@ -33,7 +33,10 @@ SkillNodeOption skillNodeOptionFrom(SkillNode node) {
 /// `defaultSkillTree` the backend mirrors, exactly like
 /// `CombinationCatalog` already does for combination ids.
 List<SkillNodeOption> availableSkillNodeOptions(List<String> unlockedNodeIds) {
-  final progress = SkillProgress(defaultSkillTree, unlockedNodeIds: unlockedNodeIds);
+  final progress = SkillProgress(
+    defaultSkillTree,
+    unlockedNodeIds: unlockedNodeIds,
+  );
   return progress.availableNodes.map(skillNodeOptionFrom).toList();
 }
 
@@ -85,14 +88,16 @@ const _skillTreeNodeIcons = {
 /// desbloqueados juntos, não só os disponíveis agora.
 List<SkillTreeNodeOption> allSkillTreeNodes() {
   return defaultSkillTree.nodes
-      .map((node) => SkillTreeNodeOption(
-            id: node.id,
-            name: node.name,
-            description: node.description,
-            branch: node.branch,
-            prerequisites: node.prerequisites,
-            icon: _skillTreeNodeIcons[node.id] ?? '❔',
-          ))
+      .map(
+        (node) => SkillTreeNodeOption(
+          id: node.id,
+          name: node.name,
+          description: node.description,
+          branch: node.branch,
+          prerequisites: node.prerequisites,
+          icon: _skillTreeNodeIcons[node.id] ?? '❔',
+        ),
+      )
       .toList();
 }
 
@@ -103,6 +108,23 @@ const _skillTreeBranchDisplayNames = {
   'vitalidade': 'Vitalidade',
   'defesa': 'Defesa',
   'elementos': 'Elementos',
+};
+
+String skillTreeBranchIdentity(String branch) => switch (branch) {
+  'fogo' => 'Pressão • desgaste por Queimadura',
+  'precisao' => 'Precisão • crítico e multigolpe ainda em desenvolvimento',
+  'elemental' => 'Sinergia • duração ou impacto dos combos',
+  'vitalidade' => 'Resistência • mais tempo para preparar combos',
+  'defesa' => 'Proteção • absorver golpes enquanto recupera AP',
+  'elementos' => 'Descoberta • novas receitas e possibilidades',
+  _ => '',
+};
+
+String? skillTreeNodeCaveat(String id) => switch (id) {
+  'unstable_core_training' || 'fragment_strikes' =>
+    'Em desenvolvimento: este desbloqueio é salvo, mas ainda não modifica o dano da batalha.',
+  'wildfire_path' => 'O campo criado ainda não causa dano contínuo próprio.',
+  _ => null,
 };
 
 /// Nome de exibição de uma branch (ex: `'precisao'` -> `'Precisão'`) —

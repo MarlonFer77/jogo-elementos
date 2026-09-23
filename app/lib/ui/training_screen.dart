@@ -561,6 +561,11 @@ class _TrainingScreenState extends State<TrainingScreen> {
         .where((a) => a.id == _selectedAttackId)
         .firstOrNull;
     return [
+      if (_match.currentActionWarning != null)
+        Text(
+          _match.currentActionWarning!,
+          style: const TextStyle(fontSize: 12),
+        ),
       BattleCommandGrid(
         children: _showAbilities
             ? [
@@ -571,7 +576,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                       title: attacks[i].name,
                       detail:
                           _match.attackUnavailableReason(attacks[i].id) ??
-                          '${attacks[i].apCost} AP',
+                          '${_match.attackApCost(attacks[i].elementIds.length)} AP',
                       unavailable:
                           _match.attackUnavailableReason(attacks[i].id) != null,
                       selected: selectedAttack?.id == attacks[i].id,
@@ -725,9 +730,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
         .where((a) => a.id == _selectedAttackId)
         .firstOrNull;
     if (!_defending && _selectedIds.isEmpty && attack == null) {
-      return const Text(
-        'Escolha uma ação. +1 AP ao agir.',
-        style: TextStyle(
+      return Text(
+        _match.currentActionWarning ?? 'Escolha uma ação. +1 AP ao agir.',
+        style: const TextStyle(
           fontFamily: 'monospace',
           fontSize: 12,
           color: Color(0xFF646653),
@@ -752,10 +757,13 @@ class _TrainingScreenState extends State<TrainingScreen> {
                 ? 'Confirmar defesa'
                 : attack == null
                 ? 'Jogar'
-                : 'Usar habilidade · ${attack.apCost} AP',
+                : 'Usar habilidade · ${_match.attackApCost(attack.elementIds.length)} AP',
             primary: true,
             onPressed:
                 _executing ||
+                    (!_defending &&
+                        _selectedIds.length > 1 &&
+                        _match.currentPlayerIsSilenced) ||
                     (attack != null &&
                         _match.attackUnavailableReason(attack.id) != null)
                 ? null

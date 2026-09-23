@@ -8,6 +8,31 @@ import { sendErrorResponse, sendJson } from "../http/respond.js";
 import { isNonEmptyString } from "../http/validation.js";
 import type { MatchStore } from "../matches/match-store.js";
 
+function token(req: IncomingMessage): string {
+  const value = req.headers.authorization?.replace(/^Bearer /, '');
+  if (!value || !/^[a-f0-9]{64}$/.test(value)) throw new TurnValidationError('Atualize o aplicativo: credencial de sessão obrigatória.');
+  return value;
+}
+
+function revision(body: unknown): number {
+  const value = (body as Record<string, unknown>)?.revision;
+  if (!Number.isSafeInteger(value) || (value as number) < 0) throw new TurnValidationError('Revisão da partida obrigatória. Atualize o aplicativo.');
+  return value as number;
+}
+
+export async function handleConfigure(req: IncomingMessage, res: ServerResponse, store: MatchStore, id: string): Promise<void> {
+  try {
+    const body = await readJsonBody(req) as Record<string, unknown>;
+    if (!body || !isNonEmptyString(body.playerId) || typeof body.kind !== 'string' || !Array.isArray(body.ids) || !body.ids.every(id => typeof id === 'string')) throw new TurnValidationError('Configuração inválida.');
+    const playerId = body.playerId;
+    const kind = body.kind;
+    sendJson(res, 200, await store.run(id, current => {
+      current.authorize(id, token(req), playerId);
+      return current.configure(id, playerId, kind, body.ids as string[], revision(body));
+    }, true));
+  } catch (error) { sendErrorResponse(res, error); }
+}
+
 async function readRequiredStringField(
   req: IncomingMessage,
   field: string,
@@ -31,7 +56,7 @@ export async function handleCreateMatch(
 ): Promise<void> {
   try {
     const playerAId = await readRequiredStringField(req, "playerAId");
-    sendJson(res, 201, store.create(playerAId));
+    sendJson(res, 201, await store.run(undefined, current => current.create(playerAId, token(req)), true, {playerId: playerAId, token: token(req)}));
   } catch (error) {
     sendErrorResponse(res, error);
   }
@@ -46,7 +71,7 @@ export async function handleJoinMatch(
 ): Promise<void> {
   try {
     const playerBId = await readRequiredStringField(req, "playerBId");
-    sendJson(res, 200, store.join(matchId, playerBId));
+    sendJson(res, 200, await store.run(matchId, current => current.join(matchId, playerBId, token(req)), true, {playerId: playerBId, token: token(req)}));
   } catch (error) {
     sendErrorResponse(res, error);
   }
@@ -54,13 +79,17 @@ export async function handleJoinMatch(
 
 /** GET /matches/:id — full match state, for reconnection: a client that
  * dropped just re-fetches this to resync. */
-export function handleGetMatch(
+export async function handleGetMatch(
+  req: IncomingMessage,
   res: ServerResponse,
   store: MatchStore,
   matchId: string,
-): void {
+): Promise<void> {
   try {
-    sendJson(res, 200, store.get(matchId));
+    sendJson(res, 200, await store.run(matchId, current => {
+      current.authorize(matchId, token(req));
+      return current.get(matchId);
+    }));
   } catch (error) {
     sendErrorResponse(res, error);
   }
@@ -78,10 +107,12 @@ export async function handleSubmitTurn(
   try {
     const body = await readJsonBody(req);
     const action = parseTurnAction(body);
-    const beforeState = preview ? store.get(matchId).state : undefined;
-    const { match, result } = store.applyTurn(matchId, action, defaultCombinationBook, preview);
-    sendJson(res, 200, { match, triggeredCombinationId: result.triggeredCombinationId,
-      ...(preview ? {beforeState} : {}) });
+    sendJson(res, 200, await store.run(matchId, current => {
+      current.authorize(matchId, token(req), action.actorId);
+      const beforeState = preview ? current.get(matchId).state : undefined;
+      const { match, result } = current.applyTurn(matchId, action, defaultCombinationBook, preview, revision(body));
+      return { match, triggeredCombinationId: result.triggeredCombinationId, ...(preview ? {beforeState} : {}) };
+    }, !preview));
   } catch (error) {
     sendErrorResponse(res, error);
   }
@@ -108,8 +139,11 @@ export async function handleUnlockSkill(
       throw new TurnValidationError("nodeId is required");
     }
 
-    const { match } = store.unlockSkill(matchId, playerId, nodeId);
-    sendJson(res, 200, { match });
+    sendJson(res, 200, await store.run(matchId, current => {
+      current.authorize(matchId, token(req), playerId);
+      if (revision(body) !== current.get(matchId).revision) throw new TurnValidationError('Estado desatualizado. Sincronize antes de desbloquear.');
+      return current.unlockSkill(matchId, playerId, nodeId);
+    }, true));
   } catch (error) {
     sendErrorResponse(res, error);
   }

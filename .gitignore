@@ -21,6 +21,7 @@ Thumbs.db
 # Env files that might carry secrets
 .env
 .env.*
+backend/data/
 
 # Claude Code session-local state (not project source)
 .claude/scheduled_tasks.lock
