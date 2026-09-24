@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'conjuration_seal_dialog.dart';
+import 'discovery_book_screen.dart';
+import '../game_domain/discovery_catalog.dart';
 
 import 'package:flutter/material.dart';
 
@@ -397,6 +399,11 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
               fontSize: 20,
             ),
             actions: [
+              IconButton(
+                icon: const Icon(Icons.menu_book),
+                tooltip: 'Livro de Descobertas',
+                onPressed: _submitting ? null : _openDiscoveryBook,
+              ),
               if (_match.isInProgress)
                 IconButton(
                   icon: const Icon(Icons.auto_awesome),
@@ -762,6 +769,33 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
       });
       unawaited(_requestPreview());
     }
+  }
+
+  Future<void> _openDiscoveryBook() async {
+    await Navigator.of(context).push(
+      pixelSlideRoute(
+        (_) => DiscoveryBookScreen(
+          playerLabel: _match.localPlayerId,
+          entries: () => const DiscoveryCatalog().entries(
+            discoveredIds: _match.discoveries,
+            learnedIds: _match.discoveries,
+            equippedIds: _match.equippedAttacks,
+            unavailableReason: (id) => _match.isFinished
+                ? 'Partida encerrada'
+                : !_match.bothReady
+                ? 'Aguarde a preparação'
+                : !_match.isMyTurn
+                ? 'Aguarde sua vez'
+                : _match.match?.seal != null
+                ? 'Selo em andamento'
+                : _match.amIFrozen
+                ? 'Congelado: quebre o gelo primeiro'
+                : _attackUnavailable(id),
+          ),
+          onManage: _manageAttacks,
+        ),
+      ),
+    );
   }
 
   Future<void> _manageElements() async {

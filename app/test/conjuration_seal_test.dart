@@ -76,6 +76,17 @@ void main() {
       final canvas = find.byKey(const ValueKey('seal-canvas'));
       final rect = tester.getRect(canvas);
       final nodes = ConjurationSeal(['fire', 'wind']).nodes;
+      Offset position(int i) => Offset(
+        rect.left + nodes[i].x * rect.width,
+        rect.top + nodes[i].y * rect.height,
+      );
+      await tester.tapAt(position(2));
+      await tester.pump();
+      expect(starts, 0);
+      expect(
+        find.text('Comece pelo nó 1. Sem custo até tocar nele.'),
+        findsOneWidget,
+      );
       final gesture = await tester.startGesture(
         Offset(
           rect.left + nodes.first.x * rect.width,
@@ -83,17 +94,73 @@ void main() {
         ),
       );
       await tester.pump();
+      expect(
+        tester.getRect(canvas),
+        rect,
+        reason: 'Starting must not move the diagram under the finger',
+      );
+      await gesture.moveTo(position(2));
+      await tester.pump();
+      expect(
+        find.text('Ainda falta o nó 2. Continue o traçado.'),
+        findsOneWidget,
+      );
+      expect(result, isNull);
+      await gesture.up();
+      await tester.pump();
+      expect(find.text('Retome pelo nó 1 aceso.'), findsOneWidget);
+      await tester.tapAt(position(1));
+      await tester.pump();
+      expect(starts, 1);
+      final resumed = await tester.startGesture(position(0));
+      await tester.pump();
       for (final n in nodes.skip(1)) {
-        await gesture.moveTo(
+        await resumed.moveTo(
           Offset(rect.left + n.x * rect.width, rect.top + n.y * rect.height),
         );
         await tester.pump();
       }
-      await gesture.up();
+      await resumed.up();
       await tester.pumpAndSettle();
       expect(starts, 1);
       expect(result, hasLength(4));
       expect(tester.takeException(), isNull);
     });
   }
+  testWidgets('short server deadline shows text warning without changing rules', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => showConjurationSeal(
+                context,
+                elements: ['fire', 'wind'],
+                onStart: () async => 1800,
+              ),
+              child: const Text('Conjurar'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Conjurar'));
+    await tester.pumpAndSettle();
+    final rect = tester.getRect(find.byKey(const ValueKey('seal-canvas')));
+    final first = ConjurationSeal(['fire', 'wind']).nodes.first;
+    await tester.tapAt(
+      Offset(
+        rect.left + first.x * rect.width,
+        rect.top + first.y * rect.height,
+      ),
+    );
+    await tester.pump();
+    expect(find.textContaining('Tempo acabando'), findsOneWidget);
+    expect(find.text('Retome pelo nó 1 aceso.'), findsOneWidget);
+    // Dispose without waiting on a wall-clock timer; this test only checks feedback.
+    await tester.pumpWidget(const SizedBox());
+    expect(tester.takeException(), isNull);
+  });
 }

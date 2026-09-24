@@ -31,13 +31,75 @@ class _SealDialogState extends State<_SealDialog> with WidgetsBindingObserver {
   bool started = false, loading = false, done = false, interrupted = false;
   int limit = 0;
   int? pointer;
+  final trail = <Offset>[];
+  String? correction;
+  int? warnedNode;
+  bool timeWarningSent = false;
+
+  int get remainingMs => max(0, limit - clock.elapsedMilliseconds);
+  bool get urgent => started && !loading && remainingMs <= 2000;
+  int get resumeIndex => max(0, trace.length - 1);
+  String get guidance => loading
+      ? 'Aguarde a confirmação para traçar.'
+      : correction ??
+            (!started
+                ? 'Comece no nó 1. O tempo ainda não começou.'
+                : pointer == null
+                ? 'Retome pelo nó ${resumeIndex + 1} aceso.'
+                : 'Siga até o nó ${trace.length + 1}.');
+
+  void warn(String message, {int? node}) {
+    if (correction == message) return;
+    setState(() => correction = message);
+    if (node != null && warnedNode != node) {
+      warnedNode = node;
+      unawaited(HapticFeedback.lightImpact());
+    }
+  }
+
+  void pointerMove(PointerMoveEvent event, double side) {
+    if (event.pointer != pointer || loading || done) return;
+    final point = Offset(
+      (event.localPosition.dx / side).clamp(0, 1),
+      (event.localPosition.dy / side).clamp(0, 1),
+    );
+    setState(() {
+      if (trail.isEmpty || (trail.last - point).distance > .008) {
+        trail.add(point);
+        if (trail.length > 48) trail.removeAt(0);
+      }
+    });
+    unawaited(touch(event.localPosition, side));
+  }
+
+  void pointerEnd(PointerEvent event) {
+    if (event.pointer != pointer) return;
+    setState(() {
+      pointer = null;
+      correction = null;
+    });
+  }
 
   void pointerDown(PointerDownEvent event, double side) {
     if (pointer != null || loading || done) return;
     final point = event.localPosition;
-    final index = trace.isEmpty ? 0 : trace.length - 1;
-    if (!seal.hits(index, point.dx / side, point.dy / side)) return;
-    pointer = event.pointer;
+    final index = resumeIndex;
+    if (!seal.hits(index, point.dx / side, point.dy / side)) {
+      warn(
+        started
+            ? 'Retome pelo nó ${index + 1} aceso.'
+            : 'Comece pelo nó 1. Sem custo até tocar nele.',
+      );
+      return;
+    }
+    setState(() {
+      pointer = event.pointer;
+      correction = null;
+      warnedNode = null;
+      trail
+        ..clear()
+        ..add(Offset(point.dx / side, point.dy / side));
+    });
     if (trace.isEmpty) unawaited(touch(point, side));
   }
 
@@ -72,7 +134,18 @@ class _SealDialogState extends State<_SealDialog> with WidgetsBindingObserver {
   Future<void> touch(Offset point, double side) async {
     if (loading || done) return;
     final x = point.dx / side, y = point.dy / side;
-    if (!seal.hits(trace.length, x, y)) return;
+    if (!seal.hits(trace.length, x, y)) {
+      for (var i = 0; i < seal.nodes.length; i++) {
+        if (i != resumeIndex && seal.hits(i, x, y)) {
+          warn(
+            'Ainda falta o nó ${trace.length + 1}. Continue o traçado.',
+            node: i,
+          );
+          break;
+        }
+      }
+      return;
+    }
     if (!started) {
       setState(() {
         started = true;
@@ -91,6 +164,10 @@ class _SealDialogState extends State<_SealDialog> with WidgetsBindingObserver {
           if (clock.elapsedMilliseconds >= limit) {
             finish(false);
           } else if (mounted) {
+            if (urgent && !timeWarningSent) {
+              timeWarningSent = true;
+              unawaited(HapticFeedback.mediumImpact());
+            }
             setState(() {});
           }
         });
@@ -109,6 +186,8 @@ class _SealDialogState extends State<_SealDialog> with WidgetsBindingObserver {
       trace.isEmpty ? 0 : trace.last['ms']!.toInt() + 1,
     );
     trace.add({'x': x, 'y': y, 'ms': ms});
+    correction = null;
+    warnedNode = null;
     unawaited(HapticFeedback.selectionClick());
     setState(() {});
     if (trace.length == seal.nodes.length) finish(true);
@@ -121,7 +200,7 @@ class _SealDialogState extends State<_SealDialog> with WidgetsBindingObserver {
       300.0,
       min(
         size.width - 72,
-        size.height - MediaQuery.paddingOf(context).vertical - 190,
+        size.height - MediaQuery.paddingOf(context).vertical - 210,
       ),
     ).clamp(100.0, 300.0);
     return PopScope(
@@ -133,67 +212,128 @@ class _SealDialogState extends State<_SealDialog> with WidgetsBindingObserver {
           side: const BorderSide(color: Color(0xFF343C38), width: 4),
           borderRadius: BorderRadius.circular(4),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'SELO DE CONJURAÇÃO',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              Text(
-                loading
-                    ? 'Sincronizando… aguarde'
-                    : !started
-                    ? 'Arraste do 1 pelos nós em ordem'
-                    : '${trace.length}/${seal.nodes.length} nós · ${((limit - clock.elapsedMilliseconds) / 1000).clamp(0, 99).toStringAsFixed(1)}s',
-                style: const TextStyle(fontSize: 12),
-              ),
-              SizedBox(
-                width: side,
-                height: side,
-                child: Listener(
-                  onPointerDown: (e) => pointerDown(e, side),
-                  onPointerMove: (e) {
-                    if (e.pointer == pointer) {
-                      unawaited(touch(e.localPosition, side));
-                    }
-                  },
-                  onPointerUp: (e) {
-                    if (e.pointer == pointer) pointer = null;
-                  },
-                  onPointerCancel: (e) {
-                    if (e.pointer == pointer) pointer = null;
-                  },
-                  child: CustomPaint(
-                    key: const ValueKey('seal-canvas'),
-                    painter: _SealPainter(seal, trace.length, widget.elements),
-                    child: const SizedBox.expand(),
+        child: SizedBox(
+          width: min(size.width - 24, max(300, side + 24)),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  height: 20,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'SELO DE CONJURAÇÃO',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              if (started)
-                LinearProgressIndicator(
-                  value: loading
-                      ? null
-                      : (1 - clock.elapsedMilliseconds / limit).clamp(0, 1),
-                  color: const Color(0xFF997242),
+                SizedBox(
+                  height: 20,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      loading
+                          ? 'Sincronizando… aguarde'
+                          : !started
+                          ? 'Arraste do 1 pelos nós em ordem'
+                          : '${urgent ? 'Tempo acabando · ' : ''}${trace.length}/${seal.nodes.length} nós · ${(remainingMs / 1000).toStringAsFixed(1)}s',
+                      key: const ValueKey('seal-timer'),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: urgent
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: urgent
+                            ? const Color(0xFF993D2C)
+                            : const Color(0xFF343C38),
+                      ),
+                    ),
+                  ),
                 ),
-              const Text(
-                'Falha: −1 AP, sem regeneração · encerra o turno',
-                style: TextStyle(fontSize: 10),
-              ),
-              const Text(
-                'Soltou? Retome pelo último nó aceso.',
-                style: TextStyle(fontSize: 10),
-              ),
-              if (!started)
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Voltar'),
+                SizedBox(
+                  width: side,
+                  height: side,
+                  child: Listener(
+                    onPointerDown: (e) => pointerDown(e, side),
+                    onPointerMove: (e) => pointerMove(e, side),
+                    onPointerUp: pointerEnd,
+                    onPointerCancel: pointerEnd,
+                    child: CustomPaint(
+                      key: const ValueKey('seal-canvas'),
+                      painter: _SealPainter(
+                        seal,
+                        trace.length,
+                        widget.elements,
+                        trail: List.unmodifiable(trail),
+                        urgent: urgent,
+                        resume: started && pointer == null && !loading,
+                      ),
+                      child: const SizedBox.expand(),
+                    ),
+                  ),
                 ),
-            ],
+                SizedBox(
+                  height: 4,
+                  child: started
+                      ? LinearProgressIndicator(
+                          value: loading
+                              ? null
+                              : (1 - clock.elapsedMilliseconds / limit).clamp(
+                                  0,
+                                  1,
+                                ),
+                          color: urgent
+                              ? const Color(0xFF993D2C)
+                              : const Color(0xFF997242),
+                        )
+                      : null,
+                ),
+                SizedBox(
+                  height: 32,
+                  child: Center(
+                    child: Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        guidance,
+                        key: const ValueKey('seal-guidance'),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: correction == null
+                              ? const Color(0xFF343C38)
+                              : const Color(0xFF993D2C),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(
+                  height: 28,
+                  child: Center(
+                    child: Text(
+                      'Falha: −1 AP, sem regeneração · encerra o turno',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 10),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  height: 40,
+                  child: !started
+                      ? TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Voltar'),
+                        )
+                      : null,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -202,10 +342,20 @@ class _SealDialogState extends State<_SealDialog> with WidgetsBindingObserver {
 }
 
 class _SealPainter extends CustomPainter {
-  _SealPainter(this.seal, this.reached, this.elements);
+  _SealPainter(
+    this.seal,
+    this.reached,
+    this.elements, {
+    required this.trail,
+    required this.urgent,
+    required this.resume,
+  });
   final ConjurationSeal seal;
   final int reached;
   final List<String> elements;
+  final List<Offset> trail;
+  final bool urgent;
+  final bool resume;
   static const colors = {
     'fire': Color(0xFFB64F32),
     'water': Color(0xFF397797),
@@ -231,6 +381,21 @@ class _SealPainter extends CustomPainter {
       size.width * .43,
       paint..color = const Color(0xFFD3C7A7),
     );
+    if (trail.length > 1) {
+      final ink = Paint()
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round;
+      for (var i = 1; i < trail.length; i++) {
+        ink.color = const Color(
+          0xFF776442,
+        ).withValues(alpha: .15 + .5 * i / trail.length);
+        canvas.drawLine(
+          Offset(trail[i - 1].dx * size.width, trail[i - 1].dy * size.height),
+          Offset(trail[i].dx * size.width, trail[i].dy * size.height),
+          ink,
+        );
+      }
+    }
     for (var i = 1; i < points.length; i++) {
       paint.color = i < reached
           ? colors[elements[(i - 1) % elements.length]] ?? Colors.brown
@@ -255,6 +420,19 @@ class _SealPainter extends CustomPainter {
     }
     for (var i = 0; i < points.length; i++) {
       final active = i == reached;
+      final resumeHere = resume && i == reached - 1;
+      if (active && !resume || resumeHere) {
+        canvas.drawCircle(
+          points[i],
+          24,
+          paint
+            ..strokeWidth = 2
+            ..color = urgent
+                ? const Color(0xFF993D2C)
+                : const Color(0xFF997242),
+        );
+        paint.strokeWidth = 4;
+      }
       canvas.drawCircle(
         points[i],
         active ? 19 : 15,
@@ -286,5 +464,9 @@ class _SealPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_SealPainter old) =>
-      old.reached != reached || old.seal != seal;
+      old.reached != reached ||
+      old.seal != seal ||
+      old.trail != trail ||
+      old.urgent != urgent ||
+      old.resume != resume;
 }

@@ -4,6 +4,42 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Publicação v0.25.0 em andamento: Home RPG, Livro de Descobertas e polimento
+dos Selos. APK gerado pelo CI existente; conferir versão/assinatura antes de
+publicar. Sem alteração de backend, protocolo ou persistência.
+
+Checkpoint anterior:
+
+Tela inicial concluída localmente: cena pixel art reaproveita arena/sprites,
+emblema de conjuração e menu RPG com identificação de Treino/Multiplayer.
+Vertical empilhada; horizontal lado a lado, compacta em telas baixas, com rolagem
+de segurança. Navegação protegida contra toque duplo; animação suspensa ao sair
+e com movimento reduzido. Combate, atualização, backend e persistência intactos.
+6 testes da Home aprovados (incluindo retorno e 360x800/800x360/568x320), análise
+focada limpa e prévias renderizadas/inspecionadas. Falta validar no aparelho.
+Sem nova release; melhorias anteriores do livro/selos continuam preservadas.
+
+Checkpoint anterior:
+
+Livro de Descobertas concluído localmente: tela compartilhada Treino/Multiplayer,
+busca por nome/efeito/elemento, filtros por AP/elemento/equipamento, receitas e dano
+base das descobertas. Receitas desconhecidas ocultas. Gestão dos 3 slots reutilizada;
+registro compartilhado do Treino separado das habilidades pessoais. Sem release.
+9 testes focados aprovados (4 do livro + 5 do gerenciador existente). Entrada pelo
+ícone de livro na batalha. Disponibilidade é uma consulta, não promessa em tempo
+real; botão de atualizar e prévia da batalha mantidos. Persistência não alterada.
+
+Checkpoint anterior:
+
+Polimento dos Selos concluído localmente (sem nova release): rastro do dedo,
+orientação de próximo nó/retomada e aviso nos últimos 2s, mantendo dano/AP/prazo.
+Janela com espaços fixos para não deslocar o desenho ao iniciar. Alteração apenas
+na UI compartilhada entre Treino e Multiplayer; sem novo protocolo/infraestrutura.
+6 testes focados aprovados: início, correção/retomada, tempo curto, estabilidade
+do desenho em vertical/horizontal e ataque equipado. Falta experimentar no celular.
+
+Checkpoint anterior:
+
 v0.24.0 publicada em 2026-09-24: APK do CI 35998111703 (versionCode 24),
 assinatura igual à v0.23.0. Backend 942b336 ativo no Render com Firestore.
 Smoke online aprovado: início, reserva, resolução, rejeição de duplicata e recuperação.

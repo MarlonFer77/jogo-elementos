@@ -1,5 +1,11 @@
 # Selos de Conjuração
 
+Polimento local após v0.24.0 (ainda não publicado): rastro curto do dedo, destaque
+do próximo nó e do ponto de retomada, mensagens de correção sem punição adicional,
+alerta textual/cor/vibração única nos últimos 2s. Espaço fixo para cabeçalho,
+orientações e controles evita deslocar o desenho sob o dedo ao começar.
+Sem alteração de geometria, prazo, AP, dano, persistência ou endpoints.
+
 Publicada na v0.24.0 em 2026-09-24. Backend 942b336 no Render; APK do CI
 35998111703 com a assinatura anterior preservada. Smoke online validou início,
 reserva no Firestore, resolução, rejeição de duplicata e recuperação do estado.

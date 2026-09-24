@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'conjuration_seal_dialog.dart';
+import 'discovery_book_screen.dart';
+import '../game_domain/discovery_catalog.dart';
 
 import 'package:flutter/material.dart';
 
@@ -416,6 +418,33 @@ class _TrainingScreenState extends State<TrainingScreen> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _openDiscoveryBook() async {
+    final forPlayerA = _match.isPlayerATurn;
+    await Navigator.of(context).push(
+      pixelSlideRoute(
+        (_) => DiscoveryBookScreen(
+          playerLabel:
+              'Treino · ${_match.currentTurnName} · registro compartilhado',
+          entries: () => const DiscoveryCatalog().entries(
+            discoveredIds: _match.discoveredCombinationIds,
+            learnedIds: forPlayerA
+                ? _match.unlockedAttackIdsForPlayerA
+                : _match.unlockedAttackIdsForPlayerB,
+            equippedIds: forPlayerA
+                ? _match.equippedAttackIdsForPlayerA
+                : _match.equippedAttackIdsForPlayerB,
+            unavailableReason: (id) => _match.isOver
+                ? 'Partida encerrada'
+                : _match.currentPlayerIsFrozen
+                ? 'Congelado: quebre o gelo primeiro'
+                : _match.attackUnavailableReason(id),
+          ),
+          onManage: () => _openAttacksScreen(forPlayerA: forPlayerA),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -450,6 +479,11 @@ class _TrainingScreenState extends State<TrainingScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.menu_book),
+            tooltip: 'Livro de Descobertas',
+            onPressed: _executing ? null : _openDiscoveryBook,
+          ),
           IconButton(
             icon: const Icon(Icons.account_tree_outlined),
             tooltip: 'Árvore',
