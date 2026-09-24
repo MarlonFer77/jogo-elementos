@@ -5,6 +5,7 @@ import '../game_domain/battle_scene_view.dart';
 import 'attack_sequence_player.dart';
 import 'battle_character_component.dart';
 import 'pixel_arena_background.dart';
+import 'sfx_player.dart';
 
 /// Se [currentHp] deve ser tratado como dano em relação a [previousHp].
 /// `previousHp == null` (primeira leitura, ainda sem baseline) nunca conta
@@ -21,6 +22,30 @@ bool didTakeDamage({required int? previousHp, required int currentHp}) {
 /// pura — nenhuma regra de batalha mora aqui; o estado a renderizar vem de
 /// fora via [updateView].
 class BattleSceneGame extends FlameGame {
+  bool? _channelingLeft;
+  void setChanneling(bool? left) {
+    if (_channelingLeft == left) return;
+    if (_channelingLeft != null) {
+      (_channelingLeft! ? _left : _right)?.setActionPose();
+    }
+    _channelingLeft = left;
+    if (left != null) {
+      (left ? _left : _right)?.playPreparationPulse();
+      sfxPlayer.play(SfxId.cast);
+    }
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    if (_channelingLeft != null) {
+      (_channelingLeft! ? _left : _right)?.setActionPose(
+        charge: .85,
+        lean: -.06,
+      );
+    }
+  }
+
   void Function(AttackEvent event)? onAttackImpact;
   void Function(AttackEvent event)? onAttackComplete;
   BattleCharacterComponent? _left;

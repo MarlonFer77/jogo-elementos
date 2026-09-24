@@ -86,13 +86,33 @@ export async function handleGetMatch(
   matchId: string,
 ): Promise<void> {
   try {
-    sendJson(res, 200, await store.run(matchId, current => {
+    let match = await store.run(matchId, current => {
       current.authorize(matchId, token(req));
       return current.get(matchId);
-    }));
+    });
+    if (match.seal && Date.now() > match.seal.deadline) {
+      match = await store.run(matchId, current => current.expireSeal(matchId), true);
+    }
+    sendJson(res, 200, match);
   } catch (error) {
     sendErrorResponse(res, error);
   }
+}
+
+export async function handleSeal(req: IncomingMessage, res: ServerResponse, store: MatchStore, id: string, finish: boolean): Promise<void> {
+  try {
+    const body = await readJsonBody(req) as Record<string, unknown>;
+    if (!body || !isNonEmptyString(body.actorId)) throw new TurnValidationError('Jogador obrigatório.');
+    const actorId = body.actorId;
+    sendJson(res, 200, await store.run(id, current => {
+      current.authorize(id, token(req), actorId);
+      if (finish) {
+        if (!isNonEmptyString(body.sealId)) throw new TurnValidationError('Selo obrigatório.');
+        return current.finishSeal(id, actorId, body.sealId, body.trace);
+      }
+      return current.startSeal(id, parseTurnAction(body), revision(body));
+    }, true));
+  } catch (error) { sendErrorResponse(res, error); }
 }
 
 /** POST /matches/:id/turns — a player's action; validated and applied

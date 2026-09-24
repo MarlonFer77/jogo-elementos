@@ -9,6 +9,7 @@ import {
   handleJoinMatch,
   handleSubmitTurn,
   handleUnlockSkill,
+  handleSeal,
 } from "./routes/matches.js";
 import { handleValidateTurn } from "./routes/validate-turn.js";
 
@@ -54,6 +55,13 @@ export function createServer(matchStore = new MatchStore({filePath: process.env.
     }
 
     const configureParams = req.method === 'POST' ? matchPath('/matches/:id/configure', pathname) : null;
+    for (const stage of ['start', 'finish']) {
+      const params = req.method === 'POST' ? matchPath(`/matches/:id/seal/${stage}`, pathname) : null;
+      if (params) {
+        void handleSeal(req, res, matchStore, params.id!, stage === 'finish');
+        return;
+      }
+    }
     if (configureParams) {
       void handleConfigure(req, res, matchStore, configureParams.id!);
       return;

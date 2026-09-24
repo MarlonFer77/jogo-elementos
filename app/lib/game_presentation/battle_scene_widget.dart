@@ -18,11 +18,13 @@ class BattleSceneWidget extends StatefulWidget {
     required this.view,
     this.onAttackComplete,
     this.height = 260,
+    this.channelingLeft,
   });
 
   final BattleSceneView view;
   final VoidCallback? onAttackComplete;
   final double height;
+  final bool? channelingLeft;
 
   @override
   State<BattleSceneWidget> createState() => _BattleSceneWidgetState();
@@ -42,6 +44,7 @@ class _BattleSceneWidgetState extends State<BattleSceneWidget> {
     _game.onAttackImpact = _onImpact;
     _game.onAttackComplete = _onComplete;
     _game.updateView(widget.view);
+    _game.setChanneling(widget.channelingLeft);
   }
 
   @override
@@ -59,6 +62,7 @@ class _BattleSceneWidgetState extends State<BattleSceneWidget> {
       _hudView = widget.view;
     }
     _game.updateView(widget.view);
+    _game.setChanneling(widget.channelingLeft);
   }
 
   void _onImpact(AttackEvent event) {
@@ -106,7 +110,9 @@ class _BattleSceneWidgetState extends State<BattleSceneWidget> {
             border: Border.all(color: const Color(0xFF253843), width: 2),
           ),
           child: Text(
-            attack.isFrozenRecovery
+            attack.isFizzle
+                ? '$actor · Selo interrompido · −1 AP'
+                : attack.isFrozenRecovery
                 ? '$actor · Congelamento quebrado'
                 : attack.isDefend
                 ? '$actor · Defesa preparada'
@@ -150,6 +156,20 @@ class _BattleSceneWidgetState extends State<BattleSceneWidget> {
               right: 8,
               bottom: 4,
               child: _attackCaption(_activeAttack!),
+            ),
+          if (widget.channelingLeft != null)
+            Positioned(
+              left: 8,
+              right: 8,
+              bottom: 4,
+              child: Text(
+                '${widget.channelingLeft! ? widget.view.leftLabel : widget.view.rightLabel} · Canalizando selo…',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  backgroundColor: Color(0xFFF3EBD1),
+                  fontSize: 12,
+                ),
+              ),
             ),
         ],
       ),

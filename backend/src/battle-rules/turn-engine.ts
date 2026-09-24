@@ -47,7 +47,7 @@ export function playTurn(
   if (state.winner !== null) {
     throw new TurnValidationError("the battle is already over");
   }
-  const isPassiveAction = action.kind === 'defend' || action.kind === 'thaw';
+  const isPassiveAction = action.kind === 'defend' || action.kind === 'thaw' || action.kind === 'fizzle';
   if ((isPassiveAction && action.elementIds.length !== 0) ||
       (!isPassiveAction && (action.elementIds.length === 0 || action.elementIds.length > 3 || new Set(action.elementIds).size !== action.elementIds.length))) {
     throw new TurnValidationError("must play at least one element");
@@ -69,7 +69,9 @@ export function playTurn(
   }
   let nextState = action.kind === 'thaw'
     ? withStatusRemoved(state, action.actorId, FREEZE_STATUS_ID)
-    : hasStatus(state, action.actorId, 'slow') ? state : withApRegenerated(state, action.actorId);
+    : action.kind === 'fizzle' || hasStatus(state, action.actorId, 'slow') ? state : withApRegenerated(state, action.actorId);
+
+  if (action.kind === 'fizzle') nextState = withApSpent(nextState, action.actorId, Math.min(1, apOf(nextState, action.actorId).current));
 
   const elementCount = action.elementIds.length;
   if (elementCount >= 2) {

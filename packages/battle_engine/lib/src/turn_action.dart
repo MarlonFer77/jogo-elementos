@@ -9,21 +9,31 @@ class TurnAction {
   final List<Element> elements;
   final bool isDefend;
   final bool isThaw;
+  final bool isFizzle;
+
+  TurnAction.fizzle({required this.actor})
+    : elements = const [],
+      isDefend = false,
+      isThaw = false,
+      isFizzle = true;
 
   TurnAction.defend({required this.actor})
     : elements = const [],
       isDefend = true,
-      isThaw = false;
+      isThaw = false,
+      isFizzle = false;
 
   TurnAction.thaw({required this.actor})
     : elements = const [],
       isDefend = false,
-      isThaw = true;
+      isThaw = true,
+      isFizzle = false;
 
   TurnAction({required this.actor, required Iterable<Element> elements})
     : elements = List.unmodifiable(elements),
       isDefend = false,
-      isThaw = false {
+      isThaw = false,
+      isFizzle = false {
     if (this.elements.isEmpty ||
         this.elements.length > 3 ||
         this.elements.toSet().length != this.elements.length) {

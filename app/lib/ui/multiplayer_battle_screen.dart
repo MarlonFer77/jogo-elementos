@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'conjuration_seal_dialog.dart';
 
 import 'package:flutter/material.dart';
 
@@ -81,6 +82,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
       _previewLoading = false;
     });
     if (!_match.isMyTurn ||
+        _match.match?.seal != null ||
         (_selectedIds.isEmpty && !_defending && !_match.amIFrozen) ||
         _submitting) {
       return;
@@ -166,6 +168,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
                       .clamp(0, 9999),
                   isDefend: remoteAction['kind'] == 'defend',
                   isFrozenRecovery: remoteAction['kind'] == 'thaw',
+                  isFizzle: remoteAction['kind'] == 'fizzle',
                   appliedStatusNames: _match.myActiveStatuses
                       .where((s) => !myStatusesBefore.contains(s.id))
                       .map((s) => _statusName(s.id))
@@ -203,6 +206,10 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
 
   Future<void> _playTurn() async {
     if (_submitting || !_match.isMyTurn || _match.isFinished) return;
+    if (_match.match?.seal != null) {
+      setState(() => _error = 'Selo em andamento. Aguarde a sincronização.');
+      return;
+    }
     final defending = _defending;
     final thawing = _match.amIFrozen;
     _previewRequest++;
@@ -219,11 +226,25 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
         .map((s) => s.id)
         .toSet();
     try {
-      await _match.playElementIds(
-        thawing ? const [] : playedElementIds,
-        defending: defending && !thawing,
-        thawing: thawing,
-      );
+      if (!defending && !thawing && playedElementIds.length > 1) {
+        final trace = await showConjurationSeal(
+          context,
+          elements: playedElementIds,
+          onStart: () async {
+            final remaining = await _match.beginSeal(playedElementIds);
+            if (mounted) setState(() {});
+            return remaining;
+          },
+        );
+        if (trace == null) return;
+        await _match.resolveSeal(trace);
+      } else {
+        await _match.playElementIds(
+          thawing ? const [] : playedElementIds,
+          defending: defending && !thawing,
+          thawing: thawing,
+        );
+      }
       if (!mounted) return;
       setState(() {
         _selectedIds.clear();
@@ -239,7 +260,9 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
           _pendingAttack = AttackEvent(
             sequenceId: _attackSequenceCounter,
             attackerIsLeft: true,
-            elementIds: thawing ? const [] : playedElementIds,
+            elementIds: thawing || _match.match?.lastAction?['kind'] == 'fizzle'
+                ? const []
+                : playedElementIds,
             comboName: combo?.name,
             damage: damage,
             appliedStatusNames: _match.opponentActiveStatuses
@@ -248,6 +271,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
                 .toList(),
             isDefend: defending && !thawing,
             isFrozenRecovery: thawing,
+            isFizzle: _match.match?.lastAction?['kind'] == 'fizzle',
           );
         }
         _previousFieldEffectIds = _match.activeFieldEffectIds.toSet();
@@ -265,9 +289,13 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
           ),
         );
       }
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      setState(() => _error = _match.lastError ?? 'Jogada inválida.');
+      setState(
+        () => _error =
+            _match.lastError ?? 'Conexão interrompida. Sincronizando a ação…',
+      );
+      await _match.refresh();
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -446,6 +474,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
 
     return [
       BattleSceneWidget(
+        channelingLeft: _match.channelingLeft,
         height:
             MediaQuery.of(context).size.width >
                 MediaQuery.of(context).size.height
@@ -470,6 +499,10 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
         ),
       ),
       const SizedBox(height: 16),
+      if (_match.match?.seal != null)
+        Text(
+          'Conjuração em andamento · ${_match.match!.seal!['reservedAp']} AP reservados. Aguarde.',
+        ),
       Text(
         _match.isMyTurn
             ? _match.amIFrozen
@@ -602,6 +635,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
             : 'Jogar',
         onPressed:
             (!_submitting &&
+                _match.match?.seal == null &&
                 !(_selectedIds.length > 1 &&
                     !_defending &&
                     !_match.amIFrozen &&

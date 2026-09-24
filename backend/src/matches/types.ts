@@ -3,6 +3,8 @@ import type { BattleState } from "../battle-rules/types.js";
 export type MatchStatus = "waiting_for_opponent" | "in_progress" | "finished";
 
 export interface Match {
+  readonly seal?: {id: string; actorId: string; elementIds: readonly string[];
+    startedAt: number; deadline: number; durationMs: number; reservedAp: number} | null;
   readonly revision: number;
   readonly players: Readonly<Record<string, PlayerProgress>>;
   readonly lastAction?: { revision: number; actorId: string; elementIds: readonly string[]; kind: string; comboId: string | null };

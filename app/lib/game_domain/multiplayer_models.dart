@@ -141,6 +141,7 @@ class RemoteBattleState {
 }
 
 class RemoteMatch {
+  final Map<String, dynamic>? seal;
   final int revision;
   final Map<String, dynamic> players;
   final Map<String, dynamic>? lastAction;
@@ -156,6 +157,7 @@ class RemoteMatch {
   final Map<String, List<String>> skillProgress;
 
   const RemoteMatch({
+    this.seal,
     this.revision = 0,
     this.players = const {},
     this.lastAction,
@@ -171,6 +173,7 @@ class RemoteMatch {
     final stateJson = json['state'] as Map<String, dynamic>?;
     final skillProgressJson = json['skillProgress'] as Map<String, dynamic>?;
     return RemoteMatch(
+      seal: json['seal'] as Map<String, dynamic>?,
       revision: json['revision'] as int? ?? 0,
       players: json['players'] as Map<String, dynamic>? ?? const {},
       lastAction: json['lastAction'] as Map<String, dynamic>?,

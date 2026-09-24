@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'conjuration_seal_dialog.dart';
 
 import 'package:flutter/material.dart';
 
@@ -155,12 +156,50 @@ class _TrainingScreenState extends State<TrainingScreen> {
     _buildMatchFromLoadedProgress();
   }
 
-  void _playTurn() {
+  bool? _channelingLeft;
+
+  Future<void> _playTurn() async {
     if (_executing || _match.isOver) return;
     final wasPlayerATurn = _match.isPlayerATurn;
     final actorName = _match.currentTurnName;
     final defending = _defending;
     final thawing = _match.currentPlayerIsFrozen;
+    List<Map<String, num>>? sealTrace;
+    final sealIds = _selectedAttackId == null
+        ? _selectedIds.toList()
+        : _match.equippedAttacksForCurrentPlayer
+              .firstWhere((a) => a.id == _selectedAttackId)
+              .elementIds;
+    if (!defending && !thawing && sealIds.length > 1) {
+      try {
+        _match.previewAction(sealIds, attackId: _selectedAttackId);
+        setState(() => _executing = true);
+        sealTrace = await showConjurationSeal(
+          context,
+          elements: sealIds,
+          onStart: () async {
+            final duration = _match.beginSeal(
+              sealIds,
+              attackId: _selectedAttackId,
+            );
+            setState(() => _channelingLeft = wasPlayerATurn);
+            return duration;
+          },
+        );
+      } catch (e) {
+        if (mounted) setState(() => _error = e.toString());
+        return;
+      } finally {
+        if (mounted) {
+          setState(() {
+            _executing = false;
+            _channelingLeft = null;
+          });
+        }
+      }
+      if (!mounted || sealTrace == null) return;
+    }
+    var fizzled = false;
     setState(() {
       _error = null;
       _lastUnlockedAttackText = null;
@@ -177,7 +216,10 @@ class _TrainingScreenState extends State<TrainingScreen> {
               .firstWhere((a) => a.id == attackId)
               .elementIds;
         }
-        if (thawing) {
+        if (sealTrace != null) {
+          fizzled = !_match.resolveSeal(sealTrace);
+          if (fizzled) playedElementIds = [];
+        } else if (thawing) {
           playedElementIds = [];
           _match.thaw();
         } else if (defending) {
@@ -189,7 +231,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
           _match.playEquippedAttack(attackId);
         }
         _executing = true;
-        final actionName = thawing
+        final actionName = fizzled
+            ? 'Selo interrompido · −1 AP'
+            : thawing
             ? 'Quebrar o gelo'
             : (defending ? 'Defender' : _match.lastTriggeredCombinationName) ??
                   const ElementCatalog()
@@ -214,6 +258,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
           appliedStatusNames: _match.lastAppliedStatusNames,
           isDefend: defending,
           isFrozenRecovery: thawing,
+          isFizzle: fizzled,
         );
         if (_match.discoveredCombinationIds.length != discoveredCountBefore) {
           unawaited(
@@ -440,6 +485,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                       : null,
                   height: horizontal ? constraints.maxHeight : arenaHeight,
                   child: BattleSceneWidget(
+                    channelingLeft: _channelingLeft,
                     height: horizontal ? constraints.maxHeight : arenaHeight,
                     onAttackComplete: _finishAttack,
                     view: BattleSceneView(

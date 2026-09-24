@@ -62,7 +62,7 @@ export interface BattleState {
 }
 
 export interface TurnAction {
-  readonly kind?: 'attack' | 'defend' | 'thaw';
+  readonly kind?: 'attack' | 'defend' | 'thaw' | 'fizzle';
   readonly actorId: string;
   readonly elementIds: readonly string[];
 }

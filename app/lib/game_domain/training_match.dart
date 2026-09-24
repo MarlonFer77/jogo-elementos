@@ -4,6 +4,7 @@ import 'effect_badge_view.dart';
 import 'attack_catalog.dart';
 import 'skill_tree_catalog.dart';
 import 'action_preview.dart';
+import 'conjuration_seal.dart';
 
 /// A local, offline 1v1 match where the same device controls both sides —
 /// "Modo treino" (seção 12). No backend, no multiplayer, no AI opponent.
@@ -34,6 +35,74 @@ import 'action_preview.dart';
 /// Exposes only Flutter-friendly types, never a `battle_engine` type — ver
 /// DECISION-011/017.
 class TrainingMatch {
+  ({List<String> ids, String? attackId, Stopwatch clock})? _seal;
+
+  int beginSeal(List<String> ids, {String? attackId}) {
+    if (_seal != null) throw StateError('Conjuração em andamento.');
+    if (attackId != null) {
+      ids = equippedAttacksForCurrentPlayer
+          .firstWhere((a) => a.id == attackId)
+          .elementIds;
+    }
+    if (ids.length < 2) throw StateError('Selecione 2 ou 3 elementos.');
+    previewAction(ids, attackId: attackId);
+    _seal = (
+      ids: List.unmodifiable(ids),
+      attackId: attackId,
+      clock: Stopwatch()..start(),
+    );
+    return ConjurationSeal(ids).durationMs;
+  }
+
+  bool resolveSeal(List<Map<String, num>> trace) {
+    final pending = _seal;
+    if (pending == null) throw StateError('Nenhum selo ativo.');
+    final diagram = ConjurationSeal(pending.ids);
+    var previous = -1;
+    final success =
+        pending.clock.elapsedMilliseconds <= diagram.durationMs &&
+        trace.length == diagram.nodes.length &&
+        trace.indexed.every((entry) {
+          final (i, sample) = entry;
+          final ms = sample['ms']?.toInt() ?? -1;
+          final valid =
+              ms > previous &&
+              ms <= diagram.durationMs &&
+              diagram.hits(
+                i,
+                sample['x']?.toDouble() ?? -1,
+                sample['y']?.toDouble() ?? -1,
+              );
+          previous = ms;
+          return valid;
+        });
+    _seal = null;
+    if (success) {
+      if (pending.attackId != null) {
+        playEquippedAttack(pending.attackId!);
+      } else {
+        playElementIds(pending.ids);
+      }
+    } else {
+      final actor = _state.currentTurn;
+      _state = _abilityEngine.turnEngine
+          .playTurn(_state, TurnAction.fizzle(actor: actor))
+          .state;
+      _lastTriggeredCombinationName = null;
+      _lastAppliedStatusNames = ['Selo interrompido · −1 AP'];
+      _lastUnlockedAttackId = null;
+      _lastUnlockedAttackName = null;
+      _lastUnlockedAttackNeededEquipChoice = false;
+      _turnsPlayed++;
+      if (actor == _playerA) {
+        _cumulativeTurnsA++;
+      } else {
+        _cumulativeTurnsB++;
+      }
+    }
+    return success;
+  }
+
   static const _playerA = Combatant(id: 'a', name: 'Jogador A');
   static const _playerB = Combatant(id: 'b', name: 'Jogador B');
   static const _baseMaxHp = 100;
@@ -190,6 +259,7 @@ class TrainingMatch {
       _isPlayerATurn ? _elementsA : _elementsB;
 
   void setEquippedElements(List<String> ids) {
+    _checkSealIdle();
     if (isOver) throw StateError('A partida terminou.');
     if (ids.isEmpty || ids.length > 4 || ids.toSet().length != ids.length) {
       throw ArgumentError('Escolha de 1 a 4 elementos diferentes.');
@@ -418,6 +488,7 @@ class TrainingMatch {
     required bool forPlayerA,
     required List<String> combinationIds,
   }) {
+    _checkSealIdle();
     final current = forPlayerA ? _loadoutA : _loadoutB;
     final updated = current.withEquipped(combinationIds);
     if (forPlayerA) {
@@ -460,6 +531,7 @@ class TrainingMatch {
   /// cumulative turns yet (`(E-1) × 10`, `E` = how many elements they
   /// already have, including the 2 starting ones).
   void unlockSkillForCurrentPlayer(String nodeId) {
+    _checkSealIdle();
     final actor = _currentCombatant;
     final node = defaultSkillTree.nodeById(nodeId);
     final grant = node?.grants;
@@ -522,6 +594,7 @@ class TrainingMatch {
   }
 
   void _resolveElements(List<String> elementIds) {
+    _checkSealIdle();
     final wasPlayerATurn = _isPlayerATurn;
     final loadoutBeforeThisPlay = _currentLoadout;
     final result = _simulateElements(elementIds);
@@ -641,6 +714,7 @@ class TrainingMatch {
   }
 
   void defend() {
+    _checkSealIdle();
     final actor = _state.currentTurn;
     final result = _abilityEngine.turnEngine.playTurn(
       _state,
@@ -664,6 +738,7 @@ class TrainingMatch {
       _state.hasStatus(_state.currentTurn, StatusEffects.freeze);
 
   void thaw() {
+    _checkSealIdle();
     final actor = _state.currentTurn;
     final result = _abilityEngine.turnEngine.playTurn(
       _state,
@@ -689,6 +764,7 @@ class TrainingMatch {
     bool thawing = false,
     String? attackId,
   }) {
+    _checkSealIdle();
     if (attackId != null) {
       final reason = attackUnavailableReason(attackId);
       if (reason != null) throw StateError(reason);
@@ -739,5 +815,9 @@ class TrainingMatch {
       ],
       regeneratesAp: !thawing && !_state.hasStatus(actor, StatusEffects.slow),
     );
+  }
+
+  void _checkSealIdle() {
+    if (_seal != null) throw StateError('Conclua o selo antes de outra ação.');
   }
 }

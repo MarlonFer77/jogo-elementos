@@ -1,4 +1,5 @@
 import 'package:app/game_domain/training_match.dart';
+import 'package:app/game_domain/conjuration_seal.dart';
 import 'package:app/game_presentation/battle_scene_widget.dart';
 import 'package:app/game_presentation/pixel_menu_button.dart';
 import 'package:app/ui/training_screen.dart';
@@ -43,6 +44,29 @@ void main() {
       button.onPressed!();
       button.onPressed!(); // second queued tap must not play for the opponent
       await tester.pump();
+      expect(match.turnsPlayed, 0);
+      await tester.pump(const Duration(milliseconds: 250));
+      final sealRect = tester.getRect(
+        find.byKey(const ValueKey('seal-canvas')),
+      );
+      final nodes = ConjurationSeal(['fire', 'wind']).nodes;
+      final gesture = await tester.startGesture(
+        Offset(
+          sealRect.left + nodes.first.x * sealRect.width,
+          sealRect.top + nodes.first.y * sealRect.height,
+        ),
+      );
+      await tester.pump();
+      for (final node in nodes.skip(1)) {
+        await gesture.moveTo(
+          Offset(
+            sealRect.left + node.x * sealRect.width,
+            sealRect.top + node.y * sealRect.height,
+          ),
+        );
+        await tester.pump();
+      }
+      await gesture.up();
       expect(match.turnsPlayed, 1);
       expect(match.playerBCurrentHp, 86);
       expect(find.text('Ataque em execução…'), findsOneWidget);

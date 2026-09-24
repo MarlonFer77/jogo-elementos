@@ -90,11 +90,17 @@ class TurnEngine {
     }
     var nextState = action.isThaw
         ? state.withStatusRemoved(action.actor, StatusEffects.freeze)
-        : state.hasStatus(action.actor, StatusEffects.slow)
+        : action.isFizzle || state.hasStatus(action.actor, StatusEffects.slow)
         ? state
         : state.withApRegenerated(action.actor);
 
     final elementCount = action.elements.length;
+    if (action.isFizzle) {
+      nextState = nextState.withApSpent(
+        action.actor,
+        nextState.apOf(action.actor).current > 0 ? 1 : 0,
+      );
+    }
     if (elementCount >= 2) {
       final cost = actionCost(state, action.actor, elementCount);
       if (!nextState.apOf(action.actor).canAfford(cost)) {

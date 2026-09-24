@@ -82,7 +82,7 @@ class AttackSequencePlayer extends Component {
 
   void _applyMotion() {
     if (_visualsReleased) return;
-    if (event.isDefend || event.isFrozenRecovery) {
+    if (event.isDefend || event.isFrozenRecovery || event.isFizzle) {
       attacker.setActionPose(charge: _step == _AttackStep.done ? 0 : .45);
       return;
     }
@@ -204,10 +204,13 @@ class AttackSequencePlayer extends Component {
         final wasStep = _step;
         _step = _nextStep(_step);
         if (wasStep == _AttackStep.impact) {
-          if (event.damage > 0 && !event.isDefend && !event.isFrozenRecovery) {
+          if (event.damage > 0 &&
+              !event.isDefend &&
+              !event.isFrozenRecovery &&
+              !event.isFizzle) {
             target.playHitEffect();
           }
-          if (!event.isDefend && !event.isFrozenRecovery) {
+          if (!event.isDefend && !event.isFrozenRecovery && !event.isFizzle) {
             sfxPlayer.play(SfxId.impact);
           }
           onImpact?.call();
@@ -228,10 +231,14 @@ class AttackSequencePlayer extends Component {
   void render(Canvas canvas) {
     if (_visualsReleased) return;
     super.render(canvas);
-    if (event.isDefend || event.isFrozenRecovery) {
+    if (event.isDefend || event.isFrozenRecovery || event.isFizzle) {
       _drawText(
         canvas,
-        event.isFrozenRecovery ? 'Gelo quebrado' : 'Defesa · 50%',
+        event.isFizzle
+            ? 'Selo rompido · −1 AP'
+            : event.isFrozenRecovery
+            ? 'Gelo quebrado'
+            : 'Defesa · 50%',
         Offset(attacker.position.x, attacker.position.y - 90),
         fontSize: 13,
         color: event.isFrozenRecovery

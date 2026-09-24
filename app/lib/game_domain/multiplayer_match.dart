@@ -74,6 +74,58 @@ class MultiplayerMatch {
   }
 
   RemoteMatch? get match => _match;
+  bool? get channelingLeft =>
+      _match?.seal == null ? null : _match!.seal!['actorId'] == localPlayerId;
+
+  Future<int> beginSeal(List<String> ids) async {
+    if (_submitting) throw StateError('Aguarde a operação atual.');
+    _submitting = true;
+    _stateGeneration++;
+    final clock = Stopwatch()..start();
+    try {
+      _match = await _client.seal(matchId!, {
+        'actorId': localPlayerId,
+        'elementIds': ids,
+        'revision': _match!.revision,
+      });
+      _lastError = null;
+      // Conservative full RTT subtraction: no client/server clock dependency.
+      return (_match!.seal!['durationMs'] as int) - clock.elapsedMilliseconds;
+    } on MultiplayerException catch (e) {
+      _lastError = e.message;
+      rethrow;
+    } finally {
+      _submitting = false;
+    }
+  }
+
+  Future<void> resolveSeal(List<Map<String, num>> trace) async {
+    if (_submitting) throw StateError('Aguarde a operação atual.');
+    final sealId = _match?.seal?['id'];
+    if (sealId == null) {
+      await refresh();
+      throw StateError(
+        'Conexão interrompida. Aguarde a sincronização do selo.',
+      );
+    }
+    _submitting = true;
+    _stateGeneration++;
+    try {
+      _match = await _client.seal(matchId!, {
+        'actorId': localPlayerId,
+        'sealId': sealId,
+        'trace': trace,
+      }, finish: true);
+      _lastTriggeredCombinationId = _match!.lastAction?['comboId'] as String?;
+      _lastError = null;
+    } on MultiplayerException catch (e) {
+      _lastError = e.message;
+      rethrow;
+    } finally {
+      _submitting = false;
+    }
+  }
+
   String? get matchId => _match?.id;
   String? get lastError => _lastError;
   String? get lastTriggeredCombinationId => _lastTriggeredCombinationId;

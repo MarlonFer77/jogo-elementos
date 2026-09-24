@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { createServer } from '../../src/server.js';
 import { MatchStore } from '../../src/matches/match-store.js';
 import { defaultCombinationBook } from '../../src/battle-rules/combination-book.js';
+import { sealFor } from '../../src/battle-rules/seal.js';
 
 test('two HTTP clients prepare, discover, equip and reject stale/forged actions', async () => {
   const server = createServer(new MatchStore()).listen(0);
@@ -36,14 +37,20 @@ test('two HTTP clients prepare, discover, equip and reject stale/forged actions'
     const preview = await request(`${path}/preview`,'a',action);
     assert.equal(preview.status,200);
     assert.equal((await request(path,'a')).body.revision,match.revision);
-    match=(await request(`${path}/turns`,'a',action)).body.match;
+    assert.equal((await request(`${path}/turns`,'a',action)).status,409);
+    const casting = (await request(`${path}/seal/start`,'a',action)).body;
+    assert.ok(casting.seal);
+    assert.equal((await request(`${path}/seal/finish`,'b',{actorId:'a',sealId:casting.seal.id,trace:[]})).status,403);
+    await new Promise(resolve => setTimeout(resolve, 10));
+    match=(await request(`${path}/seal/finish`,'a',{actorId:'a',sealId:casting.seal.id,
+      trace:sealFor(action.elementIds).nodes.map((n,i)=>({...n,ms:i}))})).body;
     assert.deepEqual(match.state,preview.body.match.state);
     assert.deepEqual(match.players.a.discoveries,['ignited_storm']);
     assert.deepEqual(match.players.a.attacks,['ignited_storm']);
     assert.equal((await request(`${path}/turns`,'a',action)).status,409);
     match=(await request(`${path}/turns`,'b',{actorId:'b',elementIds:['fire'],revision:match.revision})).body.match;
     match=(await request(`${path}/configure`,'a',{playerId:'a',kind:'attacks',ids:[],revision:match.revision})).body;
-    assert.equal((await request(`${path}/turns`,'a',{...action,revision:match.revision})).status,400);
+    assert.equal((await request(`${path}/seal/start`,'a',{...action,revision:match.revision})).status,400);
     assert.equal((await request(`${path}/configure`,'a',{playerId:'a',kind:'attacks',ids:['unknown'],revision:match.revision})).status,400);
   } finally { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); }
 });

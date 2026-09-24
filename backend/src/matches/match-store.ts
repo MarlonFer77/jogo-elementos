@@ -2,6 +2,8 @@ import { randomUUID, createHash } from "node:crypto";
 import { readFileSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { elementIds } from '../battle-rules/skill-tree.js';
+import { defaultCombinationBook } from '../battle-rules/combination-book.js';
+import { sealFor, validSealTrace } from '../battle-rules/seal.js';
 
 import { useAbility } from "../battle-rules/ability-engine.js";
 import { createBattleState, withMaxHpIncreased } from "../battle-rules/battle-state.js";
@@ -106,6 +108,7 @@ export class MatchStore {
 
   configure(id: string, playerId: string, kind: string, ids: string[], revision: number): Match {
     const match = this.get(id);
+    if (match.seal) throw new MatchError('Conjuração em andamento.', 409);
     this.checkRevision(match, revision);
     const player = match.players[playerId];
     if (!player || match.status === 'finished') throw new MatchError('Jogador ou partida indisponível.', 409);
@@ -198,8 +201,11 @@ export class MatchStore {
     combinationBook: CombinationBook,
     preview = false,
     revision?: number,
+    sealResolution = false,
   ): { match: Match; result: TurnResult } {
     const match = this.get(id);
+    if (!sealResolution && match.seal) throw new MatchError('Conclua o selo ou aguarde seu prazo.', 409);
+    if (!preview && !sealResolution && action.elementIds.length > 1) throw new MatchError('Conjure o selo para combinar elementos. Atualize o aplicativo.', 409);
     if (revision !== undefined) this.checkRevision(match, revision);
     if (match.status !== "in_progress" || match.state === null) {
       throw new MatchError(`match "${id}" is not in progress`, 409);
@@ -225,6 +231,7 @@ export class MatchStore {
     );
     const updated: Match = {
       ...match,
+      seal: null,
       revision: match.revision + 1,
       players: {...match.players, [action.actorId]: {...player, turns: player.turns + 1,
         discoveries: combo && !known ? [...player.discoveries, combo.id] : player.discoveries,
@@ -235,6 +242,38 @@ export class MatchStore {
     };
     if (!preview) this.commit(updated);
     return { match: updated, result };
+  }
+
+  startSeal(id: string, action: TurnAction, revision: number, now = Date.now()): Match {
+    if (action.elementIds.length < 2 || action.kind && action.kind !== 'attack') throw new MatchError('Selecione 2 ou 3 elementos.', 400);
+    const match = this.get(id);
+    this.checkRevision(match, revision);
+    const preview = this.applyTurn(id, action, defaultCombinationBook, true, revision);
+    const durationMs = sealFor(action.elementIds).durationMs;
+    // Exclusive reservation: no other action/configuration can change AP or build.
+    const beforeAp = match.state!.ap[action.actorId]!;
+    const slowed = match.state!.combatantStatuses[action.actorId]?.some(s => s.effectId === 'slow');
+    const reservedAp = Math.min(beforeAp.max, beforeAp.current + (slowed ? 0 : 1)) - preview.match.state!.ap[action.actorId]!.current;
+    const updated: Match = {...match, revision: match.revision + 1, seal: {
+      id: randomUUID(), actorId: action.actorId, elementIds: [...action.elementIds],
+      startedAt: now, durationMs, deadline: now + durationMs + 1500, reservedAp}};
+    this.commit(updated);
+    return updated;
+  }
+
+  finishSeal(id: string, actorId: string, sealId: string, trace: unknown, now = Date.now()): Match {
+    const match = this.get(id);
+    const seal = match.seal;
+    if (!seal || seal.id !== sealId || seal.actorId !== actorId) throw new MatchError('Selo expirado ou já resolvido. Sincronize.', 409);
+    const success = now <= seal.deadline && validSealTrace(seal.elementIds, trace, now - seal.startedAt);
+    return this.applyTurn(id, {actorId, elementIds: success ? seal.elementIds : [],
+      kind: success ? 'attack' : 'fizzle'}, defaultCombinationBook, false, match.revision, true).match;
+  }
+
+  expireSeal(id: string, now = Date.now()): Match {
+    const match = this.get(id);
+    return match.seal && now > match.seal.deadline
+      ? this.finishSeal(id, match.seal.actorId, match.seal.id, [], now) : match;
   }
 
   /** Unlocks `nodeId` in `playerId`'s Skill Tree progress for this match —
@@ -249,6 +288,7 @@ export class MatchStore {
     nodeId: string,
   ): { match: Match } {
     const match = this.get(id);
+    if (match.seal) throw new MatchError('Conjuração em andamento.', 409);
     if (match.status !== "in_progress" || match.state === null) {
       throw new MatchError(`match "${id}" is not in progress`, 409);
     }

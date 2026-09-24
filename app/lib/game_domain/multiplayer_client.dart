@@ -89,6 +89,21 @@ class MultiplayerClient {
     return RemoteMatch.fromJson(_decode(response));
   }
 
+  Future<RemoteMatch> seal(
+    String id,
+    Map<String, dynamic> body, {
+    bool finish = false,
+  }) async {
+    final response = await _http
+        .post(
+          _uri('/matches/$id/seal/${finish ? 'finish' : 'start'}'),
+          headers: await _headers(),
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 20));
+    return RemoteMatch.fromJson(_decode(response));
+  }
+
   Future<SubmitTurnResult> submitTurn(
     String matchId, {
     required String actorId,

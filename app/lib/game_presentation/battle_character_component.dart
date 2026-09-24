@@ -194,6 +194,26 @@ class BattleCharacterComponent extends PositionComponent {
     _drawArm(canvas, palette, const Offset(16, 30), backHand);
     _drawArm(canvas, palette, const Offset(46, 30), frontHand);
     if (armed) _drawSword(canvas, frontHand, _swordElement!);
+    if (!armed && _charge > .6) {
+      final center = Offset.lerp(backHand, frontHand, .5)!;
+      final energy = Paint()
+        ..color = const Color(0xFFC9AD6A)
+        ..strokeWidth = 2
+        ..style = PaintingStyle.stroke;
+      canvas.save();
+      canvas.translate(center.dx, center.dy - 4);
+      canvas.rotate(_idleTime * 1.6);
+      canvas.drawRect(
+        Rect.fromCenter(center: Offset.zero, width: 13, height: 13),
+        energy,
+      );
+      canvas.rotate(.785);
+      canvas.drawRect(
+        Rect.fromCenter(center: Offset.zero, width: 10, height: 10),
+        energy,
+      );
+      canvas.restore();
+    }
 
     if (_frozen) {
       final frost = Paint()..color = const Color(0x5564B5F6);

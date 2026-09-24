@@ -4,6 +4,18 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Publicação v0.24.0 autorizada: preparando APK e deploy dos Selos de Conjuração.
+Diagrama fixo por receita (4/6 nós, 6/8 segundos), arraste com retomada pelo último
+nó, janela compartilhada adaptativa e canalização do avatar. Básicos continuam diretos.
+Falha perde 1 AP sem regenerar, passa turno e processa status, sem combo/descoberta.
+Servidor reserva ação/build, valida geometria/ordem/prazo e rejeita duplicatas.
+Prazo e selo persistidos no snapshot; primeira leitura após expirar resolve a falha
+atomicamente (sem jobs nem escritas a cada polling). Tolerância de transporte: 1,5s.
+Validação pontual: backend (5 testes), domínio/widget/ataque equipado/multiplayer
+(7 testes), análise do app e typecheck backend aprovados;
+sem suíte completa. Pendente teste físico de gesto/latência; backend e APK precisam
+ser publicados juntos. Ver docs/conjuration-seals.md. Checkpoint anterior:
+
 v0.23.0 publicada em 2026-09-23 com APK do CI (run 35857481276).
 Backend 00a0117 no Render, protocolo 2 e Firestore ativos. Conta exclusiva com
 roles/datastore.user; segredo salvo no Render e cópias temporárias locais apagadas.
