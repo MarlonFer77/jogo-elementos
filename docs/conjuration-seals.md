@@ -1,6 +1,8 @@
 # Selos de Conjuração
 
-Implementação local após v0.23.0; não publicada.
+Publicada na v0.24.0 em 2026-09-24. Backend 942b336 no Render; APK do CI
+35998111703 com a assinatura anterior preservada. Smoke online validou início,
+reserva no Firestore, resolução, rejeição de duplicata e recuperação do estado.
 
 - Combo manual ou habilidade equipada abre o mesmo selo. Primeiro toque no nó 1
   reserva a ação; antes dele é possível voltar sem custo. Básicos/defesa/gelo seguem diretos.
