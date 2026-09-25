@@ -4,9 +4,11 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Publicação v0.25.0 em andamento: Home RPG, Livro de Descobertas e polimento
-dos Selos. APK gerado pelo CI existente; conferir versão/assinatura antes de
-publicar. Sem alteração de backend, protocolo ou persistência.
+v0.25.0 publicada em 2026-09-24: Home RPG, Livro de Descobertas e polimento
+dos Selos. CI 36052579909 aprovado, commit 6812389, versionCode 25.
+APK com a mesma assinatura da v0.24.0; hash local igual ao asset publicado.
+Release pública confirmada em 2026-09-25. Sem alteração de backend, protocolo
+ou persistência. Falta experimentar no celular, em ambas as orientações.
 
 Checkpoint anterior:
 

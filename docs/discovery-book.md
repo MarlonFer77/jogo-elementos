@@ -1,6 +1,6 @@
 # Livro de Descobertas
 
-Incremento local após v0.24.0, ainda não publicado.
+Publicado na v0.25.0.
 
 - Ícone de livro nas batalhas do Treino e Multiplayer.
 - Progresso conhecido/total, slots equipados, busca sem distinção de acentos e
