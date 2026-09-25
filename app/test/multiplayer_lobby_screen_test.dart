@@ -30,16 +30,73 @@ Map<String, dynamic> waitingRoom() => {
 };
 
 MultiplayerClient client(
-  Future<http.Response> Function(http.Request) handler,
-) => MultiplayerClient(baseUrl: 'http://test', httpClient: MockClient(handler));
+  Future<http.Response> Function(http.Request) handler, {
+  Future<http.Response>? health,
+}) => MultiplayerClient(
+  baseUrl: 'http://test',
+  httpClient: MockClient((request) {
+    if (request.url.path == '/health') {
+      return health ??
+          Future.value(http.Response('{"status":"ok","protocol":2}', 200));
+    }
+    return handler(request);
+  }),
+);
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   testWidgets(
+    'warmup timeout never submits an action, including a late response',
+    (tester) async {
+      final health = Completer<http.Response>();
+      var actions = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MultiplayerLobbyScreen(
+            client: client((_) async {
+              actions++;
+              return http.Response(jsonEncode(waitingRoom()), 201);
+            }, health: health.future),
+          ),
+        ),
+      );
+      await tester.enterText(find.byType(TextField).first, 'ana');
+      await tester.ensureVisible(find.text('Criar partida'));
+      await tester.tap(find.text('Criar partida'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 61));
+      expect(
+        find.textContaining('Nenhuma ação de partida foi enviada.'),
+        findsOneWidget,
+      );
+      expect(actions, 0);
+      health.complete(http.Response('{"status":"ok","protocol":2}', 200));
+      await tester.pump();
+      expect(actions, 0);
+      expect(find.text('Criar partida'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  test('warmup rejects an incompatible or unavailable server', () async {
+    for (final response in [
+      http.Response('{"status":"ok","protocol":1}', 200),
+      http.Response('{"error":"unavailable"}', 503),
+    ]) {
+      final gateway = client(
+        (_) async => throw StateError('Unexpected action'),
+        health: Future.value(response),
+      );
+      await expectLater(gateway.waitUntilReady(), throwsA(isA<Exception>()));
+    }
+  });
+
+  testWidgets(
     'create shows real progress, blocks duplicates and opens room before preparation',
     (tester) async {
       final response = Completer<http.Response>();
+      final health = Completer<http.Response>();
       var requests = 0;
       await tester.pumpWidget(
         MaterialApp(
@@ -53,7 +110,7 @@ void main() {
                 return Future.value(http.Response(jsonEncode(prepared), 200));
               }
               return response.future;
-            }),
+            }, health: health.future),
           ),
         ),
       );
@@ -64,6 +121,14 @@ void main() {
       );
       button.onPressed!();
       button.onPressed!();
+      await tester.pump();
+      await tester.pump();
+      expect(requests, 0);
+      expect(find.text('INICIANDO SERVIDOR'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 33));
+      expect(requests, 0);
+      expect(find.text('INICIANDO SERVIDOR'), findsOneWidget);
+      health.complete(http.Response('{"status":"ok","protocol":2}', 200));
       await tester.pump();
       await tester.pump();
       expect(requests, 1);

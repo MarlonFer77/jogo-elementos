@@ -2,7 +2,8 @@
 
 - Entrada pixel art com Criar, Entrar e Retomar. Nome identifica o perfil na credencial de instalação existente; não é uma conta com senha.
 - Código de 6 caracteres, normalizado para maiúsculas. Erros não apagam os campos.
-- Tela de conexão corresponde à requisição real, sem porcentagem fictícia, chamadas de saúde extras ou retry automático. Voltar/envios duplicados ficam bloqueados durante a operação (timeout HTTP existente: 20s).
+- Tela de conexão corresponde à requisição real, sem porcentagem fictícia ou retry automático. Voltar/envios duplicados ficam bloqueados durante a operação.
+- Correção local após v0.26.0: antes de criar/entrar/retomar, uma leitura de `/health` aguarda até 60s pela inicialização e valida status/protocolo. Somente depois a ação é enviada, mantendo seu timeout de 20s. Falha ou resposta tardia da inicialização não cria sala. Não há keep-alive nem aumento de plano.
 - Última sala usa o nome salvo, mesmo que o campo tenha sido editado. Reconectar manualmente também lembra a sala após autorização.
 - Sala de espera com código selecionável/copiável e preparação de cada jogador. Esses dados não representam presença online em tempo real.
 - Preparar elementos reutiliza a tela existente. Após confirmação, volta à sala ou entra na batalha quando ambos estiverem prontos. Em falha, uma leitura verifica se a preparação foi aceita antes de permitir nova tentativa.
@@ -10,3 +11,5 @@
 - Layout vertical/horizontal rolável, incluindo teclado aberto.
 
 Validação focada de navegação, preparação, erros, duplicação, retomada e layout. Publicado na v0.26.0; smoke online aprovado. Teste físico em dois aparelhos pendente.
+
+Correção de inicialização ainda não publicada. 8 testes focados aprovados, incluindo demora simulada de 33s, timeout e resposta tardia sem ação.

@@ -4,6 +4,16 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Correção do cold start concluída localmente: GET /health aguarda até 60s antes
+de criar/entrar/retomar pelo lobby, com aviso de inicialização. Diagnóstico:
+primeira resposta em 33,1s vs timeout do app de 20s; segunda em 0,4s.
+Validação de status/protocolo antes da ação; timeout e resposta tardia não enviam
+POST. Sem retry de ações, keep-alive ou novo plano. 8 testes focados aprovados,
+incluindo espera de 33s, limite de 60s e duplicatas; análise estática limpa.
+Ainda não publicado: a v0.26.0 instalada não contém esta correção.
+
+Checkpoint anterior:
+
 v0.26.0 publicada em 2026-09-25: lobby/conexão Multiplayer e pós-batalha.
 CI 36137752619 aprovado, commit cd3c59d, versionCode 26. Assinatura igual à
 v0.25.0 e SHA-256 local igual ao asset público. Marcada como latest no GitHub.

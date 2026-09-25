@@ -42,6 +42,20 @@ class MultiplayerClient {
 
   Uri _uri(String path) => Uri.parse('$baseUrl$path');
 
+  /// Wake the free server with a read-only request before any room action.
+  /// No retries: a timed-out POST must never be replayed automatically.
+  Future<void> waitUntilReady() async {
+    final response = await _http
+        .get(_uri('/health'))
+        .timeout(const Duration(seconds: 60));
+    final health = _decode(response);
+    if (health['status'] != 'ok' || health['protocol'] != 2) {
+      throw MultiplayerException(
+        'Servidor incompatível ou ainda indisponível. Tente novamente mais tarde.',
+      );
+    }
+  }
+
   Future<void> rememberSession(String id, String player) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('multiplayer.lastCode.$baseUrl', id);

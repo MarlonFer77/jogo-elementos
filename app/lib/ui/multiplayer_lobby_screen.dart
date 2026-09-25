@@ -29,6 +29,7 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
   final _codeController = TextEditingController();
   _LobbyAction _selected = _LobbyAction.create;
   bool _loading = false;
+  bool _warmingUp = false;
   String? _error;
   (String, String)? _saved;
 
@@ -82,11 +83,15 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
     FocusScope.of(context).unfocus();
     setState(() {
       _loading = true;
+      _warmingUp = true;
       _error = null;
       _selected = mode;
     });
     final match = MultiplayerMatch(client: _client, localPlayerId: player);
     try {
+      await _client.waitUntilReady();
+      if (!mounted) return;
+      setState(() => _warmingUp = false);
       switch (mode) {
         case _LobbyAction.create:
           await match.create();
@@ -103,8 +108,9 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
     } on TimeoutException {
       if (mounted) {
         setState(
-          () => _error =
-              'O servidor demorou para responder. Aguarde um pouco e tente novamente. Se já tinha uma sala, use Retomar.',
+          () => _error = _warmingUp
+              ? 'O servidor não iniciou em até 1 minuto. Tente novamente. Nenhuma ação de partida foi enviada.'
+              : 'O servidor demorou para responder. Aguarde um pouco e tente novamente. Se já tinha uma sala, use Retomar.',
         );
       }
     } on MultiplayerException catch (e) {
@@ -130,7 +136,12 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _warmingUp = false;
+        });
+      }
     }
   }
 
@@ -151,14 +162,18 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
       body: SafeArea(
         child: MultiplayerConnectionPanel(
           title: _loading
-              ? switch (_selected) {
-                  _LobbyAction.create => 'CRIANDO SALA',
-                  _LobbyAction.join => 'ENTRANDO NA SALA',
-                  _LobbyAction.reconnect => 'RETOMANDO PARTIDA',
-                }
+              ? _warmingUp
+                    ? 'INICIANDO SERVIDOR'
+                    : switch (_selected) {
+                        _LobbyAction.create => 'CRIANDO SALA',
+                        _LobbyAction.join => 'ENTRANDO NA SALA',
+                        _LobbyAction.reconnect => 'RETOMANDO PARTIDA',
+                      }
               : 'DUELAR COM UM AMIGO',
           message: _loading
-              ? 'Aguardando confirmação do servidor…'
+              ? _warmingUp
+                    ? 'A primeira conexão pode levar até 1 minuto.'
+                    : 'Aguardando confirmação do servidor…'
               : 'Dois aparelhos. Uma arena.\nSua próxima combinação decide o duelo.',
           connecting: _loading,
           child: _loading
