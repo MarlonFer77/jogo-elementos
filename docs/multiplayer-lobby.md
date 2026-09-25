@@ -9,4 +9,4 @@
 - Polling e credencial atuais mantidos; nenhuma nova infraestrutura ou cobrança. Voltar ao lobby não exclui sala nem progresso.
 - Layout vertical/horizontal rolável, incluindo teclado aberto.
 
-Validação focada de navegação, preparação, erros, duplicação, retomada e layout. Teste físico em dois aparelhos pendente. Não publicado.
+Validação focada de navegação, preparação, erros, duplicação, retomada e layout. Publicado na v0.26.0; smoke online aprovado. Teste físico em dois aparelhos pendente.

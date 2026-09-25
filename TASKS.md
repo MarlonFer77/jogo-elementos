@@ -4,9 +4,13 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Publicação v0.26.0 em andamento: lobby/conexão Multiplayer e pós-batalha.
-Conferir servidor online e gerar APK pelo CI; validar assinatura antes de publicar.
-Sem alteração de plano, infraestrutura ou regras de backend.
+v0.26.0 publicada em 2026-09-25: lobby/conexão Multiplayer e pós-batalha.
+CI 36137752619 aprovado, commit cd3c59d, versionCode 26. Assinatura igual à
+v0.25.0 e SHA-256 local igual ao asset público. Marcada como latest no GitHub.
+Servidor respondeu com protocolo 2/Firestore; smoke online aprovou criar/entrar,
+preparar, conjurar, rejeitar duplicata e recuperar estado. Sem novo deploy/plano.
+No plano gratuito, primeira conexão após inatividade pode demorar.
+Próximo: validar em dois celulares com v0.26.0, sem desinstalar o jogo.
 
 Checkpoint anterior:
 
