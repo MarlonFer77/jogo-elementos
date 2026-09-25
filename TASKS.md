@@ -4,6 +4,36 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Publicação v0.26.0 em andamento: lobby/conexão Multiplayer e pós-batalha.
+Conferir servidor online e gerar APK pelo CI; validar assinatura antes de publicar.
+Sem alteração de plano, infraestrutura ou regras de backend.
+
+Checkpoint anterior:
+
+Lobby/conexão Multiplayer concluídos localmente: criar/entrar/retomar separados,
+feedback de requisição real sem reenvio automático, retomada com identidade salva,
+erros compreensíveis e validação de código. Sala mostra código copiável e preparo
+de ambos antes da batalha; seleção de elementos é aberta pela sala.
+Layout rolável nas duas orientações/com teclado. Identidade, polling e backend
+reutilizados; reconexão autorizada também atualiza a última sala local.
+13 testes focados passaram (6 lobby + 2 multiplayer + 5 pós-batalha), análise limpa
+e prévias conferidas. Teste em dois celulares pendente. Sem commit/release;
+bloco de pós-batalha anterior preservado.
+
+Checkpoint anterior:
+
+Pós-batalha concluído localmente: painel pixel art compartilhado, arena mantida,
+resultado após animação final e ações Revanche/Menu acima dos detalhes.
+Ganhos comparados ao progresso inicial (sem conceder recompensas): livro
+compartilhado e habilidades/árvore separados por jogador no Treino; estado do
+servidor no Multiplayer. Reconexão sem histórico inicial é indicada explicitamente.
+Treino permite ajustar os 3 slots; Multiplayer encerrado oferece consulta,
+com troca na próxima sala. Revanche mantém fluxo existente e bloqueia duplicatas.
+7 testes focados aprovados, análise limpa e prévias vertical/horizontal conferidas.
+Sem novo backend, persistência, commit ou release. Falta teste em aparelhos.
+
+Checkpoint anterior:
+
 v0.25.0 publicada em 2026-09-24: Home RPG, Livro de Descobertas e polimento
 dos Selos. CI 36052579909 aprovado, commit 6812389, versionCode 25.
 APK com a mesma assinatura da v0.24.0; hash local igual ao asset publicado.

@@ -12,6 +12,7 @@ import '../game_domain/element_catalog.dart';
 import '../game_domain/training_match.dart';
 import '../game_domain/training_progress_store.dart';
 import '../game_presentation/battle_scene_widget.dart';
+import '../game_presentation/battle_result_panel.dart';
 import '../game_presentation/battle_command_panel.dart';
 import '../game_presentation/pixel_element_chip.dart';
 import '../game_presentation/pixel_menu_button.dart';
@@ -328,6 +329,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
   }
 
   void _startNewMatch() {
+    if (_executing || !_match.isOver) return;
     setState(() {
       _match = _match.startNewBattleKeepingProgress();
       _selectedIds.clear();
@@ -560,6 +562,8 @@ class _TrainingScreenState extends State<TrainingScreen> {
                         Text(
                           _executing
                               ? 'Ataque em execução…'
+                              : _match.isOver
+                              ? 'Batalha encerrada'
                               : 'Vez de: ${_match.currentTurnName}',
                           style: const TextStyle(
                             fontFamily: 'monospace',
@@ -607,19 +611,20 @@ class _TrainingScreenState extends State<TrainingScreen> {
   }
 
   List<Widget> _gameOverCommands() => [
-    const SizedBox(height: 12),
-    Text(
-      'Fim de partida! Vencedor: ${_match.winnerName}',
-      style: const TextStyle(
-        fontFamily: 'monospace',
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-      ),
-    ),
-    const SizedBox(height: 12),
-    PixelMenuButton(
-      label: 'Nova partida',
-      onPressed: _executing ? null : _startNewMatch,
+    BattleResultPanel(
+      title: 'VITÓRIA',
+      subtitle: '${_match.winnerName} venceu o duelo!',
+      sharedDiscoveries: _match.gainsForPlayer(true).discoveries,
+      players: [
+        for (final isA in [true, false])
+          BattleResultPlayer(
+            label: isA ? 'Jogador A' : 'Jogador B',
+            gains: _match.gainsForPlayer(isA),
+            onReview: () => _openAttacksScreen(forPlayerA: isA),
+          ),
+      ],
+      onRematch: _startNewMatch,
+      onMenu: () => Navigator.of(context).popUntil((route) => route.isFirst),
     ),
   ];
 

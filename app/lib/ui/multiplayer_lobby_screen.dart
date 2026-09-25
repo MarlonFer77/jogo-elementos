@@ -1,29 +1,23 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../game_domain/multiplayer_client.dart';
 import '../game_domain/multiplayer_config.dart';
 import '../game_domain/multiplayer_exception.dart';
 import '../game_domain/multiplayer_match.dart';
-import '../game_presentation/pixel_arena_background.dart';
-import '../game_presentation/pixel_content_panel.dart';
+import '../game_presentation/multiplayer_connection_panel.dart';
 import '../game_presentation/pixel_menu_button.dart';
-import '../game_presentation/pixel_outlined_text.dart';
 import '../game_presentation/pixel_page_route.dart';
 import '../game_presentation/pixel_text_field.dart';
 import 'multiplayer_battle_screen.dart';
 
-/// Entry point for Multiplayer (seção 11): create a match and share the
-/// code, join one a friend shared, or reconnect to one already in progress
-/// (e.g. after closing/reloading the tab — the app has no other way back
-/// into a match than the code, since there's no account/session to resume
-/// from). Player identity is just the name typed here — no accounts/login
-/// (ver DECISION-016).
+enum _LobbyAction { create, join, reconnect }
+
+/// Identity still uses the existing installation credential and player name.
 class MultiplayerLobbyScreen extends StatefulWidget {
   const MultiplayerLobbyScreen({super.key, MultiplayerClient? client})
     : _client = client;
-
   final MultiplayerClient? _client;
-
   @override
   State<MultiplayerLobbyScreen> createState() => _MultiplayerLobbyScreenState();
 }
@@ -33,20 +27,31 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
       widget._client ?? MultiplayerClient(baseUrl: defaultMultiplayerBaseUrl);
   final _nameController = TextEditingController();
   final _codeController = TextEditingController();
+  _LobbyAction _selected = _LobbyAction.create;
   bool _loading = false;
   String? _error;
+  (String, String)? _saved;
 
   @override
   void initState() {
     super.initState();
-    _client
-        .lastSession()
-        .then((session) {
-          if (!mounted) return;
-          if (_nameController.text.isEmpty) _nameController.text = session.$1;
-          if (_codeController.text.isEmpty) _codeController.text = session.$2;
-        })
-        .catchError((Object _) {});
+    unawaited(_loadSession());
+  }
+
+  Future<void> _loadSession() async {
+    try {
+      final session = await _client.lastSession();
+      if (!mounted) return;
+      setState(() {
+        _saved = session.$1.isNotEmpty && session.$2.isNotEmpty
+            ? session
+            : null;
+        if (_nameController.text.isEmpty) _nameController.text = session.$1;
+        if (_codeController.text.isEmpty) _codeController.text = session.$2;
+      });
+    } catch (_) {
+      /* Manual entry remains available if local storage fails. */
+    }
   }
 
   @override
@@ -56,67 +61,72 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
     super.dispose();
   }
 
-  Future<void> _create() async {
-    final playerId = _nameController.text.trim();
-    if (playerId.isEmpty) {
-      setState(() => _error = 'Informe seu nome.');
+  Future<void> _connect({_LobbyAction? action, bool saved = false}) async {
+    if (_loading) return;
+    final mode = action ?? _selected;
+    final player = saved ? _saved!.$1 : _nameController.text.trim();
+    final code = (saved ? _saved!.$2 : _codeController.text)
+        .trim()
+        .toUpperCase();
+    String? validation;
+    if (player.isEmpty) {
+      validation = 'Informe seu nome.';
+    } else if (mode != _LobbyAction.create &&
+        !RegExp(r'^[A-Z0-9]{6}$').hasMatch(code)) {
+      validation = 'Informe o código de 6 caracteres da sala.';
+    }
+    if (validation != null) {
+      setState(() => _error = validation);
       return;
     }
-    final match = MultiplayerMatch(client: _client, localPlayerId: playerId);
-    await _run(match.create, match);
-  }
-
-  Future<void> _join() async {
-    final playerId = _nameController.text.trim();
-    final code = _codeController.text.trim().toUpperCase();
-    if (playerId.isEmpty) {
-      setState(() => _error = 'Informe seu nome.');
-      return;
-    }
-    if (code.isEmpty) {
-      setState(() => _error = 'Informe o código da partida.');
-      return;
-    }
-    final match = MultiplayerMatch(client: _client, localPlayerId: playerId);
-    await _run(() => match.join(code), match);
-  }
-
-  Future<void> _reconnect() async {
-    final playerId = _nameController.text.trim();
-    final code = _codeController.text.trim().toUpperCase();
-    if (playerId.isEmpty) {
-      setState(() => _error = 'Informe seu nome.');
-      return;
-    }
-    if (code.isEmpty) {
-      setState(() => _error = 'Informe o código da partida.');
-      return;
-    }
-    final match = MultiplayerMatch(client: _client, localPlayerId: playerId);
-    await _run(() => match.reconnect(code), match);
-  }
-
-  Future<void> _run(
-    Future<void> Function() action,
-    MultiplayerMatch match,
-  ) async {
+    FocusScope.of(context).unfocus();
     setState(() {
       _loading = true;
       _error = null;
+      _selected = mode;
     });
+    final match = MultiplayerMatch(client: _client, localPlayerId: player);
     try {
-      await action();
+      switch (mode) {
+        case _LobbyAction.create:
+          await match.create();
+        case _LobbyAction.join:
+          await match.join(code);
+        case _LobbyAction.reconnect:
+          await match.reconnect(code);
+      }
       if (!mounted) return;
       await Navigator.of(
         context,
       ).push(pixelSlideRoute((_) => MultiplayerBattleScreen(match: match)));
+      await _loadSession();
+    } on TimeoutException {
+      if (mounted) {
+        setState(
+          () => _error =
+              'O servidor demorou para responder. Aguarde um pouco e tente novamente. Se já tinha uma sala, use Retomar.',
+        );
+      }
     } on MultiplayerException catch (e) {
-      if (mounted) setState(() => _error = e.message);
+      if (mounted) {
+        setState(
+          () => _error = switch (e.statusCode ?? 0) {
+            404 => 'Sala não encontrada. Confira o código com seu amigo.',
+            401 || 403 =>
+              'Esta identidade não tem acesso à sala. Use o mesmo nome e aparelho da partida.',
+            409 =>
+              'Não foi possível entrar. A sala pode estar ocupada ou já iniciada; se você já participa, use Retomar.',
+            >= 500 =>
+              'Servidor indisponível no momento. Tente novamente mais tarde.',
+            _ => e.message,
+          },
+        );
+      }
     } catch (_) {
       if (mounted) {
         setState(
           () => _error =
-              'Não foi possível conectar. Confira a conexão e tente novamente.',
+              'Não foi possível conectar. Confira sua internet e tente novamente.',
         );
       }
     } finally {
@@ -125,66 +135,132 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Positioned.fill(child: CustomPaint(painter: ArenaBackdropPainter())),
-        Scaffold(
-          backgroundColor: Colors.transparent,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            title: const PixelOutlinedText('Multiplayer', fontSize: 20),
-          ),
-          body: Padding(
-            padding: const EdgeInsets.all(16),
-            child: PixelContentPanel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  PixelTextField(
-                    controller: _nameController,
-                    label: 'Seu nome',
-                  ),
-                  const SizedBox(height: 16),
-                  PixelMenuButton(
-                    label: 'Criar partida',
-                    primary: true,
-                    onPressed: _loading ? null : _create,
-                  ),
-                  const Divider(height: 32),
-                  PixelTextField(
-                    controller: _codeController,
-                    label: 'Código da partida',
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      PixelMenuButton(
-                        label: 'Entrar com código',
-                        onPressed: _loading ? null : _join,
-                      ),
-                      PixelMenuButton(
-                        label: 'Reconectar',
-                        onPressed: _loading ? null : _reconnect,
-                      ),
-                    ],
-                  ),
-                  if (_error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: Text(
-                        _error!,
-                        style: const TextStyle(color: Colors.red),
-                      ),
+  Widget build(BuildContext context) => PopScope(
+    canPop: !_loading,
+    child: Scaffold(
+      backgroundColor: const Color(0xFF172D2C),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF172D2C),
+        foregroundColor: const Color(0xFFF1E8C9),
+        automaticallyImplyLeading: !_loading,
+        title: const Text(
+          'MULTIPLAYER',
+          style: TextStyle(fontFamily: 'monospace', fontSize: 18),
+        ),
+      ),
+      body: SafeArea(
+        child: MultiplayerConnectionPanel(
+          title: _loading
+              ? switch (_selected) {
+                  _LobbyAction.create => 'CRIANDO SALA',
+                  _LobbyAction.join => 'ENTRANDO NA SALA',
+                  _LobbyAction.reconnect => 'RETOMANDO PARTIDA',
+                }
+              : 'DUELAR COM UM AMIGO',
+          message: _loading
+              ? 'Aguardando confirmação do servidor…'
+              : 'Dois aparelhos. Uma arena.\nSua próxima combinação decide o duelo.',
+          connecting: _loading,
+          child: _loading
+              ? const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Conectando ao servidor',
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                ],
+                    SizedBox(height: 8),
+                    Text(
+                      'A primeira conexão pode demorar. Aguarde esta tentativa terminar antes de tentar outra vez.',
+                    ),
+                    SizedBox(height: 8),
+                    Text('Nenhuma ação será reenviada automaticamente.'),
+                  ],
+                )
+              : _form(),
+        ),
+      ),
+    ),
+  );
+
+  Widget _form() => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      PixelTextField(controller: _nameController, label: 'Seu nome'),
+      const SizedBox(height: 6),
+      const Text('Use o mesmo nome para manter seu perfil neste aparelho.'),
+      const SizedBox(height: 12),
+      Wrap(
+        spacing: 8,
+        children: [
+          for (final item in [
+            (_LobbyAction.create, 'Criar'),
+            (_LobbyAction.join, 'Entrar'),
+            (_LobbyAction.reconnect, 'Retomar'),
+          ])
+            ChoiceChip(
+              label: Text(item.$2),
+              selected: _selected == item.$1,
+              selectedColor: const Color(0xFFE1C778),
+              backgroundColor: const Color(0xFFF1E8C9),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
               ),
+              onSelected: (_) => setState(() {
+                _selected = item.$1;
+                _error = null;
+              }),
+            ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      if (_selected == _LobbyAction.create)
+        const Text('Crie uma sala e envie o código ao seu amigo.')
+      else ...[
+        PixelTextField(
+          controller: _codeController,
+          label: 'Código da sala',
+          maxLength: 6,
+          capitalization: TextCapitalization.characters,
+        ),
+        Text(
+          _selected == _LobbyAction.join
+              ? 'Digite o código que seu amigo enviou.'
+              : 'Volte à sala usando o mesmo nome e aparelho.',
+        ),
+      ],
+      if (_error != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Semantics(
+            liveRegion: true,
+            child: Text(
+              _error!,
+              style: const TextStyle(color: Color(0xFF9B302E)),
             ),
           ),
         ),
+      const SizedBox(height: 14),
+      PixelMenuButton(
+        label: switch (_selected) {
+          _LobbyAction.create => 'Criar partida',
+          _LobbyAction.join => 'Entrar com código',
+          _LobbyAction.reconnect => 'Reconectar',
+        },
+        primary: true,
+        onPressed: _connect,
+      ),
+      if (_saved != null) ...[
+        const Divider(height: 28),
+        Text('Última sala: ${_saved!.$2} · ${_saved!.$1}'),
+        TextButton(
+          onPressed: () =>
+              _connect(action: _LobbyAction.reconnect, saved: true),
+          child: const Text('Retomar última sala'),
+        ),
       ],
-    );
-  }
+    ],
+  );
 }

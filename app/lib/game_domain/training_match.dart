@@ -1,4 +1,5 @@
 import 'package:battle_engine/battle_engine.dart';
+import 'battle_progress.dart';
 
 import 'effect_badge_view.dart';
 import 'attack_catalog.dart';
@@ -128,6 +129,19 @@ class TrainingMatch {
   String? _lastUnlockedAttackName;
   bool _lastUnlockedAttackNeededEquipChoice = false;
   int _turnsPlayed = 0;
+  late final BattleProgress _startingProgressA, _startingProgressB;
+
+  BattleProgress progressForPlayer(bool forPlayerA) => BattleProgress(
+    discoveries: discoveredCombinationIds,
+    attacks: forPlayerA
+        ? unlockedAttackIdsForPlayerA
+        : unlockedAttackIdsForPlayerB,
+    skills: forPlayerA ? unlockedNodeIdsForPlayerA : unlockedNodeIdsForPlayerB,
+  );
+
+  BattleProgress gainsForPlayer(bool forPlayerA) => progressForPlayer(
+    forPlayerA,
+  ).gainedSince(forPlayerA ? _startingProgressA : _startingProgressB)!;
 
   /// [initialProgressA]/[initialProgressB]/[initialDiscoveryBook] seedam
   /// uma partida já com progresso de uma partida anterior (Bloco 10 —
@@ -163,6 +177,8 @@ class TrainingMatch {
     _cumulativeTurnsB = initialTurnsPlayedB;
     _loadoutA = initialLoadoutA ?? AttackLoadout();
     _loadoutB = initialLoadoutB ?? AttackLoadout();
+    _startingProgressA = progressForPlayer(true);
+    _startingProgressB = progressForPlayer(false);
     _elementsA = _restoreElements(initialEquippedElementsA, _progressA);
     _elementsB = _restoreElements(initialEquippedElementsB, _progressB);
     _state = BattleState.start(

@@ -1,4 +1,5 @@
 import 'effect_badge_view.dart';
+import 'battle_progress.dart';
 import 'multiplayer_client.dart';
 import 'multiplayer_exception.dart';
 import 'multiplayer_models.dart';
@@ -31,6 +32,27 @@ class MultiplayerMatch {
   int _stateGeneration = 0;
   bool _refreshing = false;
   String? connectionError;
+  BattleProgress? _startingProgress;
+  bool _canCaptureProgress = true;
+
+  BattleProgress get battleProgress => BattleProgress(
+    discoveries: discoveries,
+    attacks: discoveries,
+    skills: unlockedNodeIdsForMe,
+  );
+
+  BattleProgress? get battleGains =>
+      battleProgress.gainedSince(_startingProgress);
+
+  void _captureStartingProgress() {
+    if (_canCaptureProgress &&
+        _startingProgress == null &&
+        !needsPreparation &&
+        !isFinished) {
+      _startingProgress = battleProgress;
+    }
+  }
+
   Map<String, dynamic> get progress =>
       (_match?.players[localPlayerId] as Map<String, dynamic>?) ?? const {};
   bool get needsPreparation => progress['ready'] != true;
@@ -68,6 +90,7 @@ class MultiplayerMatch {
         ids,
         _match!.revision,
       );
+      _captureStartingProgress();
     } finally {
       _submitting = false;
     }
@@ -204,12 +227,18 @@ class MultiplayerMatch {
   Future<void> create() async {
     _lastError = null;
     _match = await _client.createMatch(localPlayerId);
+    _startingProgress = null;
+    _canCaptureProgress = true;
+    _captureStartingProgress();
   }
 
   /// Joins an existing match as playerB, starting the battle.
   Future<void> join(String matchId) async {
     _lastError = null;
     _match = await _client.joinMatch(matchId, localPlayerId);
+    _startingProgress = null;
+    _canCaptureProgress = true;
+    _captureStartingProgress();
   }
 
   /// Re-fetches an existing match [localPlayerId] is already part of —
@@ -227,6 +256,10 @@ class MultiplayerMatch {
       throw MultiplayerException('você não faz parte da partida "$matchId"');
     }
     _match = fetched;
+    // A reconnect cannot reconstruct gains from before this session.
+    _startingProgress = null;
+    _canCaptureProgress = false;
+    await _client.rememberSession(fetched.id, localPlayerId);
   }
 
   /// Re-fetches the match from the server — the only way this side finds
@@ -243,6 +276,7 @@ class MultiplayerMatch {
           generation == _stateGeneration &&
           fetched.revision >= (_match?.revision ?? 0)) {
         _match = fetched;
+        _captureStartingProgress();
       }
       connectionError = null;
     } catch (error) {

@@ -20,12 +20,14 @@ class AttacksScreen extends StatefulWidget {
     required this.onSetEquipped,
     this.highlightComboId,
     this.asSheet = false,
+    this.readOnly = false,
   });
 
   final List<AttackOption> attacks;
   final Future<String?> Function(List<String> combinationIds) onSetEquipped;
   final String? highlightComboId;
   final bool asSheet;
+  final bool readOnly;
 
   @override
   State<AttacksScreen> createState() => _AttacksScreenState();
@@ -88,6 +90,13 @@ class _AttacksScreenState extends State<AttacksScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (widget.readOnly)
+                            const Padding(
+                              padding: EdgeInsets.only(bottom: 12),
+                              child: Text(
+                                'Partida encerrada · apenas consulta. Altere seu equipamento na próxima partida.',
+                              ),
+                            ),
                           for (final attack in unlocked)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 8),
@@ -107,6 +116,35 @@ class _AttacksScreenState extends State<AttacksScreen> {
   }
 
   void _openAttackAction(AttackOption attack) {
+    if (widget.readOnly) {
+      showModalBottomSheet<void>(
+        context: context,
+        useSafeArea: true,
+        isScrollControlled: true,
+        builder: (context) => SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                attack.name,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${attack.apCost} AP base · ${attack.equipped ? 'Equipada' : 'Não equipada'}',
+              ),
+              Text(attack.description),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Fechar'),
+              ),
+            ],
+          ),
+        ),
+      );
+      return;
+    }
     if (attack.equipped) {
       _showUnequipSheet(attack);
     } else if (_equippedIds.length < 3) {

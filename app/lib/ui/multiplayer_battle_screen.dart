@@ -4,6 +4,7 @@ import 'discovery_book_screen.dart';
 import '../game_domain/discovery_catalog.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../game_domain/attack_event.dart';
 import '../game_domain/action_preview.dart';
@@ -15,6 +16,8 @@ import '../game_domain/status_catalog.dart';
 import '../game_domain/multiplayer_exception.dart';
 import '../game_domain/multiplayer_match.dart';
 import '../game_presentation/battle_scene_widget.dart';
+import '../game_presentation/battle_result_panel.dart';
+import '../game_presentation/multiplayer_connection_panel.dart';
 import '../game_presentation/pixel_arena_background.dart';
 import '../game_presentation/pixel_content_panel.dart';
 import '../game_presentation/pixel_element_chip.dart';
@@ -56,6 +59,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
   Timer? _pollTimer;
   String? _error;
   bool _startingRematch = false;
+  bool _preparing = false;
   AttackEvent? _pendingAttack;
   int _attackSequenceCounter = 0;
   Set<String> _previousFieldEffectIds = {};
@@ -200,7 +204,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
   }
 
   void _maybePlayGameOverSound() {
-    if (_match.isFinished && !_playedGameOverSound) {
+    if (_match.isFinished && _pendingAttack == null && !_playedGameOverSound) {
       _playedGameOverSound = true;
       sfxPlayer.play(_match.amIWinner ? SfxId.victory : SfxId.defeat);
     }
@@ -304,6 +308,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
   }
 
   Future<void> _startRematch() async {
+    if (_startingRematch || !_match.isFinished) return;
     setState(() {
       _startingRematch = true;
       _error = null;
@@ -315,7 +320,13 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
         pixelSlideRoute((_) => MultiplayerBattleScreen(match: rematch)),
       );
     } on MultiplayerException catch (e) {
-      setState(() => _error = e.message);
+      if (mounted) setState(() => _error = e.message);
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _error = 'Não foi possível criar a revanche. Tente novamente.',
+        );
+      }
     } finally {
       if (mounted) setState(() => _startingRematch = false);
     }
@@ -354,45 +365,81 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_match.needsPreparation && _match.match != null) {
-      return Stack(
-        children: [
-          AbsorbPointer(
-            absorbing: _submitting,
-            child: ElementStarterScreen(
-              playerLabel: _match.localPlayerId,
-              modeLabel: 'MULTIPLAYER',
-              onConfirm: (ids) async {
-                if (_submitting) return;
-                setState(() => _submitting = true);
-                try {
-                  await _match.configure('prepare', ids);
-                } catch (error) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text(error.toString())));
-                  }
-                  await _match.refresh();
-                } finally {
-                  if (mounted) setState(() => _submitting = false);
-                }
-              },
+  Future<void> _prepareElements() async {
+    if (_preparing || _submitting || !_match.needsPreparation) return;
+    setState(() => _preparing = true);
+    var saving = false;
+    try {
+      await Navigator.of(context).push(
+        pixelSlideRoute(
+          (routeContext) => StatefulBuilder(
+            builder: (context, update) => PopScope(
+              canPop: !saving,
+              child: Stack(
+                children: [
+                  AbsorbPointer(
+                    absorbing: saving,
+                    child: ElementStarterScreen(
+                      playerLabel: _match.localPlayerId,
+                      modeLabel: 'MULTIPLAYER',
+                      onConfirm: (ids) async {
+                        if (saving) return;
+                        update(() => saving = true);
+                        setState(() => _submitting = true);
+                        var success = false;
+                        try {
+                          await _match.configure('prepare', ids);
+                          success = true;
+                        } catch (_) {
+                          await _match.refresh();
+                          success = !_match.needsPreparation;
+                          if (!success && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Não foi possível confirmar os elementos. Confira a conexão e tente novamente.',
+                                ),
+                              ),
+                            );
+                          }
+                        } finally {
+                          if (mounted) setState(() => _submitting = false);
+                          if (context.mounted) update(() => saving = false);
+                        }
+                        if (success && routeContext.mounted) {
+                          Navigator.of(routeContext).pop();
+                        }
+                      },
+                    ),
+                  ),
+                  if (saving) const Center(child: CircularProgressIndicator()),
+                ],
+              ),
             ),
           ),
-          if (_submitting) const Center(child: CircularProgressIndicator()),
-        ],
+        ),
       );
+    } finally {
+      if (mounted) setState(() => _preparing = false);
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Stack(
       children: [
-        Positioned.fill(child: CustomPaint(painter: ArenaBackdropPainter())),
+        Positioned.fill(
+          child: (_match.isInProgress && _match.bothReady) || _match.isFinished
+              ? CustomPaint(painter: ArenaBackdropPainter())
+              : const ColoredBox(color: Color(0xFF172D2C)),
+        ),
         Scaffold(
           backgroundColor: Colors.transparent,
           appBar: AppBar(
             backgroundColor: Colors.transparent,
+            foregroundColor: _match.bothReady
+                ? const Color(0xFF283C36)
+                : const Color(0xFFF1E8C9),
             elevation: 0,
             title: PixelOutlinedText(
               'Partida ${_match.matchId ?? ""}',
@@ -412,64 +459,127 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
                 ),
             ],
           ),
-          body: _match.isInProgress && _match.bothReady
-              ? _battleLayout(context)
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: PixelContentPanel(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (_match.isWaitingForOpponent)
-                          ..._buildWaiting(context)
-                        else if (_match.isFinished)
-                          ..._buildGameOver(context)
-                        else
-                          const Text(
-                            'Aguardando o oponente escolher os elementos…',
-                          ),
-                        if (_match.connectionError != null)
-                          Text(_match.connectionError!),
-                      ],
-                    ),
-                  ),
-                ),
+          body: (_match.isInProgress && _match.bothReady) || _match.isFinished
+              ? SafeArea(child: _battleLayout(context))
+              : SafeArea(child: _waitingRoom()),
         ),
       ],
     );
   }
 
-  List<Widget> _buildWaiting(BuildContext context) {
-    return [
-      Text(
-        'Aguardando oponente...',
-        style: Theme.of(context).textTheme.titleLarge,
-      ),
-      const SizedBox(height: 8),
-      Text('Compartilhe o código: ${_match.matchId}'),
-    ];
-  }
+  Widget _waitingRoom() => MultiplayerConnectionPanel(
+    title: _match.connectionError != null ? 'RECONECTANDO' : 'SALA DO DUELO',
+    message: _match.isWaitingForOpponent
+        ? 'Aguardando seu amigo entrar.'
+        : 'Os dois jogadores precisam preparar seus elementos.',
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'CÓDIGO DA SALA',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 6),
+        SelectableText(
+          _match.matchId ?? '—',
+          style: const TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 28,
+            letterSpacing: 4,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        TextButton.icon(
+          icon: const Icon(Icons.copy),
+          label: const Text('Copiar código'),
+          onPressed: _match.matchId == null
+              ? null
+              : () async {
+                  try {
+                    await Clipboard.setData(
+                      ClipboardData(text: _match.matchId!),
+                    );
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Código copiado. Envie ao seu amigo.'),
+                        ),
+                      );
+                    }
+                  } catch (_) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Não foi possível copiar. Selecione o código acima.',
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                },
+        ),
+        const Divider(),
+        for (final id in [_match.match?.playerAId, _match.match?.playerBId])
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Text(
+              id == null
+                  ? 'Oponente · aguardando entrada'
+                  : '$id${id == _match.localPlayerId ? ' (você)' : ''} · ${_match.match?.players[id]?['ready'] == true ? 'Elementos prontos' : 'Preparando elementos'}',
+            ),
+          ),
+        const SizedBox(height: 12),
+        if (_match.connectionError != null)
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              _match.connectionError!,
+              style: const TextStyle(color: Color(0xFF9B302E)),
+            ),
+          ),
+        if (_match.needsPreparation)
+          PixelMenuButton(
+            label: 'Preparar elementos',
+            primary: true,
+            onPressed:
+                _preparing || _submitting || _match.connectionError != null
+                ? null
+                : _prepareElements,
+          )
+        else
+          const Text(
+            'Tudo pronto do seu lado. A batalha abrirá quando ambos estiverem prontos.',
+          ),
+        const SizedBox(height: 12),
+        const Text(
+          'Pode compartilhar o código enquanto escolhe seus elementos. Voltar ao lobby não apaga esta sala.',
+        ),
+      ],
+    ),
+  );
 
   List<Widget> _buildGameOver(BuildContext context) {
     return [
-      Text(
-        _match.amIWinner ? 'Você venceu!' : 'Você perdeu.',
-        style: Theme.of(context).textTheme.titleLarge,
+      BattleResultPanel(
+        title: _match.amIWinner ? 'VITÓRIA' : 'DERROTA',
+        subtitle: _match.amIWinner
+            ? 'Você venceu o duelo!'
+            : 'Outra combinação pode mudar a próxima batalha.',
+        players: [
+          BattleResultPlayer(
+            label: 'Você',
+            gains: _match.battleGains,
+            onReview: _manageAttacks,
+          ),
+        ],
+        remote: true,
+        busy: _startingRematch,
+        onRematch: _startRematch,
+        onMenu: () => Navigator.of(context).popUntil((route) => route.isFirst),
+        error: _error ?? _match.connectionError,
       ),
-      const SizedBox(height: 16),
-      PixelMenuButton(
-        label: 'Revanche',
-        onPressed: _startingRematch ? null : _startRematch,
-      ),
-      const SizedBox(height: 8),
-      const Text(
-        'Cria uma partida nova — compartilhe o código com seu oponente de novo.',
-      ),
-      if (_error != null)
-        Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Text(_error!, style: const TextStyle(color: Colors.red)),
-        ),
     ];
   }
 
@@ -482,6 +592,11 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
     return [
       BattleSceneWidget(
         channelingLeft: _match.channelingLeft,
+        onAttackComplete: () {
+          if (!mounted) return;
+          setState(() => _pendingAttack = null);
+          _maybePlayGameOverSound();
+        },
         height:
             MediaQuery.of(context).size.width >
                 MediaQuery.of(context).size.height
@@ -505,176 +620,185 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
           rightApMax: _match.opponentApMax,
         ),
       ),
-      const SizedBox(height: 16),
-      if (_match.match?.seal != null)
-        Text(
-          'Conjuração em andamento · ${_match.match!.seal!['reservedAp']} AP reservados. Aguarde.',
-        ),
-      Text(
-        _match.isMyTurn
-            ? _match.amIFrozen
-                  ? 'Sua vez · CONGELADO'
-                  : 'Sua vez'
-            : 'Vez do oponente',
-        style: Theme.of(context).textTheme.titleLarge,
-      ),
-      if (_match.isMyTurn && _match.amIFrozen)
-        const Text(
-          'Você perde esta ação para quebrar o gelo. AP não regenera.',
-          style: TextStyle(fontSize: 12),
-        ),
-      const Divider(height: 12),
-      if (_match.connectionError != null)
-        Text(
-          _match.connectionError!,
-          style: const TextStyle(color: Colors.red),
-        ),
-      if (_match.isMyTurn)
-        for (final status in _match.myActiveStatuses.where(
-          (s) => const ['silence', 'slow', 'shock'].contains(s.id),
-        ))
+      if (_match.isFinished) ...[
+        if (_pendingAttack != null)
+          const Text('Último ataque em execução…')
+        else
+          ..._buildGameOver(context),
+      ] else ...[
+        const SizedBox(height: 16),
+        if (_match.match?.seal != null)
           Text(
-            statusDescription(status.id),
-            style: const TextStyle(fontSize: 12),
+            'Conjuração em andamento · ${_match.match!.seal!['reservedAp']} AP reservados. Aguarde.',
           ),
-      Text(_selectedElementsSummary(elements)),
-      Wrap(
-        children: [
-          TextButton(
-            onPressed: () => setState(() => _showAbilities = false),
-            child: const Text('Elementos'),
+        Text(
+          _match.isMyTurn
+              ? _match.amIFrozen
+                    ? 'Sua vez · CONGELADO'
+                    : 'Sua vez'
+              : 'Vez do oponente',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        if (_match.isMyTurn && _match.amIFrozen)
+          const Text(
+            'Você perde esta ação para quebrar o gelo. AP não regenera.',
+            style: TextStyle(fontSize: 12),
           ),
-          TextButton(
-            onPressed: () => setState(() => _showAbilities = true),
-            child: const Text('Habilidades'),
+        const Divider(height: 12),
+        if (_match.connectionError != null)
+          Text(
+            _match.connectionError!,
+            style: const TextStyle(color: Colors.red),
           ),
-        ],
-      ),
-      LayoutBuilder(
-        builder: (context, constraints) => Wrap(
-          spacing: 6,
-          runSpacing: 6,
+        if (_match.isMyTurn)
+          for (final status in _match.myActiveStatuses.where(
+            (s) => const ['silence', 'slow', 'shock'].contains(s.id),
+          ))
+            Text(
+              statusDescription(status.id),
+              style: const TextStyle(fontSize: 12),
+            ),
+        Text(_selectedElementsSummary(elements)),
+        Wrap(
           children: [
-            if (!_showAbilities)
-              for (var i = 0; i < 4; i++)
-                SizedBox(
-                  width: (constraints.maxWidth - 6) / 2,
-                  child: PixelMenuButton(
-                    label: i < elements.length
-                        ? '${elements[i].symbol} ${elements[i].name}'
-                        : 'Vazio',
-                    onPressed:
-                        i < elements.length &&
-                            _match.isMyTurn &&
-                            !_match.amIFrozen &&
-                            !_submitting
-                        ? () {
-                            setState(() {
-                              _defending = false;
-                              _selectedIds
-                                ..clear()
-                                ..add(elements[i].id);
-                            });
-                            unawaited(_requestPreview());
-                          }
-                        : null,
-                  ),
-                ),
-            if (_showAbilities)
-              for (var i = 0; i < 3; i++)
-                SizedBox(
-                  width: constraints.maxWidth,
-                  child: PixelMenuButton(
-                    label: i < _match.equippedAttacks.length
-                        ? _attackLabel(_match.equippedAttacks[i])
-                        : 'Habilidade vazia',
-                    onPressed:
-                        i < _match.equippedAttacks.length &&
-                            _match.isMyTurn &&
-                            !_submitting &&
-                            !_match.amIFrozen &&
-                            _attackUnavailable(_match.equippedAttacks[i]) ==
-                                null
-                        ? () {
-                            final attack = const CombinationCatalog().byId(
-                              _match.equippedAttacks[i],
-                            );
-                            if (attack == null) return;
-                            setState(() {
-                              _defending = false;
-                              _selectedIds
-                                ..clear()
-                                ..addAll(attack.elementIds);
-                            });
-                            unawaited(_requestPreview());
-                          }
-                        : null,
-                  ),
-                ),
+            TextButton(
+              onPressed: () => setState(() => _showAbilities = false),
+              child: const Text('Elementos'),
+            ),
+            TextButton(
+              onPressed: () => setState(() => _showAbilities = true),
+              child: const Text('Habilidades'),
+            ),
           ],
         ),
-      ),
-      Wrap(
-        children: [
-          TextButton(
-            onPressed: _match.isMyTurn && !_submitting ? _manageElements : null,
-            child: const Text('Trocar elementos'),
+        LayoutBuilder(
+          builder: (context, constraints) => Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              if (!_showAbilities)
+                for (var i = 0; i < 4; i++)
+                  SizedBox(
+                    width: (constraints.maxWidth - 6) / 2,
+                    child: PixelMenuButton(
+                      label: i < elements.length
+                          ? '${elements[i].symbol} ${elements[i].name}'
+                          : 'Vazio',
+                      onPressed:
+                          i < elements.length &&
+                              _match.isMyTurn &&
+                              !_match.amIFrozen &&
+                              !_submitting
+                          ? () {
+                              setState(() {
+                                _defending = false;
+                                _selectedIds
+                                  ..clear()
+                                  ..add(elements[i].id);
+                              });
+                              unawaited(_requestPreview());
+                            }
+                          : null,
+                    ),
+                  ),
+              if (_showAbilities)
+                for (var i = 0; i < 3; i++)
+                  SizedBox(
+                    width: constraints.maxWidth,
+                    child: PixelMenuButton(
+                      label: i < _match.equippedAttacks.length
+                          ? _attackLabel(_match.equippedAttacks[i])
+                          : 'Habilidade vazia',
+                      onPressed:
+                          i < _match.equippedAttacks.length &&
+                              _match.isMyTurn &&
+                              !_submitting &&
+                              !_match.amIFrozen &&
+                              _attackUnavailable(_match.equippedAttacks[i]) ==
+                                  null
+                          ? () {
+                              final attack = const CombinationCatalog().byId(
+                                _match.equippedAttacks[i],
+                              );
+                              if (attack == null) return;
+                              setState(() {
+                                _defending = false;
+                                _selectedIds
+                                  ..clear()
+                                  ..addAll(attack.elementIds);
+                              });
+                              unawaited(_requestPreview());
+                            }
+                          : null,
+                    ),
+                  ),
+            ],
           ),
-          TextButton(
-            onPressed: !_submitting ? _manageAttacks : null,
-            child: Text('Descobertas ${_match.discoveries.length} · Equipar'),
-          ),
-        ],
-      ),
-      const SizedBox(height: 8),
-      PixelMenuButton(
-        label: 'Experimentar combo',
-        onPressed: _match.isMyTurn && !_match.amIFrozen && !_submitting
-            ? () => _openElementPicker(elements)
-            : null,
-      ),
-      const SizedBox(height: 16),
-      PixelMenuButton(
-        label: _match.amIFrozen
-            ? 'Quebrar gelo'
-            : _defending
-            ? 'Confirmar defesa'
-            : 'Jogar',
-        onPressed:
-            (!_submitting &&
-                _match.match?.seal == null &&
-                !(_selectedIds.length > 1 &&
-                    !_defending &&
-                    !_match.amIFrozen &&
-                    _match.myActiveStatuses.any((s) => s.id == 'silence')) &&
-                _match.isMyTurn &&
-                (_match.amIFrozen || _selectedIds.isNotEmpty || _defending))
-            ? _playTurn
-            : null,
-      ),
-      TextButton.icon(
-        icon: const Icon(Icons.shield_outlined),
-        label: const Text('Defender'),
-        onPressed: !_submitting && _match.isMyTurn && !_match.amIFrozen
-            ? () {
-                setState(() {
-                  _defending = true;
-                  _selectedIds.clear();
-                });
-                unawaited(_requestPreview());
-              }
-            : null,
-      ),
-      if (_previewLoading) const Text('Calculando prévia…'),
-      if (_preview != null)
-        Text(_preview!.summary, style: const TextStyle(fontSize: 12)),
-      if (_previewError != null)
-        Text(_previewError!, style: const TextStyle(fontSize: 12)),
-      if (_error != null)
-        Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Text(_error!, style: const TextStyle(color: Colors.red)),
         ),
+        Wrap(
+          children: [
+            TextButton(
+              onPressed: _match.isMyTurn && !_submitting
+                  ? _manageElements
+                  : null,
+              child: const Text('Trocar elementos'),
+            ),
+            TextButton(
+              onPressed: !_submitting ? _manageAttacks : null,
+              child: Text('Descobertas ${_match.discoveries.length} · Equipar'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        PixelMenuButton(
+          label: 'Experimentar combo',
+          onPressed: _match.isMyTurn && !_match.amIFrozen && !_submitting
+              ? () => _openElementPicker(elements)
+              : null,
+        ),
+        const SizedBox(height: 16),
+        PixelMenuButton(
+          label: _match.amIFrozen
+              ? 'Quebrar gelo'
+              : _defending
+              ? 'Confirmar defesa'
+              : 'Jogar',
+          onPressed:
+              (!_submitting &&
+                  _match.match?.seal == null &&
+                  !(_selectedIds.length > 1 &&
+                      !_defending &&
+                      !_match.amIFrozen &&
+                      _match.myActiveStatuses.any((s) => s.id == 'silence')) &&
+                  _match.isMyTurn &&
+                  (_match.amIFrozen || _selectedIds.isNotEmpty || _defending))
+              ? _playTurn
+              : null,
+        ),
+        TextButton.icon(
+          icon: const Icon(Icons.shield_outlined),
+          label: const Text('Defender'),
+          onPressed: !_submitting && _match.isMyTurn && !_match.amIFrozen
+              ? () {
+                  setState(() {
+                    _defending = true;
+                    _selectedIds.clear();
+                  });
+                  unawaited(_requestPreview());
+                }
+              : null,
+        ),
+        if (_previewLoading) const Text('Calculando prévia…'),
+        if (_preview != null)
+          Text(_preview!.summary, style: const TextStyle(fontSize: 12)),
+        if (_previewError != null)
+          Text(_previewError!, style: const TextStyle(fontSize: 12)),
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(_error!, style: const TextStyle(color: Colors.red)),
+          ),
+      ],
     ];
   }
 
@@ -748,6 +872,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
     await Navigator.of(context).push(
       pixelSlideRoute(
         (_) => AttacksScreen(
+          readOnly: _match.isFinished,
           attacks: allAttackOptions(
             unlockedIds: _match.discoveries,
             equippedIds: _match.equippedAttacks,

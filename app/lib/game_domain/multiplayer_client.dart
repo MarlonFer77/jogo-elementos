@@ -42,7 +42,7 @@ class MultiplayerClient {
 
   Uri _uri(String path) => Uri.parse('$baseUrl$path');
 
-  Future<void> _remember(String id, String player) async {
+  Future<void> rememberSession(String id, String player) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('multiplayer.lastCode.$baseUrl', id);
     await prefs.setString('multiplayer.lastPlayer.$baseUrl', player);
@@ -65,7 +65,7 @@ class MultiplayerClient {
         )
         .timeout(const Duration(seconds: 20));
     final match = RemoteMatch.fromJson(_decode(response));
-    await _remember(match.id, playerAId);
+    await rememberSession(match.id, playerAId);
     return match;
   }
 
@@ -78,7 +78,7 @@ class MultiplayerClient {
         )
         .timeout(const Duration(seconds: 20));
     final match = RemoteMatch.fromJson(_decode(response));
-    await _remember(match.id, playerBId);
+    await rememberSession(match.id, playerBId);
     return match;
   }
 

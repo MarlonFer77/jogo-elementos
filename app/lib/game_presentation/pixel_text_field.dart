@@ -6,10 +6,18 @@ import 'package:flutter/material.dart';
 /// decoração muda, pra combinar com a borda/sombra pixel art já usada em
 /// `PixelMenuButton`/`PixelElementChip`.
 class PixelTextField extends StatelessWidget {
-  const PixelTextField({super.key, required this.controller, required this.label});
+  const PixelTextField({
+    super.key,
+    required this.controller,
+    required this.label,
+    this.maxLength,
+    this.capitalization = TextCapitalization.none,
+  });
 
   final TextEditingController controller;
   final String label;
+  final int? maxLength;
+  final TextCapitalization capitalization;
 
   @override
   Widget build(BuildContext context) {
@@ -20,10 +28,15 @@ class PixelTextField extends StatelessWidget {
     );
     return TextField(
       controller: controller,
+      maxLength: maxLength,
+      textCapitalization: capitalization,
       style: const TextStyle(fontFamily: 'monospace', color: borderColor),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(fontFamily: 'monospace', color: borderColor),
+        labelStyle: const TextStyle(
+          fontFamily: 'monospace',
+          color: borderColor,
+        ),
         filled: true,
         fillColor: const Color(0xFFF4F4E4),
         border: border,
