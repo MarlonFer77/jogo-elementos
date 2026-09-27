@@ -17,6 +17,9 @@ export interface FieldEffect {
   readonly area: number;
   readonly duration: number | null;
   readonly damage: number;
+  readonly healing?: number;
+  readonly cleanses?: boolean;
+  readonly apDrain?: number;
   readonly statusesToApply?: readonly import('./ability-effect.js').TargetedStatus[];
 }
 

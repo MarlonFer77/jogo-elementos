@@ -3,6 +3,24 @@ import 'package:battle_engine/battle_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('healing and purification are previewed, discovered and equipped', () {
+    final m = TrainingMatch(
+      initialPlayerHp: 50,
+      initialApA: const ApPool(max: 5, current: 3),
+      initialProgressA: SkillProgress(
+        defaultSkillTree,
+        unlockedNodeIds: ['unlock_water', 'unlock_light'],
+      ),
+    );
+    final p = m.previewAction(['water', 'light']);
+    expect(p.summary, contains('+12 HP'));
+    expect(p.summary, contains('Purificação'));
+    expect(m.playerACurrentHp, 50);
+    m.playElementIds(['water', 'light']);
+    expect(m.playerACurrentHp, 62);
+    expect(m.equippedAttackIdsForPlayerA, ['purifying_water']);
+    expect(m.discoveredCombinationIds, ['purifying_water']);
+  });
   TrainingMatch match() => TrainingMatch(
     initialApA: const ApPool(max: 5, current: 3),
     initialProgressA: SkillProgress(

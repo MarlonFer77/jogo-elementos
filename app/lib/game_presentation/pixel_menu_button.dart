@@ -34,58 +34,72 @@ class _PixelMenuButtonState extends State<PixelMenuButton> {
   @override
   Widget build(BuildContext context) {
     final isEnabled = widget.onPressed != null;
-    return Opacity(
-      opacity: isEnabled ? 1.0 : 0.4,
-      child: GestureDetector(
-        onTapDown: (_) => _setPressed(true),
-        onTapUp: (_) => _setPressed(false),
-        onTapCancel: () => _setPressed(false),
-        onTap: isEnabled ? _handleTap : null,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 80),
-          transform: Matrix4.translationValues(
-            _pressed ? 3 : 0,
-            _pressed ? 3 : 0,
-            0,
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: BoxDecoration(
-            color: widget.primary
-                ? const Color(0xFFF4C94A)
-                : const Color(0xFFF4F4E4),
-            border: Border.all(color: const Color(0xFF2B2B2B), width: 3),
-            borderRadius: BorderRadius.circular(4),
-            boxShadow: _pressed
-                ? const []
-                : const [
-                    BoxShadow(color: Color(0xFF2B2B2B), offset: Offset(3, 3)),
-                  ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: Text(
-                  widget.label,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    letterSpacing: 1,
-                    color: Color(0xFF2B2B2B),
+    final compact =
+        MediaQuery.sizeOf(context).height < 740 ||
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+    return Semantics(
+      button: true,
+      enabled: isEnabled,
+      child: AnimatedOpacity(
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 120),
+        opacity: isEnabled ? 1.0 : 0.4,
+        child: GestureDetector(
+          onTapDown: (_) => _setPressed(true),
+          onTapUp: (_) => _setPressed(false),
+          onTapCancel: () => _setPressed(false),
+          onTap: isEnabled ? _handleTap : null,
+          child: AnimatedContainer(
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 80),
+            transform: Matrix4.translationValues(
+              _pressed ? 3 : 0,
+              _pressed ? 3 : 0,
+              0,
+            ),
+            constraints: const BoxConstraints(minHeight: 48),
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 10 : 16,
+              vertical: compact ? 6 : 10,
+            ),
+            decoration: BoxDecoration(
+              color: widget.primary
+                  ? const Color(0xFFF4C94A)
+                  : const Color(0xFFF4F4E4),
+              border: Border.all(color: const Color(0xFF2B2B2B), width: 3),
+              borderRadius: BorderRadius.circular(4),
+              boxShadow: _pressed
+                  ? const []
+                  : const [
+                      BoxShadow(color: Color(0xFF2B2B2B), offset: Offset(3, 3)),
+                    ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Text(
+                    widget.label,
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontWeight: FontWeight.bold,
+                      fontSize: compact ? 13 : 15,
+                      letterSpacing: .4,
+                      color: Color(0xFF2B2B2B),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                '▶',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
+                const SizedBox(width: 6),
+                const Icon(
+                  Icons.arrow_right,
+                  size: 18,
                   color: Color(0xFF2B2B2B),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

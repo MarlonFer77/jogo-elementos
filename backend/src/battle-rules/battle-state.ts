@@ -117,6 +117,14 @@ export function withMaxHpIncreased(
 }
 
 /** AP pool of a combatant. */
+export function withHealing(state: BattleState, targetId: string, amount: number): BattleState {
+  if (!Number.isInteger(amount) || amount < 0) throw new TurnValidationError('invalid healing');
+  const pool = hpOf(state, targetId);
+  if (pool.current <= 0) return state;
+  return {...state, hp: {...state.hp, [targetId]: {...pool, current: Math.min(pool.max, pool.current + amount)}}};
+}
+
+/** AP pool of a combatant. */
 export function apOf(state: BattleState, combatantId: string): ApPool {
   const pool = state.ap[combatantId];
   if (!pool) {

@@ -32,6 +32,12 @@ class PixelTextField extends StatelessWidget {
       textCapitalization: capitalization,
       style: const TextStyle(fontFamily: 'monospace', color: borderColor),
       decoration: InputDecoration(
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 14,
+        ),
+        counterText: '',
         labelText: label,
         labelStyle: const TextStyle(
           fontFamily: 'monospace',

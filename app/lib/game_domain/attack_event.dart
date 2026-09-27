@@ -15,6 +15,8 @@ class AttackEvent {
 
   final String? comboName;
   final int damage;
+  final int healing, apDrained;
+  final bool purified;
   final List<String> appliedStatusNames;
   final bool isDefend;
   final bool isFrozenRecovery;
@@ -26,6 +28,9 @@ class AttackEvent {
     required this.elementIds,
     this.comboName,
     required this.damage,
+    this.healing = 0,
+    this.apDrained = 0,
+    this.purified = false,
     required this.appliedStatusNames,
     this.isDefend = false,
     this.isFrozenRecovery = false,

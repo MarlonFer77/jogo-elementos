@@ -12,7 +12,7 @@ class PixelContentPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(MediaQuery.sizeOf(context).height < 740 ? 8 : 12),
       decoration: BoxDecoration(
         color: const Color(0xF2F4F4E4),
         border: Border.all(color: const Color(0xFF2B2B2B), width: 3),

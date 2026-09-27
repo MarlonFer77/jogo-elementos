@@ -116,17 +116,17 @@ void main() {
     test('returns null for an unknown combination', () {
       final result = defaultCombinationBook.resolve([
         Elements.ice,
-        Elements.shadow,
+        Elements.fire,
       ]);
       expect(result, isNull);
     });
 
-    test('a 2-element subset of a known 3-element combo does not match', () {
+    test('a 2-element subset resolves its own recipe, not the triple', () {
       final result = defaultCombinationBook.resolve([
         Elements.earth,
         Elements.fire,
       ]);
-      expect(result, isNull);
+      expect(result?.resultId, 'eruption');
     });
 
     test('the built-in combinations carry their damage value', () {

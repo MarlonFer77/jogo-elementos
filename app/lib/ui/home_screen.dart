@@ -5,6 +5,7 @@ import '../game_presentation/pixel_menu_button.dart';
 import '../game_presentation/pixel_page_route.dart';
 import 'multiplayer_lobby_screen.dart';
 import 'training_screen.dart';
+import 'dungeon_screen.dart';
 
 /// Menu de entrada; regras, progresso e conexão continuam nas telas de destino.
 class HomeScreen extends StatefulWidget {
@@ -39,12 +40,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 constraints.maxWidth > constraints.maxHeight;
             final scene = TickerMode(
               enabled: !_opening && !MediaQuery.disableAnimationsOf(context),
-              child: const HomeTitleScene(),
+              child: SizedBox(
+                height: (constraints.maxHeight * (wide ? .8 : .34)).clamp(
+                  110.0,
+                  330.0,
+                ),
+                child: const HomeTitleScene(),
+              ),
             );
-            final menu = _menu(compact: wide && constraints.maxHeight < 500);
+            final menu = _menu(compact: constraints.maxHeight < 740);
             return Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(10),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: wide ? 1120 : 460),
                   child: wide
@@ -92,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            'ESCOLHA SEU DUELO',
+            'ESCOLHA SUA JORNADA',
             style: TextStyle(
               fontFamily: 'monospace',
               fontSize: 16,
@@ -106,24 +113,42 @@ class _HomeScreenState extends State<HomeScreen> {
             const Text('Cada combinação abre um novo caminho.', style: text),
           ],
           SizedBox(height: compact ? 12 : 18),
+          PixelMenuButton(
+            label: 'DUNGEON · SOLO',
+            primary: true,
+            onPressed: _opening
+                ? null
+                : () => _open((_) => const DungeonScreen()),
+          ),
+          if (!compact)
+            const Padding(
+              padding: EdgeInsets.only(top: 6, bottom: 8),
+              child: Text(
+                'Explore ruínas · Ganhe XP e habilidades',
+                style: text,
+              ),
+            ),
+          const SizedBox(height: 8),
           Semantics(
             button: true,
             enabled: !_opening,
             child: PixelMenuButton(
               label: 'MODO TREINO',
-              primary: true,
+              primary: false,
               onPressed: _opening
                   ? null
                   : () => _open((_) => const TrainingScreen()),
             ),
           ),
-          Padding(
-            padding: EdgeInsets.only(top: 8, bottom: compact ? 12 : 16),
-            child: const Text(
-              '2 jogadores neste aparelho · Offline',
-              style: text,
+          if (!compact)
+            Padding(
+              padding: EdgeInsets.only(top: 8, bottom: compact ? 12 : 16),
+              child: const Text(
+                '2 jogadores neste aparelho · Offline',
+                style: text,
+              ),
             ),
-          ),
+          if (compact) const SizedBox(height: 8),
           Semantics(
             button: true,
             enabled: !_opening,
@@ -134,13 +159,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   : () => _open((_) => const MultiplayerLobbyScreen()),
             ),
           ),
-          Padding(
-            padding: EdgeInsets.only(top: 8, bottom: compact ? 0 : 14),
-            child: const Text(
-              'Desafie um amigo · Requer internet',
-              style: text,
+          if (!compact)
+            Padding(
+              padding: EdgeInsets.only(top: 8, bottom: compact ? 0 : 14),
+              child: const Text(
+                'Desafie um amigo · Requer internet',
+                style: text,
+              ),
             ),
-          ),
           if (!compact) ...[
             const Divider(color: Color(0xFFB6A16D), height: 1),
             const SizedBox(height: 12),

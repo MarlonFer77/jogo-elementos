@@ -1,0 +1,176 @@
+import 'package:battle_engine/battle_engine.dart';
+import 'dungeon_catalog.dart';
+
+/// Offline campaign only. Never imported into the multiplayer profile.
+class DungeonProgress {
+  DungeonProgress({
+    this.xp = 0,
+    List<String> nodes = const [],
+    List<String> attacks = const [],
+    List<String> equippedAttacks = const [],
+    List<String> elements = const [],
+    this.run = 0,
+    this.room = 0,
+    this.active = false,
+    this.hp = 100,
+    this.clears = 0,
+  }) : nodes = List.unmodifiable(nodes),
+       attacks = List.unmodifiable(attacks),
+       equippedAttacks = List.unmodifiable(equippedAttacks),
+       elements = List.unmodifiable(elements);
+
+  final int xp, run, room, hp, clears;
+  final bool active;
+  final List<String> nodes, attacks, equippedAttacks, elements;
+  bool get prepared => nodes.length >= 2;
+  SkillProgress get skills =>
+      SkillProgress(defaultSkillTree, unlockedNodeIds: nodes);
+  int get maxHp => 100 + skills.grantedMaxHpBonus;
+  int get level {
+    var level = 1, remaining = xp;
+    while (remaining >= xpForLevel(level)) {
+      remaining -= xpForLevel(level++);
+    }
+    return level;
+  }
+
+  static int xpForLevel(int level) => 100 + (level - 1) * 50;
+  int get levelXp => xp - 25 * (level - 1) * (level + 2);
+  int get nextLevelXp => xpForLevel(level);
+  int get points => level - 1 - (prepared ? nodes.length - 2 : 0);
+
+  DungeonProgress copyWith({
+    int? xp,
+    List<String>? nodes,
+    List<String>? attacks,
+    List<String>? equippedAttacks,
+    List<String>? elements,
+    int? run,
+    int? room,
+    bool? active,
+    int? hp,
+    int? clears,
+  }) => DungeonProgress(
+    xp: xp ?? this.xp,
+    nodes: nodes ?? this.nodes,
+    attacks: attacks ?? this.attacks,
+    equippedAttacks: equippedAttacks ?? this.equippedAttacks,
+    elements: elements ?? this.elements,
+    run: run ?? this.run,
+    room: room ?? this.room,
+    active: active ?? this.active,
+    hp: hp ?? this.hp,
+    clears: clears ?? this.clears,
+  );
+
+  DungeonProgress prepare(List<String> ids) {
+    if (prepared ||
+        ids.length != 2 ||
+        ids.toSet().length != 2 ||
+        ids.any((id) => !Elements.all.any((e) => e.id == id))) {
+      throw StateError('Escolha dois elementos diferentes.');
+    }
+    return copyWith(
+      nodes: ids.map((id) => 'unlock_$id').toList(),
+      elements: ids,
+    );
+  }
+
+  String? unlockReason(String id) {
+    if (const {'unstable_core_training', 'fragment_strikes'}.contains(id)) {
+      return 'Talento em desenvolvimento: compra indisponível para preservar seus pontos.';
+    }
+    if (!prepared || points < 1) return 'Ganhe um nível para obter 1 ponto.';
+    if (!skills.canUnlock(id)) {
+      return 'Habilidade indisponível ou já desbloqueada.';
+    }
+    return null;
+  }
+
+  DungeonProgress unlock(String id) {
+    final reason = unlockReason(id);
+    if (reason != null) throw StateError(reason);
+    final updated = skills.unlock(id);
+    final bonus = updated.grantedMaxHpBonus - skills.grantedMaxHpBonus;
+    return copyWith(
+      nodes: updated.unlockedNodeIds,
+      hp: hp + bonus,
+      elements: [
+        ...elements,
+        ...updated.grantedElementIds.where((e) => !elements.contains(e)),
+      ].take(4).toList(),
+    );
+  }
+
+  Map<String, Object> toJson() => {
+    'version': 1,
+    'xp': xp,
+    'nodes': nodes,
+    'attacks': attacks,
+    'equippedAttacks': equippedAttacks,
+    'elements': elements,
+    'run': run,
+    'room': room,
+    'active': active,
+    'hp': hp,
+    'clears': clears,
+  };
+
+  factory DungeonProgress.fromJson(Map<String, dynamic> json) {
+    if (json['version'] != 1) {
+      throw const FormatException('Versão de save desconhecida.');
+    }
+    List<String> ids(String key) => (json[key] as List).cast<String>();
+    final p = DungeonProgress(
+      xp: json['xp'] as int,
+      nodes: ids('nodes'),
+      attacks: ids('attacks'),
+      equippedAttacks: ids('equippedAttacks'),
+      elements: ids('elements'),
+      run: json['run'] as int,
+      room: json['room'] as int,
+      active: json['active'] as bool,
+      hp: json['hp'] as int,
+      clears: json['clears'] as int,
+    );
+    final knownAttacks = defaultCombinationBook.combinations
+        .map((c) => c.resultId)
+        .toSet();
+    if (p.xp < 0 ||
+        p.xp > 100000000 ||
+        p.run < 0 ||
+        p.clears < 0 ||
+        p.room < 0 ||
+        p.room >= DungeonRoom.all.length ||
+        p.nodes.toSet().length != p.nodes.length ||
+        p.nodes.any((id) => defaultSkillTree.nodeById(id) == null) ||
+        (p.nodes.isNotEmpty &&
+            (p.nodes.length < 2 ||
+                !p.nodes.take(2).every((id) => id.startsWith('unlock_'))))) {
+      throw const FormatException('Progresso inválido.');
+    }
+    final skills = p.skills;
+    if (p.points < 0 ||
+        p.hp < 1 ||
+        p.hp > p.maxHp ||
+        (p.active && (!p.prepared || p.run < 1)) ||
+        p.nodes.any(
+          (id) => !defaultSkillTree
+              .nodeById(id)!
+              .prerequisites
+              .every(p.nodes.contains),
+        ) ||
+        p.elements.length > 4 ||
+        (p.prepared && p.elements.isEmpty) ||
+        p.elements.toSet().length != p.elements.length ||
+        p.elements.any((id) => !skills.grantedElementIds.contains(id)) ||
+        p.attacks.toSet().length != p.attacks.length ||
+        p.attacks.any((id) => !knownAttacks.contains(id)) ||
+        p.equippedAttacks.length > 3 ||
+        p.equippedAttacks.toSet().length != p.equippedAttacks.length ||
+        p.equippedAttacks.any((id) => !p.attacks.contains(id))) {
+      throw const FormatException('Equipamento ou pontos inválidos.');
+    }
+    return p;
+  }
+}

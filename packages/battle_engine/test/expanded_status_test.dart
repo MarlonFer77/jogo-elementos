@@ -77,7 +77,7 @@ void main() {
     expect(
       hit(wet, [
         Elements.lightning,
-        Elements.shadow,
+        Elements.ice,
       ]).hasStatus(b, StatusEffects.wet),
       true,
     );
@@ -102,10 +102,10 @@ void main() {
     }
     expect(state.hasStatus(b, StatusEffects.poison), false);
   });
-  test('20 distinct recipes resolve regardless of order and execute', () {
+  test('63 distinct recipes resolve regardless of order and execute', () {
     final combos = defaultCombinationBook.combinations;
-    expect(combos, hasLength(20));
-    expect(combos.map((c) => c.resultId).toSet(), hasLength(20));
+    expect(combos, hasLength(63));
+    expect(combos.map((c) => c.resultId).toSet(), hasLength(63));
     final recipes = <String>{};
     for (final combo in combos) {
       final ids = combo.elements.map((e) => e.id).toList()..sort();

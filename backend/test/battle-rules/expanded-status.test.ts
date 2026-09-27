@@ -40,7 +40,7 @@ test('modifiers cancel; wet requires electric hit and respects shield', () => {
   const result = hit(wet, ['lightning']);
   assert.equal(hpOf(wet, 'b').current - hpOf(result, 'b').current, 7);
   assert.equal(hasStatus(result, 'b', 'wet'), false);
-  assert.equal(hasStatus(hit(wet, ['lightning','shadow']), 'b', 'wet'), true);
+  assert.equal(hasStatus(hit(wet, ['lightning','ice']), 'b', 'wet'), true);
   const blocked = hit(status(wet, 'b', 'shield', 2), ['lightning']);
   assert.equal(hpOf(blocked, 'b').current, hpOf(wet, 'b').current);
   assert.equal(hasStatus(blocked, 'b', 'wet'), true);
@@ -54,7 +54,7 @@ test('poison ticks 2,3,4 then expires', () => {
   }
   assert.equal(hasStatus(state, 'b', 'poison'), false);
 });
-test('catalog contains 20 unique recipes executable in reverse order', () => {
+test('catalog contains 63 unique recipes executable in reverse order', () => {
   const elements = ['fire','water','wind','ice','nature','lightning','earth','shadow','light','poison'];
   const found = new Set<string>();
   for (let i = 0; i < elements.length; i++) {
@@ -70,5 +70,5 @@ test('catalog contains 20 unique recipes executable in reverse order', () => {
       }
     }
   }
-  assert.equal(found.size, 20);
+  assert.equal(found.size, 63);
 });

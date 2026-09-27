@@ -151,6 +151,7 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
     child: Scaffold(
       backgroundColor: const Color(0xFF172D2C),
       appBar: AppBar(
+        toolbarHeight: 44,
         backgroundColor: const Color(0xFF172D2C),
         foregroundColor: const Color(0xFFF1E8C9),
         automaticallyImplyLeading: !_loading,
@@ -204,9 +205,12 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       PixelTextField(controller: _nameController, label: 'Seu nome'),
+      const SizedBox(height: 4),
+      const Text(
+        'Seu perfil usa este nome e aparelho.',
+        style: TextStyle(fontSize: 11),
+      ),
       const SizedBox(height: 6),
-      const Text('Use o mesmo nome para manter seu perfil neste aparelho.'),
-      const SizedBox(height: 12),
       Wrap(
         spacing: 8,
         children: [
@@ -230,7 +234,7 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
             ),
         ],
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 6),
       if (_selected == _LobbyAction.create)
         const Text('Crie uma sala e envie o código ao seu amigo.')
       else ...[
@@ -257,7 +261,7 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
             ),
           ),
         ),
-      const SizedBox(height: 14),
+      const SizedBox(height: 8),
       PixelMenuButton(
         label: switch (_selected) {
           _LobbyAction.create => 'Criar partida',
@@ -268,7 +272,7 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
         onPressed: _connect,
       ),
       if (_saved != null) ...[
-        const Divider(height: 28),
+        const Divider(height: 12),
         Text('Última sala: ${_saved!.$2} · ${_saved!.$1}'),
         TextButton(
           onPressed: () =>

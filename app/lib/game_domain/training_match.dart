@@ -169,6 +169,8 @@ class TrainingMatch {
     AttackLoadout? initialLoadoutB,
     List<String>? initialEquippedElementsA,
     List<String>? initialEquippedElementsB,
+    int opponentBaseHp = 100,
+    int? initialPlayerHp,
   }) {
     _progressA = initialProgressA ?? SkillProgress(defaultSkillTree);
     _progressB = initialProgressB ?? SkillProgress(defaultSkillTree);
@@ -185,9 +187,20 @@ class TrainingMatch {
       playerA: _playerA,
       playerB: _playerB,
       playerAMaxHp: _baseMaxHp + _progressA.grantedMaxHpBonus,
-      playerBMaxHp: _baseMaxHp + _progressB.grantedMaxHpBonus,
+      playerBMaxHp: opponentBaseHp + _progressB.grantedMaxHpBonus,
       ap: {_playerA: ?initialApA, _playerB: ?initialApB},
     );
+    if (initialPlayerHp != null) {
+      if (initialPlayerHp < 1 || initialPlayerHp > playerAMaxHp) {
+        throw ArgumentError('HP inicial inválido.');
+      }
+      _state = _state.copyWith(
+        hp: {
+          ..._state.hp,
+          _playerA: HpPool(max: playerAMaxHp, current: initialPlayerHp),
+        },
+      );
+    }
   }
 
   /// Monta uma partida a partir de progresso persistido em disco (ids
@@ -422,6 +435,7 @@ class TrainingMatch {
   String? get winnerName => _state.winner?.name;
 
   bool get isOver => _state.winner != null;
+  bool get playerAWon => _state.winner == _playerA;
 
   bool get _isPlayerATurn => _state.currentTurn == _playerA;
 
@@ -803,7 +817,7 @@ class TrainingMatch {
               .playTurn(_state, TurnAction.defend(actor: actor))
               .state
         : _simulateElements(ids).state;
-    final combo = ids.length > 1
+    final combo = !defending && !thawing && ids.length > 1
         ? defaultCombinationBook.resolve(
             ids
                 .map((id) => Elements.all.firstWhere((e) => e.id == id))
@@ -818,6 +832,9 @@ class TrainingMatch {
       opponentHpLoss:
           _state.hpOf(opponent).current - next.hpOf(opponent).current,
       selfHpLoss: _state.hpOf(actor).current - next.hpOf(actor).current,
+      opponentApLoss:
+          _state.apOf(opponent).current - next.apOf(opponent).current,
+      cleanses: combo?.cleanses ?? false,
       effects: [
         if (thawing) 'Congelamento removido · ação perdida.',
         for (final target in [actor, opponent])

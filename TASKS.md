@@ -4,6 +4,62 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Publicação v0.28.0 em andamento: versionCode 28, APK pelo workflow existente
+e atualização do backend Render com os novos combos. Inclui HUD/dungeon e
+expansão já validados; sem mudança de plano ou serviços pagos.
+
+Checkpoint anterior:
+
+Expansão de combos concluída localmente: 25 duplas + 18 triplas inéditas,
+totalizando 63 receitas (40 duplas/23 triplas). IDs antigos preservados;
+receitas repetidas unificadas. Cura/purificação/redução de AP espelhadas no
+servidor; prévia e feedback em ambos os modos. 53 testes de engine, 44 de
+backend e 11 de prévia/livro aprovados; análise estática dos arquivos do app
+alterados e typecheck TS limpos. Falta playtest em celular e sessão online
+com backend atualizado. Sem combos de 4, gates de itens/classes, APK ou
+publicação neste bloco. Próxima publicação deve atualizar app e servidor.
+Regras e decisões: docs/combo-expansion.md.
+
+Checkpoint anterior:
+
+Dungeon ampliada para 10 salas: HP de 35 a 150, recompensas crescentes (1.000 XP
+no total), 0–3 AP iniciais por patamar e 1–3 habilidades equipadas. Elites
+conservam AP para combos triplos; chefe final apenas na sala 10. Catálogo único
+alimenta combate, indicadores e validação dos saves, preservando progresso antigo.
+11 verificações focadas aprovadas, incluindo simulação das 10 salas, recompensa
+única, retomada e ações visíveis nas duas orientações. Falta playtest de dificuldade
+no celular. Sem APK, publicação ou alteração de Treino/Multiplayer.
+
+Checkpoint anterior:
+
+Dungeon solo concluída localmente: Ruína Elemental (3 salas/IA e guardião de
+Lava), 40/60/100 XP por vitória, níveis com 1 ponto para a árvore existente.
+Escolha inicial de 2 elementos; compra de elementos/talentos no acampamento.
+Talentos de precisão ainda sem efeito não podem consumir pontos neste modo.
+Perfil offline próprio, sem tocar nos saves do Treino ou no Multiplayer.
+HP atravessa salas com recuperação de até 25; AP/status reiniciam. Retomada
+reinicia a sala atual; vitória avança o checkpoint e recompensa apenas uma vez.
+Falha de gravação permite retry; save ilegível é preservado. Combate, IA,
+animações, selos, equipamento e livro reutilizam as regras/interfaces existentes.
+16 testes focados aprovados (7 domínio, 3 UI/IA, 6 Home); análise estática limpa.
+Prévias vertical/horizontal conferidas. Balanceamento e sessão real em celular
+ainda precisam de playtest. Sem APK, commit, publicação ou alteração de backend.
+Detalhes: docs/dungeon.md.
+
+Checkpoint anterior:
+
+Responsividade/HUD concluídos localmente: ação de batalha fixa, grade compacta
+nos dois modos e preparação com colunas adaptativas. Menus, conexão, árvore,
+ataques e livro com espaçamentos menores; seleção/turno com transições discretas.
+Botões principais mantêm altura mínima de 48; escala de fonte preservada e
+rolagem de segurança para listas, descrições e fontes ampliadas.
+12 verificações de layout aprovadas (320x568, 360x640, 568x320 e 740x360),
+mais 8 existentes de home/multiplayer; análise estática limpa nos alterados.
+Conferência visual local nas duas orientações. Falta validar em celular físico.
+Sem alteração de regras/servidor nem publicação neste bloco.
+
+Checkpoint anterior:
+
 Correção do cold start concluída localmente: GET /health aguarda até 60s antes
 de criar/entrar/retomar pelo lobby, com aviso de inicialização. Diagnóstico:
 primeira resposta em 33,1s vs timeout do app de 20s; segunda em 0,4s.

@@ -75,6 +75,17 @@ class StatusEffects {
     description: 'Afeta o campo de batalha, não um combatente específico.',
   );
 
+  static const negative = [
+    burn,
+    poison,
+    freeze,
+    silence,
+    slow,
+    shock,
+    wet,
+    debuff,
+  ];
+
   static const List<StatusEffect> all = [
     guard,
     burn,

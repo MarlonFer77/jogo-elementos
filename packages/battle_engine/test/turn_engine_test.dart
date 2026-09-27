@@ -69,7 +69,7 @@ void main() {
       );
       final action = TurnAction(
         actor: playerA,
-        elements: [Elements.ice, Elements.shadow],
+        elements: [Elements.ice, Elements.fire],
       );
 
       final result = engine.playTurn(state, action);
@@ -258,10 +258,7 @@ void main() {
       final afterUnknown = engine
           .playTurn(
             afterSingle,
-            TurnAction(
-              actor: playerB,
-              elements: [Elements.ice, Elements.shadow],
-            ),
+            TurnAction(actor: playerB, elements: [Elements.ice, Elements.fire]),
           )
           .state;
       expect(afterUnknown.hpOf(playerA).current, equals(100));

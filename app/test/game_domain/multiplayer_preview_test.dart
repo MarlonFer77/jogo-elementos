@@ -5,6 +5,7 @@ import 'package:app/game_domain/multiplayer_match.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Map<String, dynamic> state({bool after = false}) => {
   'playerAId': 'a',
@@ -34,10 +35,59 @@ Map<String, dynamic> matchJson({bool after = false}) => {
   'playerAId': 'a',
   'playerBId': 'b',
   'status': 'in_progress',
+  'revision': after ? 1 : 0,
+  'players': {},
   'state': state(after: after),
   'skillProgress': {},
 };
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+  test(
+    'support preview uses server HP and AP without changing the match',
+    () async {
+      for (final purifying in [true, false]) {
+        final before = state();
+        before['hp']['a']['current'] = 50;
+        before['ap']['a']['current'] = 4;
+        before['ap']['b']['current'] = 2;
+        final after = state(after: true);
+        after['hp']['a']['current'] = purifying ? 62 : 50;
+        after['hp']['b']['current'] = purifying ? 100 : 90;
+        after['ap']['a']['current'] = 2;
+        after['ap']['b']['current'] = purifying ? 2 : 1;
+        final m = MultiplayerMatch(
+          localPlayerId: 'a',
+          client: MultiplayerClient(
+            baseUrl: 'http://test',
+            httpClient: MockClient(
+              (request) async => http.Response(
+                jsonEncode(
+                  request.method == 'GET'
+                      ? {...matchJson(), 'state': before}
+                      : {
+                          'match': {...matchJson(after: true), 'state': after},
+                          'beforeState': before,
+                        },
+                ),
+                200,
+              ),
+            ),
+          ),
+        );
+        await m.reconnect('test');
+        final original = m.match;
+        final preview = await m.previewAction(
+          purifying ? ['water', 'light'] : ['fire', 'shadow'],
+        );
+        expect(preview.selfHpLoss, purifying ? -12 : 0);
+        expect(preview.opponentApLoss, purifying ? 0 : 1);
+        expect(preview.cleanses, purifying);
+        expect(preview.summary, contains(purifying ? '+12 HP' : '−1 AP'));
+        expect(identical(original, m.match), isTrue);
+      }
+    },
+  );
   test(
     'server preview is read-only and uses authoritative before/after snapshots',
     () async {
@@ -54,6 +104,7 @@ void main() {
               'actorId': 'a',
               'elementIds': [],
               'kind': 'defend',
+              'revision': 0,
             });
             return http.Response(
               jsonEncode({

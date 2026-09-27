@@ -14,6 +14,9 @@ class ElementCombination {
   final String resultName;
   final String description;
   final int damage;
+  final int healing;
+  final bool cleanses;
+  final int apDrain;
   final List<TargetedStatus> statusesToApply;
 
   ElementCombination({
@@ -22,8 +25,14 @@ class ElementCombination {
     required this.resultName,
     required this.description,
     this.damage = 0,
+    this.healing = 0,
+    this.cleanses = false,
+    this.apDrain = 0,
     this.statusesToApply = const [],
   }) : elements = Set.unmodifiable(Set.of(elements)) {
+    if (damage < 0 || healing < 0 || apDrain < 0) {
+      throw ArgumentError('Combination values must not be negative');
+    }
     if (this.elements.length < 2 || this.elements.length > 3) {
       throw ArgumentError.value(
         elements,
@@ -39,6 +48,9 @@ class ElementCombination {
     name: resultName,
     description: description,
     damage: damage,
+    healing: healing,
+    cleanses: cleanses,
+    apDrain: apDrain,
     statusesToApply: statusesToApply,
   );
 }

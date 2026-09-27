@@ -6,6 +6,7 @@ import {
   withApRegenerated,
   withApSpent,
   withDamage,
+  withHealing,
   withStatusesTicked,
   withStatusRemoved,
   apOf,
@@ -115,6 +116,17 @@ export function playTurn(
     nextState = withStatusRemoved(nextState, opponentId, 'wet');
   }
 
+  if (combination) {
+    if (combination.cleanses) {
+      for (const id of ['burn', 'poison', 'freeze', 'silence', 'slow', 'shock', 'wet', 'debuff']) {
+        nextState = withStatusRemoved(nextState, action.actorId, id);
+      }
+    }
+    nextState = withHealing(nextState, action.actorId, combination.healing ?? 0);
+    if (!shieldBlocked && (combination.apDrain ?? 0) > 0) {
+      nextState = withApSpent(nextState, opponentId, Math.min(combination.apDrain!, apOf(nextState, opponentId).current));
+    }
+  }
   nextState = tickStatusDamage(nextState, action.actorId);
   if (nextState.winner === null) {
     if (action.kind === 'defend') {

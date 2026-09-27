@@ -1,7 +1,6 @@
 /// An immutable HP pool: how much a combatant can take (`max`) and how
 /// much they have left (`current`). `current` never goes below 0 or above
-/// `max`. There is no healing in this engine yet — both mutating methods
-/// reject a negative `amount`.
+/// `max`. All mutating methods reject a negative `amount`.
 class HpPool {
   final int max;
   final int current;
@@ -9,6 +8,12 @@ class HpPool {
   const HpPool({required this.max, required this.current});
 
   bool get isDefeated => current <= 0;
+
+  HpPool withHealing(int amount) {
+    if (amount < 0) throw ArgumentError.value(amount, 'amount');
+    if (isDefeated) return this;
+    return HpPool(max: max, current: (current + amount).clamp(0, max));
+  }
 
   /// Returns a new pool with [amount] subtracted from `current`, clamped
   /// at 0.

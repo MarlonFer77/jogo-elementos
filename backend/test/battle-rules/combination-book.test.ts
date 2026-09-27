@@ -39,11 +39,11 @@ test("resolves water+ice to glacial prison with freeze", () => {
 });
 
 test("returns null for an unknown combination", () => {
-  const result = defaultCombinationBook.resolve(["ice", "shadow"]);
+  const result = defaultCombinationBook.resolve(["ice", "fire"]);
   assert.equal(result, null);
 });
 
-test("a 2-element subset of a known 3-element combo does not match", () => {
+test("a 2-element subset resolves its own recipe, not the triple", () => {
   const result = defaultCombinationBook.resolve(["earth", "fire"]);
-  assert.equal(result, null);
+  assert.equal(result?.id, 'eruption');
 });

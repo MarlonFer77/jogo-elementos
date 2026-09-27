@@ -22,7 +22,7 @@ class BattleHudWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(4),
       child: Column(
         children: [
           Row(
@@ -137,14 +137,17 @@ class _HudPanel extends StatelessWidget {
         ? Alignment.centerRight
         : Alignment.centerLeft;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    return AnimatedContainer(
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 180),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       decoration: BoxDecoration(
         color: const Color(0xFFF4F4E4),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
           color: isActive ? const Color(0xFFF4C94A) : const Color(0xFF20242B),
-          width: isActive ? 3 : 2,
+          width: 2,
         ),
       ),
       child: Column(
@@ -155,14 +158,16 @@ class _HudPanel extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(3),
             child: SizedBox(
-              height: 10,
+              height: 7,
               child: Stack(
                 alignment: barAlignment,
                 children: [
                   Container(color: const Color(0xFF20242B)),
                   TweenAnimationBuilder<double>(
                     tween: Tween<double>(end: fraction),
-                    duration: const Duration(milliseconds: 400),
+                    duration: MediaQuery.disableAnimationsOf(context)
+                        ? Duration.zero
+                        : const Duration(milliseconds: 400),
                     builder: (context, value, _) {
                       return FractionallySizedBox(
                         alignment: barAlignment,
@@ -192,12 +197,12 @@ class _HudPanel extends StatelessWidget {
             children: [
               for (var i = 0; i < apMax; i++)
                 Container(
-                  width: 12,
-                  height: 12,
+                  width: 9,
+                  height: 9,
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(2),
                     color: i < ap
-                        ? const Color(0xFF7C4DFF)
+                        ? const Color(0xFFC39B38)
                         : const Color(0xFFE0E0E0),
                     border: Border.all(
                       color: const Color(0xFF20242B),

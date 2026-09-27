@@ -11,6 +11,8 @@ import '../game_domain/battle_scene_view.dart';
 import '../game_domain/element_catalog.dart';
 import '../game_domain/training_match.dart';
 import '../game_domain/training_progress_store.dart';
+import '../game_domain/dungeon_campaign.dart';
+import '../game_domain/combination_catalog.dart';
 import '../game_presentation/battle_scene_widget.dart';
 import '../game_presentation/battle_result_panel.dart';
 import '../game_presentation/battle_command_panel.dart';
@@ -35,10 +37,17 @@ import 'skill_tree_screen.dart';
 /// Jogador B) escolhe 2 elementos iniciais via [ElementStarterScreen] —
 /// só acontece uma vez por slot, nunca de novo depois de salvo.
 class TrainingScreen extends StatefulWidget {
-  const TrainingScreen({super.key, TrainingMatch? initialMatch})
-    : _initialMatch = initialMatch;
+  const TrainingScreen({
+    super.key,
+    TrainingMatch? initialMatch,
+    this.dungeon,
+    this.encounter,
+  }) : assert((dungeon == null) == (encounter == null)),
+       _initialMatch = initialMatch;
 
   final TrainingMatch? _initialMatch;
+  final DungeonCampaign? dungeon;
+  final DungeonEncounter? encounter;
 
   @override
   State<TrainingScreen> createState() => _TrainingScreenState();
@@ -70,11 +79,16 @@ class _TrainingScreenState extends State<TrainingScreen> {
   List<String>? _equippedElementsB;
   bool? _pendingEquipChoicePlayerA;
   String? _actionText;
+  bool _aiThinking = false, _savingReward = false;
+  String? _dungeonReward, _rewardError;
+  bool get _enemyTurn =>
+      widget.dungeon != null && !_match.isPlayerATurn && !_match.isOver;
+  bool get _controlsLocked => _executing || _enemyTurn;
 
   @override
   void initState() {
     super.initState();
-    final initial = widget._initialMatch;
+    final initial = widget.encounter?.match ?? widget._initialMatch;
     if (initial != null) {
       _match = initial;
       _loading = false;
@@ -161,10 +175,14 @@ class _TrainingScreenState extends State<TrainingScreen> {
 
   bool? _channelingLeft;
 
-  Future<void> _playTurn() async {
-    if (_executing || _match.isOver) return;
+  Future<void> _playTurn({bool automated = false}) async {
+    if (_executing || _match.isOver || (_enemyTurn && !automated)) return;
     final wasPlayerATurn = _match.isPlayerATurn;
-    final actorName = _match.currentTurnName;
+    final actorName = widget.dungeon == null
+        ? _match.currentTurnName
+        : wasPlayerATurn
+        ? 'Você'
+        : widget.encounter!.room.name;
     final defending = _defending;
     final thawing = _match.currentPlayerIsFrozen;
     List<Map<String, num>>? sealTrace;
@@ -173,7 +191,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
         : _match.equippedAttacksForCurrentPlayer
               .firstWhere((a) => a.id == _selectedAttackId)
               .elementIds;
-    if (!defending && !thawing && sealIds.length > 1) {
+    if (!automated && !defending && !thawing && sealIds.length > 1) {
       try {
         _match.previewAction(sealIds, attackId: _selectedAttackId);
         setState(() => _executing = true);
@@ -210,6 +228,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
       var playedElementIds = _selectedIds.toList();
       final hpABefore = _match.playerACurrentHp;
       final hpBBefore = _match.playerBCurrentHp;
+      final targetApBefore = wasPlayerATurn
+          ? _match.playerBAp
+          : _match.playerAAp;
       final discoveredCountBefore = _match.discoveredCombinationIds.length;
       try {
         if (!thawing && attackId != null) {
@@ -258,44 +279,73 @@ class _TrainingScreenState extends State<TrainingScreen> {
           elementIds: playedElementIds,
           comboName: _match.lastTriggeredCombinationName,
           damage: damage,
+          healing:
+              (wasPlayerATurn
+                      ? _match.playerACurrentHp - hpABefore
+                      : _match.playerBCurrentHp - hpBBefore)
+                  .clamp(0, 9999),
+          apDrained:
+              (targetApBefore -
+                      (wasPlayerATurn ? _match.playerBAp : _match.playerAAp))
+                  .clamp(0, 9999),
+          purified:
+              const CombinationCatalog()
+                  .byElements(playedElementIds)
+                  ?.cleanses ??
+              false,
           appliedStatusNames: _match.lastAppliedStatusNames,
           isDefend: defending,
           isFrozenRecovery: thawing,
           isFizzle: fizzled,
         );
-        if (_match.discoveredCombinationIds.length != discoveredCountBefore) {
-          unawaited(
-            _progressStore.saveDiscoveredCombinationIds(
-              _match.discoveredCombinationIds,
-            ),
-          );
+        if (widget.dungeon != null &&
+            wasPlayerATurn &&
+            _match.lastUnlockedAttackName != null) {
+          _actionText =
+              '$_actionText\nNova habilidade: ${_match.lastUnlockedAttackName}!';
         }
-        if (wasPlayerATurn) {
-          unawaited(
-            _progressStore.saveTurnsPlayed('a', _match.cumulativeTurnsPlayedA),
-          );
-        } else {
-          unawaited(
-            _progressStore.saveTurnsPlayed('b', _match.cumulativeTurnsPlayedB),
-          );
-        }
-        if (_match.lastUnlockedAttackName != null) {
-          final slot = wasPlayerATurn ? 'a' : 'b';
-          final unlockedIds = wasPlayerATurn
-              ? _match.unlockedAttackIdsForPlayerA
-              : _match.unlockedAttackIdsForPlayerB;
-          final equippedIds = wasPlayerATurn
-              ? _match.equippedAttackIdsForPlayerA
-              : _match.equippedAttackIdsForPlayerB;
-          unawaited(_progressStore.saveUnlockedAttackIds(slot, unlockedIds));
-          unawaited(_progressStore.saveEquippedAttackIds(slot, equippedIds));
-          if (!_match.lastUnlockedAttackNeededEquipChoice) {
-            _lastUnlockedAttackText =
-                'Novo ataque desbloqueado: ${_match.lastUnlockedAttackName}! '
-                '(equipado automaticamente)';
+        if (widget.dungeon == null) {
+          if (_match.discoveredCombinationIds.length != discoveredCountBefore) {
+            unawaited(
+              _progressStore.saveDiscoveredCombinationIds(
+                _match.discoveredCombinationIds,
+              ),
+            );
+          }
+          if (wasPlayerATurn) {
+            unawaited(
+              _progressStore.saveTurnsPlayed(
+                'a',
+                _match.cumulativeTurnsPlayedA,
+              ),
+            );
+          } else {
+            unawaited(
+              _progressStore.saveTurnsPlayed(
+                'b',
+                _match.cumulativeTurnsPlayedB,
+              ),
+            );
+          }
+          if (_match.lastUnlockedAttackName != null) {
+            final slot = wasPlayerATurn ? 'a' : 'b';
+            final unlockedIds = wasPlayerATurn
+                ? _match.unlockedAttackIdsForPlayerA
+                : _match.unlockedAttackIdsForPlayerB;
+            final equippedIds = wasPlayerATurn
+                ? _match.equippedAttackIdsForPlayerA
+                : _match.equippedAttackIdsForPlayerB;
+            unawaited(_progressStore.saveUnlockedAttackIds(slot, unlockedIds));
+            unawaited(_progressStore.saveEquippedAttackIds(slot, equippedIds));
+            if (!_match.lastUnlockedAttackNeededEquipChoice) {
+              _lastUnlockedAttackText =
+                  'Novo ataque desbloqueado: ${_match.lastUnlockedAttackName}! '
+                  '(equipado automaticamente)';
+            }
           }
         }
-        if (_match.lastUnlockedAttackNeededEquipChoice) {
+        if (_match.lastUnlockedAttackNeededEquipChoice &&
+            (widget.dungeon == null || wasPlayerATurn)) {
           _pendingEquipChoicePlayerA = wasPlayerATurn;
         }
       } on ArgumentError {
@@ -308,8 +358,8 @@ class _TrainingScreenState extends State<TrainingScreen> {
     });
   }
 
-  void _finishAttack() {
-    if (!mounted) return;
+  Future<void> _finishAttack() async {
+    if (!mounted || !_executing) return;
     final equipPlayerA = _pendingEquipChoicePlayerA;
     setState(() {
       _executing = false;
@@ -317,15 +367,73 @@ class _TrainingScreenState extends State<TrainingScreen> {
       _actionText = null;
       _pendingEquipChoicePlayerA = null;
     });
-    if (_match.isOver) sfxPlayer.play(SfxId.victory);
+    if (_match.isOver) {
+      sfxPlayer.play(
+        widget.dungeon != null && !_match.playerAWon
+            ? SfxId.defeat
+            : SfxId.victory,
+      );
+      if (widget.dungeon != null) {
+        await _saveDungeonResult();
+        return;
+      }
+    }
     if (equipPlayerA != null) {
-      unawaited(
-        _openAttacksScreen(
-          forPlayerA: equipPlayerA,
-          highlightComboId: _match.lastUnlockedAttackId,
-        ),
+      await _openAttacksScreen(
+        forPlayerA: equipPlayerA,
+        highlightComboId: _match.lastUnlockedAttackId,
       );
     }
+    if (mounted && _enemyTurn) unawaited(_runEnemy());
+  }
+
+  Future<void> _runEnemy() async {
+    if (!_enemyTurn || _aiThinking || _executing) return;
+    final choice = DungeonOpponent.choose(_match);
+    setState(() {
+      _aiThinking = true;
+      _channelingLeft = choice.elements.length > 1 ? false : null;
+      _actionText = '${widget.encounter!.room.name} prepara sua ação…';
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 650));
+    if (!mounted) return;
+    setState(() {
+      _aiThinking = false;
+      _channelingLeft = null;
+      _selectedIds
+        ..clear()
+        ..addAll(choice.elements);
+      _selectedAttackId = choice.attackId;
+      _defending = choice.defending;
+    });
+    await _playTurn(automated: true);
+  }
+
+  Future<void> _saveDungeonResult() async {
+    if (_savingReward || _dungeonReward != null) return;
+    setState(() {
+      _savingReward = true;
+      _rewardError = null;
+    });
+    try {
+      final reward = await widget.dungeon!.complete(widget.encounter!);
+      if (mounted) setState(() => _dungeonReward = reward);
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _rewardError =
+              'Não foi possível salvar a recompensa. Tente novamente.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingReward = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    if (widget.encounter != null) widget.dungeon!.leave(widget.encounter!);
+    super.dispose();
   }
 
   void _startNewMatch() {
@@ -342,6 +450,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
   }
 
   Future<void> _openSkillTree() async {
+    if (widget.dungeon != null) return;
     await Navigator.of(context).push(
       pixelSlideRoute(
         (_) => SkillTreeScreen(
@@ -408,7 +517,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
                 combinationIds: ids,
               );
               final slot = forPlayerA ? 'a' : 'b';
-              unawaited(_progressStore.saveEquippedAttackIds(slot, ids));
+              if (widget.dungeon == null) {
+                unawaited(_progressStore.saveEquippedAttackIds(slot, ids));
+              }
               return null;
             } on ArgumentError catch (e) {
               return e.message;
@@ -425,10 +536,13 @@ class _TrainingScreenState extends State<TrainingScreen> {
     await Navigator.of(context).push(
       pixelSlideRoute(
         (_) => DiscoveryBookScreen(
-          playerLabel:
-              'Treino · ${_match.currentTurnName} · registro compartilhado',
+          playerLabel: widget.dungeon == null
+              ? 'Treino · ${_match.currentTurnName} · registro compartilhado'
+              : 'Dungeon · suas descobertas',
           entries: () => const DiscoveryCatalog().entries(
-            discoveredIds: _match.discoveredCombinationIds,
+            discoveredIds: widget.dungeon == null
+                ? _match.discoveredCombinationIds
+                : _match.unlockedAttackIdsForPlayerA,
             learnedIds: forPlayerA
                 ? _match.unlockedAttackIdsForPlayerA
                 : _match.unlockedAttackIdsForPlayerB,
@@ -465,168 +579,222 @@ class _TrainingScreenState extends State<TrainingScreen> {
         onConfirm: (ids) => unawaited(_confirmStartingElements(ids)),
       );
     }
-    return Scaffold(
-      backgroundColor: const Color(0xFF344C56),
-      appBar: AppBar(
+    return PopScope(
+      canPop:
+          widget.dungeon == null ||
+          (!_savingReward &&
+              !_executing &&
+              !_aiThinking &&
+              (!_match.isOver || _dungeonReward != null)),
+      child: Scaffold(
         backgroundColor: const Color(0xFF344C56),
-        foregroundColor: const Color(0xFFF8F2DA),
-        toolbarHeight: 44,
-        title: const Text(
-          'ELEMENTOS',
-          style: TextStyle(
-            fontFamily: 'monospace',
-            fontSize: 17,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 2,
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF344C56),
+          foregroundColor: const Color(0xFFF8F2DA),
+          toolbarHeight: 44,
+          title: Text(
+            widget.encounter == null
+                ? 'ELEMENTOS'
+                : 'RUÍNA · SALA ${widget.encounter!.index + 1}/${DungeonRoom.all.length}',
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 2,
+            ),
           ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.menu_book),
+              tooltip: 'Livro de Descobertas',
+              onPressed:
+                  _controlsLocked || (widget.dungeon != null && _match.isOver)
+                  ? null
+                  : _openDiscoveryBook,
+            ),
+            IconButton(
+              icon: const Icon(Icons.account_tree_outlined),
+              tooltip: widget.dungeon == null
+                  ? 'Árvore'
+                  : 'Evolua a árvore no acampamento',
+              onPressed:
+                  _controlsLocked || _match.isOver || widget.dungeon != null
+                  ? null
+                  : _openSkillTree,
+            ),
+            IconButton(
+              icon: const Icon(Icons.info_outline),
+              tooltip: 'Resumo da batalha',
+              onPressed: _openBattleSummary,
+            ),
+          ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.menu_book),
-            tooltip: 'Livro de Descobertas',
-            onPressed: _executing ? null : _openDiscoveryBook,
-          ),
-          IconButton(
-            icon: const Icon(Icons.account_tree_outlined),
-            tooltip: 'Árvore',
-            onPressed: _executing || _match.isOver ? null : _openSkillTree,
-          ),
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            tooltip: 'Resumo da batalha',
-            onPressed: _openBattleSummary,
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final horizontal =
-                constraints.maxWidth >= 480 &&
-                constraints.maxWidth > constraints.maxHeight;
-            final arenaHeight = (constraints.maxHeight * .49).clamp(
-              150.0,
-              360.0,
-            );
-            // Keep the same widget tree when rotating so Flame and the
-            // active animation are not disposed/replayed.
-            return Flex(
-              direction: horizontal ? Axis.horizontal : Axis.vertical,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(
-                  width: horizontal
-                      ? constraints.maxWidth -
-                            (constraints.maxWidth * .45).clamp(280.0, 420.0)
-                      : null,
-                  height: horizontal ? constraints.maxHeight : arenaHeight,
-                  child: BattleSceneWidget(
-                    channelingLeft: _channelingLeft,
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final horizontal =
+                  constraints.maxWidth >= 480 &&
+                  constraints.maxWidth > constraints.maxHeight;
+              final arenaHeight =
+                  (constraints.maxHeight -
+                          330 *
+                              MediaQuery.textScalerOf(
+                                context,
+                              ).scale(1).clamp(1.0, 1.4))
+                      .clamp(
+                        constraints.maxHeight * .25,
+                        constraints.maxHeight * .48,
+                      );
+              // Keep the same widget tree when rotating so Flame and the
+              // active animation are not disposed/replayed.
+              return Flex(
+                direction: horizontal ? Axis.horizontal : Axis.vertical,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    width: horizontal
+                        ? constraints.maxWidth -
+                              (constraints.maxWidth * .59).clamp(310.0, 600.0)
+                        : null,
                     height: horizontal ? constraints.maxHeight : arenaHeight,
-                    onAttackComplete: _finishAttack,
-                    view: BattleSceneView(
-                      leftCurrentHp: _match.playerACurrentHp,
-                      leftMaxHp: _match.playerAMaxHp,
-                      rightCurrentHp: _match.playerBCurrentHp,
-                      rightMaxHp: _match.playerBMaxHp,
-                      isLeftTurn: _match.isPlayerATurn,
-                      lastAttack: _pendingAttack,
-                      leftLabel: 'Jogador A',
-                      rightLabel: 'Jogador B',
-                      leftStatuses: _match.playerAActiveStatuses,
-                      rightStatuses: _match.playerBActiveStatuses,
-                      fieldEffects: _match.activeFieldEffectBadges,
-                      leftAp: _match.playerAAp,
-                      leftApMax: _match.playerAApMax,
-                      rightAp: _match.playerBAp,
-                      rightApMax: _match.playerBApMax,
+                    child: BattleSceneWidget(
+                      channelingLeft: _channelingLeft,
+                      height: horizontal ? constraints.maxHeight : arenaHeight,
+                      onAttackComplete: _finishAttack,
+                      view: BattleSceneView(
+                        leftCurrentHp: _match.playerACurrentHp,
+                        leftMaxHp: _match.playerAMaxHp,
+                        rightCurrentHp: _match.playerBCurrentHp,
+                        rightMaxHp: _match.playerBMaxHp,
+                        isLeftTurn: _match.isPlayerATurn,
+                        lastAttack: _pendingAttack,
+                        leftLabel: widget.dungeon == null
+                            ? 'Jogador A'
+                            : 'Você',
+                        rightLabel: widget.encounter?.room.name ?? 'Jogador B',
+                        leftStatuses: _match.playerAActiveStatuses,
+                        rightStatuses: _match.playerBActiveStatuses,
+                        fieldEffects: _match.activeFieldEffectBadges,
+                        leftAp: _match.playerAAp,
+                        leftApMax: _match.playerAApMax,
+                        rightAp: _match.playerBAp,
+                        rightApMax: _match.playerBApMax,
+                      ),
                     ),
                   ),
-                ),
-                Expanded(
-                  child: Container(
-                    key: const ValueKey('battle-commands'),
-                    margin: const EdgeInsets.fromLTRB(6, 0, 6, 6),
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8F2DA),
-                      border: Border.all(
-                        color: const Color(0xFFACB7A1),
-                        width: 4,
-                      ),
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          _executing
-                              ? 'Ataque em execução…'
-                              : _match.isOver
-                              ? 'Batalha encerrada'
-                              : 'Vez de: ${_match.currentTurnName}',
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
+                  Expanded(
+                    child: Container(
+                      key: const ValueKey('battle-commands'),
+                      margin: const EdgeInsets.fromLTRB(6, 0, 6, 6),
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8F2DA),
+                        border: Border.all(
+                          color: const Color(0xFFACB7A1),
+                          width: 4,
                         ),
-                        if (!_executing && !_match.isOver) _commandTabs(),
-                        Expanded(
-                          child: SingleChildScrollView(
-                            key: const ValueKey('command-scroll'),
-                            child: AbsorbPointer(
-                              absorbing: _executing,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: _executing
-                                    ? [
-                                        const SizedBox(height: 20),
-                                        Text(
-                                          _actionText ?? 'Resolvendo ataque…',
-                                          style: const TextStyle(
-                                            fontFamily: 'monospace',
-                                            fontSize: 18,
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            _controlsLocked
+                                ? 'Ataque em execução…'
+                                : _match.isOver
+                                ? 'Batalha encerrada'
+                                : widget.dungeon == null
+                                ? 'Vez de: ${_match.currentTurnName}'
+                                : 'Sua vez',
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          if (!_controlsLocked && !_match.isOver)
+                            _commandTabs(),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              key: const ValueKey('command-scroll'),
+                              child: AbsorbPointer(
+                                absorbing: _controlsLocked,
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: _controlsLocked
+                                      ? [
+                                          const SizedBox(height: 20),
+                                          Text(
+                                            _actionText ?? 'Resolvendo ataque…',
+                                            style: const TextStyle(
+                                              fontFamily: 'monospace',
+                                              fontSize: 18,
+                                            ),
                                           ),
-                                        ),
-                                      ]
-                                    : _match.isOver
-                                    ? _gameOverCommands()
-                                    : _battleCommands(),
+                                        ]
+                                      : _match.isOver
+                                      ? _gameOverCommands()
+                                      : _battleCommands(),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        if (!_executing && !_match.isOver) _actionCommand(),
-                      ],
+                          if (!_controlsLocked && !_match.isOver)
+                            _actionCommand(),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
-            );
-          },
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
-  List<Widget> _gameOverCommands() => [
-    BattleResultPanel(
-      title: 'VITÓRIA',
-      subtitle: '${_match.winnerName} venceu o duelo!',
-      sharedDiscoveries: _match.gainsForPlayer(true).discoveries,
-      players: [
-        for (final isA in [true, false])
-          BattleResultPlayer(
-            label: isA ? 'Jogador A' : 'Jogador B',
-            gains: _match.gainsForPlayer(isA),
-            onReview: () => _openAttacksScreen(forPlayerA: isA),
+  List<Widget> _gameOverCommands() => widget.dungeon != null
+      ? [
+          PixelOutlinedText(
+            _match.playerAWon ? 'VITÓRIA' : 'DERROTA',
+            fontSize: 20,
           ),
-      ],
-      onRematch: _startNewMatch,
-      onMenu: () => Navigator.of(context).popUntil((route) => route.isFirst),
-    ),
-  ];
+          const SizedBox(height: 8),
+          Text(_dungeonReward ?? _rewardError ?? 'Salvando progresso…'),
+          const SizedBox(height: 8),
+          if (_rewardError != null)
+            PixelMenuButton(
+              label: 'Tentar salvar novamente',
+              onPressed: _savingReward ? null : _saveDungeonResult,
+            ),
+          PixelMenuButton(
+            label: 'Voltar ao acampamento',
+            primary: true,
+            onPressed: _dungeonReward == null
+                ? null
+                : () => Navigator.pop(context),
+          ),
+        ]
+      : [
+          BattleResultPanel(
+            title: 'VITÓRIA',
+            subtitle: '${_match.winnerName} venceu o duelo!',
+            sharedDiscoveries: _match.gainsForPlayer(true).discoveries,
+            players: [
+              for (final isA in [true, false])
+                BattleResultPlayer(
+                  label: isA ? 'Jogador A' : 'Jogador B',
+                  gains: _match.gainsForPlayer(isA),
+                  onReview: () => _openAttacksScreen(forPlayerA: isA),
+                ),
+            ],
+            onRematch: _startNewMatch,
+            onMenu: () =>
+                Navigator.of(context).popUntil((route) => route.isFirst),
+          ),
+        ];
 
   List<Widget> _battleCommands() {
     if (_match.currentPlayerIsFrozen) {
@@ -698,7 +866,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                       title: elements
                           .firstWhere((e) => e.id == equipped[i])
                           .name,
-                      detail: '0 AP · ataque básico',
+                      detail: '0 AP',
                       selected:
                           _selectedIds.length == 1 &&
                           _selectedIds.contains(equipped[i]),
@@ -722,52 +890,44 @@ class _TrainingScreenState extends State<TrainingScreen> {
                     ),
               ],
       ),
-      if (!_showAbilities)
-        Row(
-          children: [
-            Expanded(
-              child: TextButton(
-                onPressed: _executing
-                    ? null
-                    : () => _openElementPicker(elements),
-                child: const Text('Combinar elementos'),
+      Row(
+        children: [
+          Expanded(
+            child: TextButton(
+              onPressed: _executing ? null : () => _openElementPicker(elements),
+              child: const Text(
+                'Combinar',
+                semanticsLabel: 'Combinar elementos',
               ),
             ),
-            Expanded(
-              child: TextButton(
-                onPressed: _executing ? null : _openElementLoadout,
-                child: const Text('Trocar elementos'),
-              ),
+          ),
+          Expanded(
+            child: TextButton(
+              onPressed: _executing
+                  ? null
+                  : _showAbilities
+                  ? () => _openAttacksScreen(forPlayerA: _match.isPlayerATurn)
+                  : _openElementLoadout,
+              child: const Text('Equipar'),
             ),
-          ],
-        ),
+          ),
+          Expanded(
+            child: TextButton(
+              onPressed: _executing
+                  ? null
+                  : () => setState(() {
+                      _defending = true;
+                      _selectedIds.clear();
+                      _selectedAttackId = null;
+                      _error = null;
+                    }),
+              child: Text(_defending ? 'Defesa ✓' : 'Defender'),
+            ),
+          ),
+        ],
+      ),
       if (_error != null)
         Text(_error!, style: const TextStyle(color: Color(0xFF9D322E))),
-      TextButton.icon(
-        icon: const Icon(Icons.shield_outlined, size: 18),
-        label: Text(_defending ? 'Defesa selecionada' : 'Defender'),
-        onPressed: _executing
-            ? null
-            : () => setState(() {
-                _defending = true;
-                _selectedIds.clear();
-                _selectedAttackId = null;
-                _error = null;
-              }),
-      ),
-      if (_error == null &&
-          (_defending || _selectedIds.isNotEmpty || _selectedAttackId != null))
-        Text(_previewText(), style: const TextStyle(fontSize: 12)),
-      if (_selectedIds.length > 1)
-        Text(
-          'Combinar: ${elements.where((e) => _selectedIds.contains(e.id)).map((e) => e.name).join(' + ')}',
-          style: const TextStyle(fontSize: 12),
-        ),
-      if (_lastUnlockedAttackText != null)
-        Text(
-          _lastUnlockedAttackText!,
-          style: const TextStyle(fontSize: 12, color: Color(0xFF38653F)),
-        ),
     ];
   }
 
@@ -829,13 +989,16 @@ class _TrainingScreenState extends State<TrainingScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (_error == null && _previewText().contains('\n'))
-            Text(
-              _previewText().split('\n').take(2).join(' · '),
-              key: const ValueKey('action-preview-compact'),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11),
+          if (_error == null)
+            Tooltip(
+              message: _previewText(),
+              child: Text(
+                _previewText().split('\n').take(2).join(' · '),
+                key: const ValueKey('action-preview-compact'),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11),
+              ),
             ),
           PixelMenuButton(
             label: _defending
@@ -864,6 +1027,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
     child: TextButton(
       onPressed: _executing ? null : onTap,
       style: TextButton.styleFrom(
+        backgroundColor: selected ? const Color(0xFFF2DB88) : null,
         foregroundColor: selected
             ? const Color(0xFF253843)
             : const Color(0xFF77766C),
@@ -927,8 +1091,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const PixelOutlinedText('Batalha', fontSize: 18),
+          if (_lastUnlockedAttackText != null) Text(_lastUnlockedAttackText!),
           Text(
-            'Descobertas: ${_match.discoveredCount}/${_match.totalCombinationsCount}',
+            'Descobertas: ${widget.dungeon == null ? _match.discoveredCount : _match.unlockedAttackIdsForPlayerA.length}/${_match.totalCombinationsCount}',
           ),
           if (_match.lastTriggeredCombinationName != null)
             Text('Última combinação: ${_match.lastTriggeredCombinationName}'),
@@ -1003,10 +1168,12 @@ class _TrainingScreenState extends State<TrainingScreen> {
       _selectedAttackId = null;
       _error = null;
     });
-    await _progressStore.saveEquippedElementIds(
-      _match.isPlayerATurn ? 'a' : 'b',
-      chosen,
-    );
+    if (widget.dungeon == null) {
+      await _progressStore.saveEquippedElementIds(
+        _match.isPlayerATurn ? 'a' : 'b',
+        chosen,
+      );
+    }
   }
 
   Future<void> _openElementPicker(List<ElementOption> elements) async {

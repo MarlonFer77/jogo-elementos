@@ -54,8 +54,8 @@ void main() {
       initialProgressA: _allElementsUnlocked(),
     );
 
-    match.setEquippedElements(['ice', 'shadow']);
-    match.playElementIds(['ice', 'shadow']);
+    match.setEquippedElements(['ice', 'fire']);
+    match.playElementIds(['ice', 'fire']);
 
     expect(match.lastTriggeredCombinationName, isNull);
     expect(match.activeFieldEffectNames, isEmpty);

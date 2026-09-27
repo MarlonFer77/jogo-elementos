@@ -77,7 +77,7 @@ test("playing a known 2-element combination adds it to the field", () => {
 test("playing an unknown combination advances the turn without adding a field effect", () => {
   const result = playTurn(
     startState(),
-    { actorId: "a", elementIds: ["ice", "shadow"] },
+    { actorId: "a", elementIds: ["ice", "fire"] },
     defaultCombinationBook,
   );
   assert.equal(result.triggeredCombinationId, null);
@@ -112,7 +112,7 @@ test("a triggered combination damages the opponent, not the actor", () => {
 test("an unknown combination deals no damage", () => {
   const result = playTurn(
     startState(),
-    { actorId: "a", elementIds: ["ice", "shadow"] },
+    { actorId: "a", elementIds: ["ice", "fire"] },
     defaultCombinationBook,
   );
   assert.deepEqual(hpOf(result.state, "b"), { max: 100, current: 100 });

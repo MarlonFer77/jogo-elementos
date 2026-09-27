@@ -20,25 +20,27 @@ class MultiplayerConnectionPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, box) {
-      final wide = box.maxWidth >= 600 && box.maxWidth > box.maxHeight;
+      final wide = box.maxWidth >= 540 && box.maxWidth > box.maxHeight;
+      final compact = box.maxHeight < 720;
       final intro = Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TickerMode(
-            enabled: !MediaQuery.disableAnimationsOf(context),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TrainerSpriteImage(size: Size(48, 60)),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: Icon(Icons.sync_alt, color: Color(0xFFE1C778)),
-                ),
-                TrainerSpriteImage(size: Size(48, 60), mirror: true),
-              ],
+          if (!compact || wide)
+            TickerMode(
+              enabled: !MediaQuery.disableAnimationsOf(context),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TrainerSpriteImage(size: Size(48, 60)),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: Icon(Icons.sync_alt, color: Color(0xFFE1C778)),
+                  ),
+                  TrainerSpriteImage(size: Size(48, 60), mirror: true),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
+          SizedBox(height: compact ? 2 : 12),
           Semantics(
             liveRegion: true,
             child: Text(
@@ -52,16 +54,17 @@ class MultiplayerConnectionPanel extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontFamily: 'monospace',
-              fontSize: 13,
-              color: Color(0xFFF1E8C9),
+          if (!compact || wide || connecting) const SizedBox(height: 8),
+          if (!compact || wide || connecting)
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 13,
+                color: Color(0xFFF1E8C9),
+              ),
             ),
-          ),
           if (connecting)
             const Padding(
               padding: EdgeInsets.only(top: 16),
@@ -90,7 +93,7 @@ class MultiplayerConnectionPanel extends StatelessWidget {
         ),
       );
       return SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(8),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1000),

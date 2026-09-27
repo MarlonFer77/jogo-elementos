@@ -23,6 +23,8 @@ class SkillTreeScreen extends StatefulWidget {
     required this.canUnlockNow,
     required this.onUnlock,
     this.extraLockedHint,
+    this.progressLabel,
+    this.unlockLabel = 'Desbloquear',
   });
 
   final String title;
@@ -30,6 +32,8 @@ class SkillTreeScreen extends StatefulWidget {
   final bool canUnlockNow;
   final Future<String?> Function(String nodeId) onUnlock;
   final String? Function(String nodeId)? extraLockedHint;
+  final String Function()? progressLabel;
+  final String unlockLabel;
 
   @override
   State<SkillTreeScreen> createState() => _SkillTreeScreenState();
@@ -50,12 +54,19 @@ class _SkillTreeScreenState extends State<SkillTreeScreen> {
         Scaffold(
           backgroundColor: Colors.transparent,
           appBar: AppBar(
+            bottom: widget.progressLabel == null
+                ? null
+                : PreferredSize(
+                    preferredSize: const Size.fromHeight(24),
+                    child: Text(widget.progressLabel!()),
+                  ),
+            toolbarHeight: 44,
             backgroundColor: Colors.transparent,
             elevation: 0,
             title: PixelOutlinedText(widget.title, fontSize: 20),
           ),
           body: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(8),
             child: PixelContentPanel(
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -64,7 +75,7 @@ class _SkillTreeScreenState extends State<SkillTreeScreen> {
                   children: [
                     for (final branch in branches)
                       Padding(
-                        padding: const EdgeInsets.only(right: 24),
+                        padding: const EdgeInsets.only(right: 12),
                         child: _BranchColumn(
                           branch: branch,
                           nodes: orderBranchNodes(
@@ -128,7 +139,7 @@ class _SkillTreeScreenState extends State<SkillTreeScreen> {
                       PixelMenuButton(
                         label: _unlockPending
                             ? 'Desbloqueando…'
-                            : 'Desbloquear',
+                            : widget.unlockLabel,
                         onPressed: _unlockPending
                             ? null
                             : () async {

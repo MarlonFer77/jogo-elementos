@@ -94,11 +94,13 @@ class _BattleSceneWidgetState extends State<BattleSceneWidget> {
         : widget.view.rightLabel;
     final channeling =
         attack.comboName != null || attack.elementIds.length != 1;
-    final result = !_impactSeen
-        ? 'Preparando ataque…'
-        : attack.damage > 0
-        ? '${attack.damage} de dano'
-        : 'Sem dano';
+    final parts = [
+      if (attack.damage > 0) '${attack.damage} de dano',
+      if (attack.healing > 0) '+${attack.healing} HP',
+      if (attack.apDrained > 0) 'Alvo −${attack.apDrained} AP',
+      if (attack.purified) 'Purificação',
+    ];
+    final result = parts.isEmpty ? 'Sem dano' : parts.join(' · ');
     return IgnorePointer(
       child: Semantics(
         liveRegion: true,
@@ -121,7 +123,7 @@ class _BattleSceneWidgetState extends State<BattleSceneWidget> {
                 : channeling
                 ? 'Canalizando · $name'
                 : '$actor · $name',
-            maxLines: 1,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontFamily: 'monospace',

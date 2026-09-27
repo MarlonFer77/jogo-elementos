@@ -4,6 +4,8 @@ class ActionPreview {
   final int apAfter;
   final int opponentHpLoss;
   final int selfHpLoss;
+  final int opponentApLoss;
+  final bool cleanses;
   final List<String> effects;
   final bool regeneratesAp;
 
@@ -12,6 +14,8 @@ class ActionPreview {
     required this.apAfter,
     required this.opponentHpLoss,
     required this.selfHpLoss,
+    this.opponentApLoss = 0,
+    this.cleanses = false,
     this.effects = const [],
     this.regeneratesAp = true,
   });
@@ -21,5 +25,8 @@ class ActionPreview {
       '${regeneratesAp ? '(inclui +1 ao agir)' : '(sem regeneração nesta ação)'}\n'
       'HP previsto: adversário −$opponentHpLoss'
       '${selfHpLoss > 0 ? ' · você −$selfHpLoss' : ''}'
+      '${selfHpLoss < 0 ? ' · você +${-selfHpLoss} HP' : ''}'
+      '${opponentApLoss > 0 ? ' · alvo −$opponentApLoss AP' : ''}'
+      '${cleanses ? ' · Purificação' : ''}'
       '${effects.isEmpty ? '' : '\n${effects.join(' · ')}'}';
 }

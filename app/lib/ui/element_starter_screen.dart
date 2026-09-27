@@ -16,6 +16,7 @@ class ElementStarterScreen extends StatefulWidget {
     required this.playerLabel,
     required this.onConfirm,
     this.step = 1,
+    this.totalSteps = 2,
     this.confirmLabel = 'Confirmar',
     this.modeLabel = 'TREINO',
   });
@@ -23,6 +24,7 @@ class ElementStarterScreen extends StatefulWidget {
   final String playerLabel;
   final ValueChanged<List<String>> onConfirm;
   final int step;
+  final int totalSteps;
   final String confirmLabel;
   final String modeLabel;
 
@@ -64,6 +66,7 @@ class _ElementStarterScreenState extends State<ElementStarterScreen> {
             final horizontal =
                 constraints.maxWidth >= 480 &&
                 constraints.maxWidth > constraints.maxHeight;
+            final compact = constraints.maxHeight < 740;
             final intro = SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(12),
@@ -71,74 +74,79 @@ class _ElementStarterScreenState extends State<ElementStarterScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'ETAPA ${widget.step}/2 · ${widget.playerLabel}',
+                      'ETAPA ${widget.step}/${widget.totalSteps} · ${widget.playerLabel}',
                       style: const TextStyle(
                         color: Color(0xFFF2DB88),
                         fontFamily: 'monospace',
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     const Text(
                       'Escolha seus 2 elementos',
                       style: TextStyle(
                         color: Color(0xFFF8F2DA),
-                        fontSize: 21,
+                        fontSize: 17,
                         fontFamily: 'monospace',
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Comece com 2. Desbloqueie os demais jogando e equipe até 4 na batalha.',
-                      style: TextStyle(color: Color(0xFFF8F2DA), fontSize: 13),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        for (final (index, label) in [
-                          widget.modeLabel == 'TREINO'
-                              ? 'Jogador A'
-                              : 'Sua escolha',
-                          widget.modeLabel == 'TREINO'
-                              ? 'Jogador B'
-                              : 'Oponente pronto',
-                          'Batalha',
-                        ].indexed)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: index + 1 == widget.step
-                                  ? const Color(0xFFF2DB88)
-                                  : null,
-                              border: Border.all(
-                                color: const Color(0xFFACB7A1),
+                    if (!compact) const SizedBox(height: 8),
+                    if (!compact)
+                      const Text(
+                        'Comece com 2. Desbloqueie os demais jogando e equipe até 4 na batalha.',
+                        style: TextStyle(
+                          color: Color(0xFFF8F2DA),
+                          fontSize: 13,
+                        ),
+                      ),
+                    if (!compact) const SizedBox(height: 12),
+                    if (!compact && widget.totalSteps > 1)
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final (index, label) in [
+                            widget.modeLabel == 'TREINO'
+                                ? 'Jogador A'
+                                : 'Sua escolha',
+                            widget.modeLabel == 'TREINO'
+                                ? 'Jogador B'
+                                : 'Oponente pronto',
+                            'Batalha',
+                          ].indexed)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 5,
                               ),
-                            ),
-                            child: Text(
-                              '${index + 1} · $label',
-                              style: TextStyle(
-                                fontSize: 11,
+                              decoration: BoxDecoration(
                                 color: index + 1 == widget.step
-                                    ? const Color(0xFF253843)
-                                    : const Color(0xFFF8F2DA),
+                                    ? const Color(0xFFF2DB88)
+                                    : null,
+                                border: Border.all(
+                                  color: const Color(0xFFACB7A1),
+                                ),
+                              ),
+                              child: Text(
+                                '${index + 1} · $label',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: index + 1 == widget.step
+                                      ? const Color(0xFF253843)
+                                      : const Color(0xFFF8F2DA),
+                                ),
                               ),
                             ),
-                          ),
-                      ],
-                    ),
+                        ],
+                      ),
                   ],
                 ),
               ),
             );
             final choices = Container(
-              margin: const EdgeInsets.all(8),
-              padding: const EdgeInsets.all(10),
+              margin: const EdgeInsets.all(4),
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 color: const Color(0xFFF8F2DA),
                 border: Border.all(color: const Color(0xFFACB7A1), width: 3),
@@ -150,6 +158,9 @@ class _ElementStarterScreenState extends State<ElementStarterScreen> {
                     child: SingleChildScrollView(
                       key: const ValueKey('starter-elements'),
                       child: BattleCommandGrid(
+                        columns: horizontal
+                            ? 5
+                            : (constraints.maxWidth >= 380 ? 3 : 2),
                         children: [
                           for (final element in elements)
                             ConstrainedBox(
@@ -179,12 +190,13 @@ class _ElementStarterScreenState extends State<ElementStarterScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Text(
-                    _selectedIds.length == 2
-                        ? 'Toque em um selecionado para trocar.'
-                        : 'Selecione dois elementos para continuar.',
-                    style: const TextStyle(fontSize: 11),
-                  ),
+                  if (!compact)
+                    Text(
+                      _selectedIds.length == 2
+                          ? 'Toque em um selecionado para trocar.'
+                          : 'Selecione dois elementos para continuar.',
+                      style: const TextStyle(fontSize: 11),
+                    ),
                   const SizedBox(height: 6),
                   PixelMenuButton(
                     label: widget.confirmLabel,
@@ -197,14 +209,11 @@ class _ElementStarterScreenState extends State<ElementStarterScreen> {
               ),
             );
             return Flex(
-              direction: horizontal ? Axis.horizontal : Axis.vertical,
+              direction: Axis.vertical,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SizedBox(
-                  width: horizontal ? constraints.maxWidth * .38 : null,
-                  height: horizontal
-                      ? null
-                      : (constraints.maxHeight * .38).clamp(200.0, 220.0),
+                  height: compact ? (horizontal ? 58 : 76) : 180,
                   child: intro,
                 ),
                 Expanded(child: choices),

@@ -19,6 +19,9 @@ class FieldEffect {
   final int area;
   final int? duration;
   final int damage;
+  final int healing;
+  final bool cleanses;
+  final int apDrain;
   final List<TargetedStatus> statusesToApply;
 
   const FieldEffect({
@@ -28,6 +31,9 @@ class FieldEffect {
     this.area = 1,
     this.duration,
     this.damage = 0,
+    this.healing = 0,
+    this.cleanses = false,
+    this.apDrain = 0,
     this.statusesToApply = const [],
   });
 
@@ -44,6 +50,9 @@ class FieldEffect {
       area: area ?? this.area,
       duration: duration ?? this.duration,
       damage: damage ?? this.damage,
+      healing: healing,
+      cleanses: cleanses,
+      apDrain: apDrain,
       statusesToApply: statusesToApply ?? this.statusesToApply,
     );
   }

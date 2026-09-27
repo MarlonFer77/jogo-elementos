@@ -65,6 +65,7 @@ class _AttacksScreenState extends State<AttacksScreen> {
         Scaffold(
           backgroundColor: Colors.transparent,
           appBar: AppBar(
+            toolbarHeight: 44,
             backgroundColor: Colors.transparent,
             elevation: 0,
             leading: widget.asSheet
@@ -80,7 +81,7 @@ class _AttacksScreenState extends State<AttacksScreen> {
             ),
           ),
           body: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(8),
             child: PixelContentPanel(
               child: _sheetOpen
                   ? const SizedBox.shrink()

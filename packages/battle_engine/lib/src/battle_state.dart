@@ -32,23 +32,23 @@ class BattleState {
     Map<Combatant, HpPool>? hp,
     Map<Combatant, ApPool>? ap,
     this.winner,
-  })  : activeFieldEffects = List.unmodifiable(activeFieldEffects),
-        combatantStatuses = Map<Combatant, List<ActiveStatus>>.unmodifiable({
-          playerA: List<ActiveStatus>.unmodifiable(
-            combatantStatuses?[playerA] ?? const <ActiveStatus>[],
-          ),
-          playerB: List<ActiveStatus>.unmodifiable(
-            combatantStatuses?[playerB] ?? const <ActiveStatus>[],
-          ),
-        }),
-        hp = Map<Combatant, HpPool>.unmodifiable({
-          playerA: hp?[playerA] ?? const HpPool(max: 100, current: 100),
-          playerB: hp?[playerB] ?? const HpPool(max: 100, current: 100),
-        }),
-        ap = Map<Combatant, ApPool>.unmodifiable({
-          playerA: ap?[playerA] ?? const ApPool(max: 5, current: 0),
-          playerB: ap?[playerB] ?? const ApPool(max: 5, current: 0),
-        }) {
+  }) : activeFieldEffects = List.unmodifiable(activeFieldEffects),
+       combatantStatuses = Map<Combatant, List<ActiveStatus>>.unmodifiable({
+         playerA: List<ActiveStatus>.unmodifiable(
+           combatantStatuses?[playerA] ?? const <ActiveStatus>[],
+         ),
+         playerB: List<ActiveStatus>.unmodifiable(
+           combatantStatuses?[playerB] ?? const <ActiveStatus>[],
+         ),
+       }),
+       hp = Map<Combatant, HpPool>.unmodifiable({
+         playerA: hp?[playerA] ?? const HpPool(max: 100, current: 100),
+         playerB: hp?[playerB] ?? const HpPool(max: 100, current: 100),
+       }),
+       ap = Map<Combatant, ApPool>.unmodifiable({
+         playerA: ap?[playerA] ?? const ApPool(max: 5, current: 0),
+         playerB: ap?[playerB] ?? const ApPool(max: 5, current: 0),
+       }) {
     if (playerA == playerB) {
       throw ArgumentError('playerA and playerB must be distinct combatants');
     }
@@ -132,9 +132,7 @@ class BattleState {
   /// Returns a new state with [status] applied to [target].
   BattleState withStatusApplied(Combatant target, ActiveStatus status) {
     _requireParticipant(target);
-    final updated = Map<Combatant, List<ActiveStatus>>.from(
-      combatantStatuses,
-    );
+    final updated = Map<Combatant, List<ActiveStatus>>.from(combatantStatuses);
     updated[target] = [...statusesOf(target), status];
     return copyWith(combatantStatuses: updated);
   }
@@ -143,11 +141,10 @@ class BattleState {
   /// from [target].
   BattleState withStatusRemoved(Combatant target, StatusEffect effect) {
     _requireParticipant(target);
-    final updated = Map<Combatant, List<ActiveStatus>>.from(
-      combatantStatuses,
-    );
-    updated[target] =
-        statusesOf(target).where((status) => status.effect != effect).toList();
+    final updated = Map<Combatant, List<ActiveStatus>>.from(combatantStatuses);
+    updated[target] = statusesOf(
+      target,
+    ).where((status) => status.effect != effect).toList();
     return copyWith(combatantStatuses: updated);
   }
 
@@ -191,6 +188,12 @@ class BattleState {
     final updatedHp = Map<Combatant, HpPool>.from(hp)
       ..[target] = hpOf(target).withMaxIncreased(amount);
     return copyWith(hp: updatedHp);
+  }
+
+  /// Heal a living combatant without exceeding their maximum HP.
+  BattleState withHealing(Combatant target, int amount) {
+    _requireParticipant(target);
+    return copyWith(hp: {...hp, target: hpOf(target).withHealing(amount)});
   }
 
   /// AP pool of [combatant].

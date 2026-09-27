@@ -51,6 +51,7 @@ class _DiscoveryBookScreenState extends State<DiscoveryBookScreen> {
         Scaffold(
           backgroundColor: Colors.transparent,
           appBar: AppBar(
+            toolbarHeight: 44,
             title: const Text(
               'Livro de Descobertas',
               style: TextStyle(fontFamily: 'monospace', fontSize: 18),
@@ -65,7 +66,7 @@ class _DiscoveryBookScreenState extends State<DiscoveryBookScreen> {
           ),
           body: SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(8),
               child: PixelContentPanel(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -100,6 +101,7 @@ class _DiscoveryBookScreenState extends State<DiscoveryBookScreen> {
                       controller: search,
                       onChanged: (_) => setState(() {}),
                       decoration: const InputDecoration(
+                        isDense: true,
                         labelText: 'Buscar nome, elemento ou efeito',
                         prefixIcon: Icon(Icons.search),
                       ),
@@ -111,6 +113,7 @@ class _DiscoveryBookScreenState extends State<DiscoveryBookScreen> {
                       hint: const Text('Todos os elementos'),
                       isExpanded: true,
                       decoration: const InputDecoration(
+                        isDense: true,
                         labelText: 'Elemento da receita',
                       ),
                       items: [

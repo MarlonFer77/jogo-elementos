@@ -7,12 +7,14 @@ class CombinationOption {
   final String name;
   final String description;
   final List<String> elementIds;
+  final bool cleanses;
 
   const CombinationOption({
     required this.id,
     required this.name,
     required this.description,
     required this.elementIds,
+    this.cleanses = false,
   });
 }
 
@@ -32,7 +34,19 @@ class CombinationCatalog {
           name: combination.resultName,
           description: combination.description,
           elementIds: combination.elements.map((e) => e.id).toList(),
+          cleanses: combination.cleanses,
         );
+      }
+    }
+    return null;
+  }
+
+  CombinationOption? byElements(List<String> ids) {
+    final set = ids.toSet();
+    for (final combo in defaultCombinationBook.combinations) {
+      if (combo.elements.length == set.length &&
+          combo.elements.every((e) => set.contains(e.id))) {
+        return byId(combo.resultId);
       }
     }
     return null;

@@ -149,6 +149,22 @@ class TurnEngine {
       nextState = nextState.withStatusRemoved(opponent, StatusEffects.wet);
     }
 
+    // Support resolves before ongoing damage. Validation/AP payment already
+    // happened: cleansing never bypasses silence, freeze, slow or shock costs.
+    if (appliedEffect != null) {
+      if (appliedEffect.cleanses) {
+        for (final status in StatusEffects.negative) {
+          nextState = nextState.withStatusRemoved(action.actor, status);
+        }
+      }
+      nextState = nextState.withHealing(action.actor, appliedEffect.healing);
+      if (!shieldBlocked && appliedEffect.apDrain > 0) {
+        nextState = nextState.withApSpent(
+          opponent,
+          appliedEffect.apDrain.clamp(0, nextState.apOf(opponent).current),
+        );
+      }
+    }
     nextState = _tickStatusDamage(nextState, action.actor);
     // New effects begin AFTER this action's ticks, never tick immediately.
     if (nextState.winner == null) {

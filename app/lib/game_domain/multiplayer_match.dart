@@ -4,6 +4,7 @@ import 'multiplayer_client.dart';
 import 'multiplayer_exception.dart';
 import 'multiplayer_models.dart';
 import 'action_preview.dart';
+import 'combination_catalog.dart';
 import 'status_catalog.dart';
 
 /// A multiplayer match seen from one player's device. Thin wrapper around
@@ -366,6 +367,12 @@ class MultiplayerMatch {
           before.hp[opponent]!.current - after.hp[opponent]!.current,
       selfHpLoss:
           before.hp[localPlayerId]!.current - after.hp[localPlayerId]!.current,
+      opponentApLoss:
+          before.ap[opponent]!.current - after.ap[opponent]!.current,
+      cleanses:
+          !defending &&
+          !thawing &&
+          (const CombinationCatalog().byElements(ids)?.cleanses ?? false),
       effects: [
         if (thawing) 'Congelamento removido · ação perdida.',
         for (final entry in after.combatantStatuses.entries)

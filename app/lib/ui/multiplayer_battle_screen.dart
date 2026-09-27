@@ -16,6 +16,7 @@ import '../game_domain/status_catalog.dart';
 import '../game_domain/multiplayer_exception.dart';
 import '../game_domain/multiplayer_match.dart';
 import '../game_presentation/battle_scene_widget.dart';
+import '../game_presentation/battle_command_panel.dart';
 import '../game_presentation/battle_result_panel.dart';
 import '../game_presentation/multiplayer_connection_panel.dart';
 import '../game_presentation/pixel_arena_background.dart';
@@ -146,6 +147,8 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
       return;
     }
     final myHpBefore = _match.myCurrentHp;
+    final theirHpBefore = _match.opponentCurrentHp;
+    final myApBefore = _match.myAp;
     final myStatusesBefore = _match.myActiveStatuses.map((s) => s.id).toSet();
     final previousFieldEffectIds = _previousFieldEffectIds;
     final previousRevision = _match.match?.lastAction?['revision'];
@@ -172,6 +175,15 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
                       ?.name,
                   damage: (myHpBefore - (_match.myCurrentHp ?? myHpBefore))
                       .clamp(0, 9999),
+                  healing:
+                      ((_match.opponentCurrentHp ?? 0) - (theirHpBefore ?? 0))
+                          .clamp(0, 9999),
+                  apDrained: (myApBefore - _match.myAp).clamp(0, 9999),
+                  purified:
+                      const CombinationCatalog()
+                          .byId(remoteAction['comboId'] as String? ?? '')
+                          ?.cleanses ??
+                      false,
                   isDefend: remoteAction['kind'] == 'defend',
                   isFrozenRecovery: remoteAction['kind'] == 'thaw',
                   isFizzle: remoteAction['kind'] == 'fizzle',
@@ -228,6 +240,8 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
     final playedElementIds = _selectedIds.toList();
     final discoveriesBefore = _match.discoveries.toSet();
     final opponentHpBefore = _match.opponentCurrentHp;
+    final actorHpBefore = _match.myCurrentHp;
+    final targetApBefore = _match.opponentAp;
     final opponentStatusesBefore = _match.opponentActiveStatuses
         .map((s) => s.id)
         .toSet();
@@ -271,6 +285,12 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
                 : playedElementIds,
             comboName: combo?.name,
             damage: damage,
+            healing: ((_match.myCurrentHp ?? 0) - (actorHpBefore ?? 0)).clamp(
+              0,
+              9999,
+            ),
+            apDrained: (targetApBefore - _match.opponentAp).clamp(0, 9999),
+            purified: combo?.cleanses ?? false,
             appliedStatusNames: _match.opponentActiveStatuses
                 .where((status) => !opponentStatusesBefore.contains(status.id))
                 .map((status) => _statusName(status.id))
@@ -436,6 +456,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
         Scaffold(
           backgroundColor: Colors.transparent,
           appBar: AppBar(
+            toolbarHeight: 44,
             backgroundColor: Colors.transparent,
             foregroundColor: _match.bothReady
                 ? const Color(0xFF283C36)
@@ -583,241 +604,34 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
     ];
   }
 
-  List<Widget> _buildBattle(BuildContext context) {
-    final elements = const ElementCatalog()
-        .all()
-        .where((e) => _match.equippedElements.contains(e.id))
-        .toList();
-
-    return [
-      BattleSceneWidget(
-        channelingLeft: _match.channelingLeft,
-        onAttackComplete: () {
-          if (!mounted) return;
-          setState(() => _pendingAttack = null);
-          _maybePlayGameOverSound();
-        },
-        height:
-            MediaQuery.of(context).size.width >
-                MediaQuery.of(context).size.height
-            ? MediaQuery.of(context).size.height - 110
-            : 260,
-        view: BattleSceneView(
-          leftCurrentHp: _match.myCurrentHp ?? 0,
-          leftMaxHp: _match.myMaxHp ?? 0,
-          rightCurrentHp: _match.opponentCurrentHp ?? 0,
-          rightMaxHp: _match.opponentMaxHp ?? 0,
-          isLeftTurn: _match.isMyTurn,
-          lastAttack: _pendingAttack,
-          leftLabel: 'Você',
-          rightLabel: 'Oponente',
-          leftStatuses: _match.myActiveStatuses,
-          rightStatuses: _match.opponentActiveStatuses,
-          fieldEffects: _match.activeFieldEffectBadges,
-          leftAp: _match.myAp,
-          leftApMax: _match.myApMax,
-          rightAp: _match.opponentAp,
-          rightApMax: _match.opponentApMax,
-        ),
-      ),
-      if (_match.isFinished) ...[
-        if (_pendingAttack != null)
-          const Text('Último ataque em execução…')
-        else
-          ..._buildGameOver(context),
-      ] else ...[
-        const SizedBox(height: 16),
-        if (_match.match?.seal != null)
-          Text(
-            'Conjuração em andamento · ${_match.match!.seal!['reservedAp']} AP reservados. Aguarde.',
-          ),
-        Text(
-          _match.isMyTurn
-              ? _match.amIFrozen
-                    ? 'Sua vez · CONGELADO'
-                    : 'Sua vez'
-              : 'Vez do oponente',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        if (_match.isMyTurn && _match.amIFrozen)
-          const Text(
-            'Você perde esta ação para quebrar o gelo. AP não regenera.',
-            style: TextStyle(fontSize: 12),
-          ),
-        const Divider(height: 12),
-        if (_match.connectionError != null)
-          Text(
-            _match.connectionError!,
-            style: const TextStyle(color: Colors.red),
-          ),
-        if (_match.isMyTurn)
-          for (final status in _match.myActiveStatuses.where(
-            (s) => const ['silence', 'slow', 'shock'].contains(s.id),
-          ))
-            Text(
-              statusDescription(status.id),
-              style: const TextStyle(fontSize: 12),
-            ),
-        Text(_selectedElementsSummary(elements)),
-        Wrap(
-          children: [
-            TextButton(
-              onPressed: () => setState(() => _showAbilities = false),
-              child: const Text('Elementos'),
-            ),
-            TextButton(
-              onPressed: () => setState(() => _showAbilities = true),
-              child: const Text('Habilidades'),
-            ),
-          ],
-        ),
-        LayoutBuilder(
-          builder: (context, constraints) => Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              if (!_showAbilities)
-                for (var i = 0; i < 4; i++)
-                  SizedBox(
-                    width: (constraints.maxWidth - 6) / 2,
-                    child: PixelMenuButton(
-                      label: i < elements.length
-                          ? '${elements[i].symbol} ${elements[i].name}'
-                          : 'Vazio',
-                      onPressed:
-                          i < elements.length &&
-                              _match.isMyTurn &&
-                              !_match.amIFrozen &&
-                              !_submitting
-                          ? () {
-                              setState(() {
-                                _defending = false;
-                                _selectedIds
-                                  ..clear()
-                                  ..add(elements[i].id);
-                              });
-                              unawaited(_requestPreview());
-                            }
-                          : null,
-                    ),
-                  ),
-              if (_showAbilities)
-                for (var i = 0; i < 3; i++)
-                  SizedBox(
-                    width: constraints.maxWidth,
-                    child: PixelMenuButton(
-                      label: i < _match.equippedAttacks.length
-                          ? _attackLabel(_match.equippedAttacks[i])
-                          : 'Habilidade vazia',
-                      onPressed:
-                          i < _match.equippedAttacks.length &&
-                              _match.isMyTurn &&
-                              !_submitting &&
-                              !_match.amIFrozen &&
-                              _attackUnavailable(_match.equippedAttacks[i]) ==
-                                  null
-                          ? () {
-                              final attack = const CombinationCatalog().byId(
-                                _match.equippedAttacks[i],
-                              );
-                              if (attack == null) return;
-                              setState(() {
-                                _defending = false;
-                                _selectedIds
-                                  ..clear()
-                                  ..addAll(attack.elementIds);
-                              });
-                              unawaited(_requestPreview());
-                            }
-                          : null,
-                    ),
-                  ),
-            ],
-          ),
-        ),
-        Wrap(
-          children: [
-            TextButton(
-              onPressed: _match.isMyTurn && !_submitting
-                  ? _manageElements
-                  : null,
-              child: const Text('Trocar elementos'),
-            ),
-            TextButton(
-              onPressed: !_submitting ? _manageAttacks : null,
-              child: Text('Descobertas ${_match.discoveries.length} · Equipar'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        PixelMenuButton(
-          label: 'Experimentar combo',
-          onPressed: _match.isMyTurn && !_match.amIFrozen && !_submitting
-              ? () => _openElementPicker(elements)
-              : null,
-        ),
-        const SizedBox(height: 16),
-        PixelMenuButton(
-          label: _match.amIFrozen
-              ? 'Quebrar gelo'
-              : _defending
-              ? 'Confirmar defesa'
-              : 'Jogar',
-          onPressed:
-              (!_submitting &&
-                  _match.match?.seal == null &&
-                  !(_selectedIds.length > 1 &&
-                      !_defending &&
-                      !_match.amIFrozen &&
-                      _match.myActiveStatuses.any((s) => s.id == 'silence')) &&
-                  _match.isMyTurn &&
-                  (_match.amIFrozen || _selectedIds.isNotEmpty || _defending))
-              ? _playTurn
-              : null,
-        ),
-        TextButton.icon(
-          icon: const Icon(Icons.shield_outlined),
-          label: const Text('Defender'),
-          onPressed: !_submitting && _match.isMyTurn && !_match.amIFrozen
-              ? () {
-                  setState(() {
-                    _defending = true;
-                    _selectedIds.clear();
-                  });
-                  unawaited(_requestPreview());
-                }
-              : null,
-        ),
-        if (_previewLoading) const Text('Calculando prévia…'),
-        if (_preview != null)
-          Text(_preview!.summary, style: const TextStyle(fontSize: 12)),
-        if (_previewError != null)
-          Text(_previewError!, style: const TextStyle(fontSize: 12)),
-        if (_error != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(_error!, style: const TextStyle(color: Colors.red)),
-          ),
-      ],
-    ];
-  }
-
-  String _selectedElementsSummary(List<ElementOption> elements) {
-    final selected = elements.where((e) => _selectedIds.contains(e.id));
-    if (selected.isEmpty) return 'Nenhum elemento escolhido';
-    return 'Elementos: ${selected.map((e) => '${e.symbol} ${e.name}').join(', ')}';
-  }
+  Widget _arena(double height) => BattleSceneWidget(
+    height: height,
+    channelingLeft: _match.channelingLeft,
+    onAttackComplete: () {
+      if (!mounted) return;
+      setState(() => _pendingAttack = null);
+      _maybePlayGameOverSound();
+    },
+    view: BattleSceneView(
+      leftCurrentHp: _match.myCurrentHp ?? 0,
+      leftMaxHp: _match.myMaxHp ?? 0,
+      rightCurrentHp: _match.opponentCurrentHp ?? 0,
+      rightMaxHp: _match.opponentMaxHp ?? 0,
+      isLeftTurn: _match.isMyTurn,
+      lastAttack: _pendingAttack,
+      leftLabel: 'Você',
+      rightLabel: 'Oponente',
+      leftStatuses: _match.myActiveStatuses,
+      rightStatuses: _match.opponentActiveStatuses,
+      fieldEffects: _match.activeFieldEffectBadges,
+      leftAp: _match.myAp,
+      leftApMax: _match.myApMax,
+      rightAp: _match.opponentAp,
+      rightApMax: _match.opponentApMax,
+    ),
+  );
 
   String _statusName(String id) => statusName(id);
-
-  String _attackLabel(String id) {
-    final combo = const CombinationCatalog().byId(id);
-    final cost =
-        (combo?.elementIds.length == 3 ? 5 : 3) +
-        (_match.myActiveStatuses.any((s) => s.id == 'shock') ? 1 : 0);
-    final reason = _attackUnavailable(id);
-    return '${combo?.name ?? id} · $cost AP${reason == null ? '' : ' · $reason'}';
-  }
 
   String? _attackUnavailable(String id) {
     final combo = const CombinationCatalog().byId(id);
@@ -839,30 +653,277 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
     return available < cost ? 'AP insuficiente' : null;
   }
 
-  Widget _battleLayout(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      final widgets = _buildBattle(context);
-      final commands = SingleChildScrollView(
-        padding: const EdgeInsets.all(8),
-        child: PixelContentPanel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: widgets.skip(1).toList(),
+  bool get _canSelect =>
+      _match.isMyTurn &&
+      !_submitting &&
+      !_match.amIFrozen &&
+      _match.match?.seal == null;
+
+  void _selectElements(List<String> ids) {
+    setState(() {
+      _defending = false;
+      _error = null;
+      _selectedIds
+        ..clear()
+        ..addAll(ids);
+    });
+    unawaited(_requestPreview());
+  }
+
+  List<Widget> _compactCommands() {
+    final elements = const ElementCatalog()
+        .all()
+        .where((e) => _match.equippedElements.contains(e.id))
+        .toList();
+    return [
+      if (_match.amIFrozen)
+        const Text(
+          'Congelado: use Quebrar gelo. AP não regenera.',
+          style: TextStyle(fontSize: 12),
+        )
+      else ...[
+        BattleCommandGrid(
+          children: [
+            if (_showAbilities) ...[
+              for (var i = 0; i < 3; i++)
+                if (i < _match.equippedAttacks.length)
+                  Builder(
+                    builder: (context) {
+                      final id = _match.equippedAttacks[i];
+                      final attack = const CombinationCatalog().byId(id);
+                      final reason = _attackUnavailable(id);
+                      return BattleCommandButton(
+                        title: attack?.name ?? 'Indisponível',
+                        detail:
+                            reason ??
+                            '${attack?.elementIds.length == 3 ? 5 : 3} AP base',
+                        selected:
+                            !_defending &&
+                            attack != null &&
+                            _selectedIds.length == attack.elementIds.length &&
+                            _selectedIds.containsAll(attack.elementIds),
+                        unavailable: reason != null,
+                        onPressed:
+                            _canSelect && reason == null && attack != null
+                            ? () => _selectElements(attack.elementIds)
+                            : null,
+                      );
+                    },
+                  )
+                else
+                  const BattleCommandButton(
+                    title: 'Habilidade vazia',
+                    unavailable: true,
+                  ),
+              BattleCommandButton(
+                title: 'Equipar',
+                detail: 'Até 3 habilidades',
+                onPressed: !_submitting ? _manageAttacks : null,
+              ),
+            ] else
+              for (var i = 0; i < 4; i++)
+                BattleCommandButton(
+                  title: i < elements.length ? elements[i].name : 'Vazio',
+                  detail: i < elements.length ? '0 AP' : 'Equipar',
+                  selected:
+                      i < elements.length &&
+                      !_defending &&
+                      _selectedIds.length == 1 &&
+                      _selectedIds.contains(elements[i].id),
+                  onPressed: !_canSelect
+                      ? null
+                      : i < elements.length
+                      ? () => _selectElements([elements[i].id])
+                      : _manageElements,
+                ),
+          ],
+        ),
+        Row(
+          children: [
+            Expanded(
+              child: TextButton(
+                onPressed: _canSelect
+                    ? () => _openElementPicker(elements)
+                    : null,
+                child: const Text('Combinar'),
+              ),
+            ),
+            Expanded(
+              child: TextButton(
+                onPressed: _canSelect
+                    ? (_showAbilities ? _manageAttacks : _manageElements)
+                    : null,
+                child: const Text('Equipar'),
+              ),
+            ),
+            Expanded(
+              child: TextButton(
+                onPressed: _canSelect
+                    ? () {
+                        setState(() {
+                          _defending = true;
+                          _selectedIds.clear();
+                        });
+                        unawaited(_requestPreview());
+                      }
+                    : null,
+                child: Text(_defending ? 'Defesa ✓' : 'Defender'),
+              ),
+            ),
+          ],
+        ),
+      ],
+      if (_match.connectionError != null ||
+          _error != null ||
+          _previewError != null)
+        Text(
+          _match.connectionError ?? _error ?? _previewError!,
+          style: const TextStyle(fontSize: 12, color: Color(0xFF9B302E)),
+        ),
+    ];
+  }
+
+  Widget _onlineAction() {
+    final blockedBySilence =
+        _selectedIds.length > 1 &&
+        !_defending &&
+        !_match.amIFrozen &&
+        _match.myActiveStatuses.any((s) => s.id == 'silence');
+    final preview = _previewLoading
+        ? 'Calculando prévia…'
+        : _preview?.summary ??
+              (_match.match?.seal != null
+                  ? 'Selo em andamento. Aguarde.'
+                  : _match.isMyTurn
+                  ? 'Escolha uma ação.'
+                  : 'Aguarde seu oponente.');
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Tooltip(
+          message: preview,
+          child: Text(
+            preview.replaceAll('\n', ' · '),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11),
           ),
         ),
-      );
-      if (constraints.maxWidth > constraints.maxHeight) {
-        return Row(
-          children: [
-            Expanded(child: widgets.first),
-            Expanded(child: commands),
-          ],
-        );
-      }
-      return Column(
+        const SizedBox(height: 4),
+        PixelMenuButton(
+          label: _match.amIFrozen
+              ? 'Quebrar gelo'
+              : _defending
+              ? 'Confirmar defesa'
+              : 'Jogar',
+          primary: true,
+          onPressed:
+              !_submitting &&
+                  _match.match?.seal == null &&
+                  !blockedBySilence &&
+                  _match.isMyTurn &&
+                  (_match.amIFrozen || _selectedIds.isNotEmpty || _defending)
+              ? _playTurn
+              : null,
+        ),
+      ],
+    );
+  }
+
+  Widget _battleLayout(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final horizontal = constraints.maxWidth > constraints.maxHeight;
+      final arenaHeight = horizontal
+          ? constraints.maxHeight
+          : (constraints.maxHeight -
+                    350 *
+                        MediaQuery.textScalerOf(
+                          context,
+                        ).scale(1).clamp(1.0, 1.4))
+                .clamp(
+                  constraints.maxHeight * .25,
+                  constraints.maxHeight * .48,
+                );
+      return Flex(
+        direction: horizontal ? Axis.horizontal : Axis.vertical,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          widgets.first,
-          Expanded(child: commands),
+          SizedBox(
+            width: horizontal ? constraints.maxWidth * .41 : null,
+            height: arenaHeight,
+            child: _arena(arenaHeight),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: PixelContentPanel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      _match.isFinished
+                          ? 'Batalha encerrada'
+                          : _match.isMyTurn
+                          ? 'Sua vez'
+                          : 'Vez do oponente',
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                    if (!_match.isFinished)
+                      Row(
+                        children: [
+                          for (final abilities in [false, true])
+                            Expanded(
+                              child: TextButton(
+                                style: TextButton.styleFrom(
+                                  backgroundColor: _showAbilities == abilities
+                                      ? const Color(0xFFF2DB88)
+                                      : null,
+                                  foregroundColor: const Color(0xFF283C36),
+                                ),
+                                onPressed: _submitting
+                                    ? null
+                                    : () => setState(
+                                        () => _showAbilities = abilities,
+                                      ),
+                                child: Text(
+                                  abilities ? 'Habilidades' : 'Elementos',
+                                ),
+                              ),
+                            ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${_match.myAp} AP',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        key: const ValueKey('online-command-scroll'),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: _match.isFinished
+                              ? [
+                                  if (_pendingAttack != null)
+                                    const Text('Último ataque em execução…')
+                                  else
+                                    ..._buildGameOver(context),
+                                ]
+                              : _compactCommands(),
+                        ),
+                      ),
+                    ),
+                    if (!_match.isFinished) _onlineAction(),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       );
     },
