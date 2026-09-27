@@ -4,9 +4,18 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Publicação v0.28.0 em andamento: versionCode 28, APK pelo workflow existente
-e atualização do backend Render com os novos combos. Inclui HUD/dungeon e
-expansão já validados; sem mudança de plano ou serviços pagos.
+v0.28.0 publicada em 2026-09-27: versionCode 28, commit 9a29a1e,
+CI 36346800307 aprovado. Release latest com app-release.apk; assinatura
+igual à v0.27.0 e SHA-256 local igual ao digest do asset público:
+d837d07e9f9749821cd51ef44b0038d0991e80f33f830a38d7cdd4daffa318ce.
+Master avançada sem reescrita; Render dep-dasneojncjis73enf2vg colocou
+o mesmo commit no ar. Health protocolo 2/Firestore aprovado; smoke online
+verificou cura, purificação, redução de AP, criar/entrar/preparar, prévia,
+selo, descoberta, rejeição de duplicata e retomada (sala de teste 09DEE7).
+Inclui HUD, dungeon de 10 salas e 63 combos. Sem mudança de plano/custo.
+Pendente: playtest em aparelhos e avaliar 2 alertas moderados transitivos
+de npm audit (gaxios/uuid, GHSA-w5hq-g745-h8pq); sem atualização automática
+de dependências durante o deploy.
 
 Checkpoint anterior:
 
