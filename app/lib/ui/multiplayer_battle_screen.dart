@@ -4,9 +4,11 @@ import 'discovery_book_screen.dart';
 import '../game_domain/discovery_catalog.dart';
 
 import 'package:flutter/material.dart';
+import 'audio_settings.dart';
 import 'package:flutter/services.dart';
 
 import '../game_domain/attack_event.dart';
+import '../game_domain/skill_feedback.dart';
 import '../game_domain/action_preview.dart';
 import '../game_domain/battle_scene_view.dart';
 import '../game_domain/combination_catalog.dart';
@@ -55,9 +57,11 @@ class MultiplayerBattleScreen extends StatefulWidget {
       _MultiplayerBattleScreenState();
 }
 
-class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
+class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen>
+    with WidgetsBindingObserver {
   final Set<String> _selectedIds = {};
   Timer? _pollTimer;
+  bool _foreground = true;
   String? _error;
   bool _startingRematch = false;
   bool _preparing = false;
@@ -129,18 +133,30 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _previousFieldEffectIds = _match.activeFieldEffectIds.toSet();
     _pollTimer = Timer.periodic(widget._pollInterval, (_) => _poll());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pollTimer?.cancel();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    _pollTimer?.cancel();
+    if (_foreground && mounted && !_match.isFinished) {
+      _pollTimer = Timer.periodic(widget._pollInterval, (_) => _poll());
+      unawaited(_poll()); // Read only: never replay an uncertain POST.
+    }
+  }
+
   Future<void> _poll() async {
-    if (_submitting) return;
+    if (_submitting || !_foreground) return;
     final stamp = _previewStamp;
     if (_match.isFinished) {
       _pollTimer?.cancel();
@@ -187,10 +203,12 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
                   isDefend: remoteAction['kind'] == 'defend',
                   isFrozenRecovery: remoteAction['kind'] == 'thaw',
                   isFizzle: remoteAction['kind'] == 'fizzle',
-                  appliedStatusNames: _match.myActiveStatuses
-                      .where((s) => !myStatusesBefore.contains(s.id))
-                      .map((s) => _statusName(s.id))
-                      .toList(),
+                  appliedStatusNames: [
+                    ...skillFeedbackLabels(remoteAction['feedback']),
+                    ..._match.myActiveStatuses
+                        .where((s) => !myStatusesBefore.contains(s.id))
+                        .map((s) => _statusName(s.id)),
+                  ],
                 )
               : remoteAction != null
               ? null
@@ -291,10 +309,14 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
             ),
             apDrained: (targetApBefore - _match.opponentAp).clamp(0, 9999),
             purified: combo?.cleanses ?? false,
-            appliedStatusNames: _match.opponentActiveStatuses
-                .where((status) => !opponentStatusesBefore.contains(status.id))
-                .map((status) => _statusName(status.id))
-                .toList(),
+            appliedStatusNames: [
+              ...skillFeedbackLabels(_match.match?.lastAction?['feedback']),
+              ..._match.opponentActiveStatuses
+                  .where(
+                    (status) => !opponentStatusesBefore.contains(status.id),
+                  )
+                  .map((status) => _statusName(status.id)),
+            ],
             isDefend: defending && !thawing,
             isFrozenRecovery: thawing,
             isFizzle: _match.match?.lastAction?['kind'] == 'fizzle',
@@ -467,6 +489,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen> {
               fontSize: 20,
             ),
             actions: [
+              const MuteButton(),
               IconButton(
                 icon: const Icon(Icons.menu_book),
                 tooltip: 'Livro de Descobertas',

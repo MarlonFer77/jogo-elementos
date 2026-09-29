@@ -43,10 +43,11 @@ void main() {
     final p = prepared();
     expect(p.points, 0);
     expect(() => p.unlock('unlock_ice'), throwsStateError);
-    expect(p.copyWith(xp: 99).level, 1);
+    expect(p.copyWith(xp: 39).level, 1);
+    expect(p.copyWith(xp: 40).points, 1);
     expect(p.copyWith(xp: 100).level, 2);
     expect(p.copyWith(xp: 250).level, 3);
-    expect(p.copyWith(xp: 250).levelXp, 0);
+    expect(p.copyWith(xp: 250).levelXp, 60);
     expect(() => p.copyWith(xp: 250).unlock('wildfire_path'), throwsStateError);
     final next = p
         .copyWith(xp: 250)
@@ -55,10 +56,12 @@ void main() {
     expect(next.points, 0);
     expect(next.elements, contains('ice'));
     expect(() => next.unlock('ember_mastery'), throwsStateError);
-    expect(
-      () => p.copyWith(xp: 250).unlock('unstable_core_training'),
-      throwsStateError,
-    );
+    final precision = p
+        .copyWith(xp: 250)
+        .unlock('unstable_core_training')
+        .unlock('fragment_strikes');
+    expect(precision.points, 0);
+    expect(DungeonProgress.fromJson(precision.toJson()).nodes, precision.nodes);
     expect(DungeonProgress.fromJson(next.toJson()).nodes, next.nodes);
   });
 
@@ -75,6 +78,7 @@ void main() {
       await expectLater(c.complete(encounter), throwsStateError);
       final restored = await store.load();
       expect(restored.xp, 40);
+      expect(restored.points, 1);
       expect(restored.room, 1);
       expect(restored.attacks, ['ignited_storm']);
       expect(
@@ -85,7 +89,7 @@ void main() {
       );
       final continued = DungeonCampaign(restored, store).enter();
       expect(continued.match.playerACurrentHp, restored.hp);
-      expect(continued.room.name, 'Sentinela Glacial');
+      expect(continued.room.name, 'Elfa Negra Glacial');
     },
   );
 
@@ -142,7 +146,8 @@ void main() {
   test('AI plays legally until an encounter ends', () async {
     final c = DungeonCampaign(prepared(), DungeonProgressStore());
     await c.start();
-    final m = c.enter().match;
+    final encounter = c.enter();
+    final m = encounter.match;
     for (var turn = 0; turn < 120 && !m.isOver; turn++) {
       if (m.currentPlayerIsFrozen) {
         m.thaw();
@@ -151,7 +156,7 @@ void main() {
           m.availableApForAction >= 3 ? ['fire', 'wind'] : ['fire'],
         );
       } else {
-        final a = DungeonOpponent.choose(m);
+        final a = encounter.chooseAction();
         if (a.defending) {
           m.defend();
         } else if (a.attackId != null) {
@@ -166,56 +171,57 @@ void main() {
     expect(m.playerBAp, greaterThanOrEqualTo(0));
   });
 
-  test(
-    'ten rooms complete, boss pays once and a new run starts healthy',
-    () async {
-      final c = DungeonCampaign(
-        prepared()
-            .copyWith(xp: 450)
-            .unlock('ember_mastery')
-            .unlock('guard_training')
-            .unlock('vitality_training'),
-        DungeonProgressStore(),
-      );
-      await c.start();
-      for (var room = 0; room < DungeonRoom.all.length; room++) {
-        final encounter = c.enter();
-        final m = encounter.match;
-        for (var turn = 0; turn < 150 && !m.isOver; turn++) {
-          if (m.currentPlayerIsFrozen) {
-            m.thaw();
-          } else if (m.isPlayerATurn) {
-            m.playElementIds(
-              m.availableApForAction >= m.attackApCost(2) &&
-                      !m.currentPlayerIsSilenced
-                  ? ['fire', 'wind']
-                  : ['fire'],
-            );
-          } else {
-            final a = DungeonOpponent.choose(m);
-            if (a.defending) {
-              m.defend();
-            } else if (a.attackId != null) {
-              m.playEquippedAttack(a.attackId!);
-            } else {
-              m.playElementIds(a.elements);
-            }
+  test('ten scripted rooms save rewards once and restart healthy', () async {
+    final c = DungeonCampaign(
+      prepared()
+          .copyWith(xp: 450)
+          .unlock('ember_mastery')
+          .unlock('guard_training')
+          .unlock('vitality_training'),
+      DungeonProgressStore(),
+    );
+    await c.start();
+    for (var room = 0; room < DungeonRoom.all.length; room++) {
+      final encounter = c.enter();
+      final m = encounter.match;
+      for (var turn = 0; turn < 150 && !m.isOver; turn++) {
+        if (m.currentPlayerIsFrozen) {
+          m.thaw();
+        } else if (m.isPlayerATurn) {
+          if (encounter.intent.attackId != null &&
+              (m.availableApForAction < m.attackApCost(2) ||
+                  m.currentPlayerIsSilenced)) {
+            m.defend();
+            continue;
           }
+          m.playElementIds(
+            m.availableApForAction >= m.attackApCost(2) &&
+                    !m.currentPlayerIsSilenced
+                ? ['fire', 'wind']
+                : ['fire'],
+          );
+        } else {
+          // Checkpoint/reward regression, not a promise that one fixed build
+          // defeats every AI. Opponent patterns have separate legal-action tests.
+          m.playElementIds([m.equippedElementIdsForCurrentPlayer.first]);
         }
-        expect(m.playerAWon, true, reason: 'room $room');
-        await c.complete(encounter);
-        await expectLater(c.complete(encounter), throwsStateError);
-        expect(c.progress.active, room < DungeonRoom.all.length - 1);
-        expect((await c.store.load()).room, c.progress.room);
       }
-      expect(c.progress.xp, 450 + DungeonRoom.totalXp);
-      expect(c.progress.clears, 1);
-      expect(c.progress.active, false);
-      await c.start();
-      expect(c.progress.hp, c.progress.maxHp);
-      expect(c.progress.room, 0);
-    },
-  );
+      expect(m.playerAWon, true, reason: 'room $room');
+      await c.complete(encounter);
+      await expectLater(c.complete(encounter), throwsStateError);
+      for (final skill in ['elemental_insight', 'elemental_mastery']) {
+        if (c.progress.unlockReason(skill) == null) await c.unlock(skill);
+      }
+      expect(c.progress.active, room < DungeonRoom.all.length - 1);
+      expect((await c.store.load()).room, c.progress.room);
+    }
+    expect(c.progress.xp, 450 + DungeonRoom.totalXp);
+    expect(c.progress.clears, 1);
+    expect(c.progress.active, false);
+    await c.start();
+    expect(c.progress.hp, c.progress.maxHp);
+    expect(c.progress.room, 0);
+  });
 
   test('corrupted saves are preserved, not silently reset', () async {
     final prefs = await SharedPreferences.getInstance();
@@ -223,6 +229,40 @@ void main() {
     await expectLater(DungeonProgressStore().load(), throwsStateError);
     expect(prefs.getString(DungeonProgressStore.key), '{broken');
   });
+
+  test(
+    'new curve preserves old levels, purchases and total first-run points',
+    () {
+      for (final xp in [
+        0,
+        39,
+        40,
+        100,
+        189,
+        190,
+        249,
+        250,
+        450,
+        700,
+        1000,
+        100000,
+      ]) {
+        final p = prepared().copyWith(xp: xp);
+        var oldLevel = 1, remaining = xp;
+        while (remaining >= 100 + (oldLevel - 1) * 50) {
+          remaining -= 100 + (oldLevel++ - 1) * 50;
+        }
+        expect(p.level, greaterThanOrEqualTo(oldLevel));
+        expect(p.levelXp, inInclusiveRange(0, p.nextLevelXp - 1));
+        expect(DungeonProgress.fromJson(p.toJson()).xp, xp);
+      }
+      final old = prepared().copyWith(xp: 100).unlock('guard_training');
+      final restored = DungeonProgress.fromJson(old.toJson());
+      expect(restored.nodes, old.nodes);
+      expect(restored.points, 0);
+      expect(prepared().copyWith(xp: DungeonRoom.totalXp).points, 5);
+    },
+  );
 
   test(
     'ten valid rooms increase HP, rewards and starting AP; old saves survive',

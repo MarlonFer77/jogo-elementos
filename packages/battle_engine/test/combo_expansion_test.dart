@@ -105,7 +105,7 @@ void main() {
         );
       }
       final next = play(state, [Elements.water, Elements.light]);
-      expect(next.hpOf(a).current, 62);
+      expect(next.hpOf(a).current, 64);
       expect(
         next.apOf(a).current,
         1,

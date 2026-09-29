@@ -15,7 +15,7 @@ void main() {
   );
   test(
     'training failure is one AP, no discovery, and success preserves combo',
-    () {
+    () async {
       final match = ready();
       match.beginSeal(['fire', 'wind']);
       expect(match.defend, throwsStateError);
@@ -28,6 +28,7 @@ void main() {
       expect(() => match.resolveSeal([]), throwsStateError);
       final success = ready();
       success.beginSeal(['fire', 'wind']);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(
         success.resolveSeal(
           ConjurationSeal(['fire', 'wind']).nodes.indexed
@@ -116,6 +117,13 @@ void main() {
       await tester.pump();
       for (final n in nodes.skip(1)) {
         await resumed.moveTo(
+          Offset(
+            rect.left + (n.x + .08) * rect.width,
+            rect.top + n.y * rect.height,
+          ),
+        );
+        await tester.pump();
+        await resumed.moveTo(
           Offset(rect.left + n.x * rect.width, rect.top + n.y * rect.height),
         );
         await tester.pump();
@@ -124,6 +132,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(starts, 1);
       expect(result, hasLength(4));
+      expect(
+        ConjurationSeal([
+          'fire',
+          'wind',
+        ]).damagePercent(result!, elapsedMs: 6000),
+        100,
+      );
       expect(tester.takeException(), isNull);
     });
   }

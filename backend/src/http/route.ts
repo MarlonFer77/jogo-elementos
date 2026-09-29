@@ -14,7 +14,8 @@ export function matchPath(
     const patternPart = patternParts[i]!;
     const actualPart = pathParts[i]!;
     if (patternPart.startsWith(":")) {
-      params[patternPart.slice(1)] = decodeURIComponent(actualPart);
+      try { params[patternPart.slice(1)] = decodeURIComponent(actualPart); }
+      catch { return null; } // Malformed percent encoding must not crash HTTP handling.
     } else if (patternPart !== actualPart) {
       return null;
     }

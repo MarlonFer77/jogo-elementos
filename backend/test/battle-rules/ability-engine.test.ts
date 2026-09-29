@@ -19,7 +19,7 @@ function startState() {
 test("a mutation's status applies to the opponent, not the actor", () => {
   const result = useAbility(
     startState(),
-    { actorId: "a", elementIds: ["fire"] },
+    { actorId: "a", elementIds: ["fire", "earth"] },
     defaultCombinationBook,
     [combustion],
     [],
@@ -32,7 +32,7 @@ test("a mutation's status applies to the opponent, not the actor", () => {
 test("a self-targeted status (guard) applies to the actor, not the opponent", () => {
   const result = useAbility(
     startState(),
-    { actorId: "a", elementIds: ["fire"] },
+    { actorId: "a", elementIds: ["fire", "earth"] },
     defaultCombinationBook,
     [guard],
     [],
@@ -45,7 +45,7 @@ test("a self-targeted status (guard) applies to the actor, not the opponent", ()
 test("guard's Escudo actually blocks the next combo damage against the actor", () => {
   const guarded = useAbility(
     startState(),
-    { actorId: "a", elementIds: ["fire"] },
+    { actorId: "a", elementIds: ["fire", "earth"] },
     defaultCombinationBook,
     [guard],
     [],
@@ -63,17 +63,17 @@ test("guard's Escudo actually blocks the next combo damage against the actor", (
   assert.equal(hasStatus(result.state, "a", "shield"), false); // consumed
 });
 
-test("a mutation's field effect is added even without a triggered combination", () => {
+test("wildfire extends combustion alongside a triggered combination", () => {
   const result = useAbility(
     startState(),
-    { actorId: "a", elementIds: ["fire"] },
+    { actorId: "a", elementIds: ["fire", "earth"] },
     defaultCombinationBook,
-    [wildfire],
+    [combustion, wildfire],
     [],
   );
 
-  assert.equal(result.triggeredCombinationId, null);
-  assert.equal(result.state.activeFieldEffects.some((e) => e.id === "fire_zone"), true);
+  assert.equal(result.triggeredCombinationId, "eruption");
+  assert.equal(result.state.combatantStatuses.b![0]!.turnsRemaining, 3);
 });
 
 test("combinationModifiers change a triggered combination's field effect before it's added", () => {

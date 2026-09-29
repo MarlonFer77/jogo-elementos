@@ -3,13 +3,29 @@ import 'dungeon_progress.dart';
 import 'dungeon_progress_store.dart';
 import 'training_match.dart';
 import 'dungeon_catalog.dart';
+import 'dungeon_opponent.dart';
 export 'dungeon_catalog.dart';
+export 'dungeon_opponent.dart';
 
 class DungeonEncounter {
-  DungeonEncounter._(this.run, this.index, this.match);
+  DungeonEncounter._(this.run, this.index, this.match) {
+    _intent = DungeonOpponent.plan(match, room);
+  }
   final int run, index;
   final TrainingMatch match;
   DungeonRoom get room => DungeonRoom.all[index];
+  late DungeonIntent _intent;
+  int _plannedTurn = 0;
+
+  DungeonIntent get intent {
+    if (!match.isOver && _plannedTurn != match.cumulativeTurnsPlayedB) {
+      _plannedTurn = match.cumulativeTurnsPlayedB;
+      _intent = DungeonOpponent.plan(match, room);
+    }
+    return _intent;
+  }
+
+  DungeonIntent chooseAction() => DungeonOpponent.resolve(match, intent);
 }
 
 class DungeonCampaign {
@@ -134,59 +150,5 @@ class DungeonCampaign {
             : 'Expedição encerrada.'}\n'
         '+$xp XP${levels > 0 ? ' · Nível ${next.level} · +$levels ponto(s)' : ''}\n'
         '${next.active ? 'Fogueira: recuperou até 25 HP. Próxima sala disponível.' : 'Progresso salvo. Prepare sua próxima expedição.'}';
-  }
-}
-
-/// Uses legal previews only: no extra AP, hidden damage or ignored statuses.
-class DungeonOpponent {
-  static ({List<String> elements, String? attackId, bool defending}) choose(
-    TrainingMatch match,
-  ) {
-    if (match.isOver || match.isPlayerATurn) {
-      throw StateError('Não é a vez do inimigo.');
-    }
-    if (match.currentPlayerIsFrozen) {
-      return (elements: <String>[], attackId: null, defending: false);
-    }
-    // Healthy elites conserve AP for their three-element spell instead of
-    // spending every third turn on a cheaper combo and never reaching 5 AP.
-    final charging =
-        !match.currentPlayerIsSilenced &&
-        match.playerBCurrentHp > match.playerBMaxHp * .35 &&
-        match.equippedAttacksForCurrentPlayer.any(
-          (a) => a.elementIds.length == 3,
-        ) &&
-        match.availableApForAction < match.attackApCost(3);
-    final choices = [
-      for (final id in match.equippedElementIdsForCurrentPlayer)
-        (elements: [id], attackId: null as String?, defending: false),
-      for (final a in match.equippedAttacksForCurrentPlayer)
-        if (!charging && match.attackUnavailableReason(a.id) == null)
-          (elements: a.elementIds, attackId: a.id, defending: false),
-    ];
-    var best = choices.first;
-    var bestScore = double.negativeInfinity;
-    for (final choice in choices) {
-      final preview = match.previewAction(
-        choice.elements,
-        attackId: choice.attackId,
-      );
-      final score =
-          preview.opponentHpLoss * 2 -
-          preview.selfHpLoss +
-          preview.effects.length * 3 -
-          preview.apCost * .5;
-      if (score > bestScore) {
-        bestScore = score;
-        best = choice;
-      }
-    }
-    // One guard before a charged attack, never an endless defend loop.
-    if (match.cumulativeTurnsPlayedB % 4 == 1 &&
-        match.availableApForAction < 3 &&
-        match.playerBCurrentHp > 10) {
-      return (elements: <String>[], attackId: null, defending: true);
-    }
-    return best;
   }
 }

@@ -68,7 +68,13 @@ class TurnEngine {
     BattleState state,
     TurnAction action, {
     List<CombinationModifier> combinationModifiers = const [],
+    int hitCount = 1,
+    double focusedBonus = 0,
+    int sealDamagePercent = 100,
   }) {
+    if (![40, 60, 80, 100].contains(sealDamagePercent)) {
+      throw ArgumentError.value(sealDamagePercent, 'sealDamagePercent');
+    }
     if (state.winner != null) {
       throw StateError('The battle is already over');
     }
@@ -130,11 +136,21 @@ class TurnEngine {
       }
       appliedEffect = fieldEffect;
       nextState = nextState.withFieldEffect(fieldEffect);
-      nextState = _applyDamage(
-        nextState,
-        opponent,
-        _modifiedDamage(state, action, fieldEffect.damage),
-      );
+      final hits = hitCount.clamp(1, 2);
+      final fullDamage =
+          (_modifiedDamage(state, action, fieldEffect.damage) *
+                  (1 + focusedBonus.clamp(0, .25)) *
+                  (hits > 1 ? .8 : 1))
+              .ceil();
+      final damage = (fullDamage * sealDamagePercent / 100).ceil();
+      // Preserve the integer total. Statuses, healing and AP still resolve once.
+      for (var hit = 0; hit < hits && nextState.winner == null; hit++) {
+        nextState = _applyDamage(
+          nextState,
+          opponent,
+          damage ~/ hits + (hit < damage % hits ? 1 : 0),
+        );
+      }
     } else if (elementCount == 1) {
       nextState = _applyDamage(
         nextState,
@@ -210,8 +226,9 @@ class TurnEngine {
     if (state.hasStatus(action.actor, StatusEffects.buff)) percent += 25;
     if (state.hasStatus(action.actor, StatusEffects.debuff)) percent -= 25;
     if (action.elements.contains(Elements.lightning) &&
-        state.hasStatus(state.opponentOf(action.actor), StatusEffects.wet))
+        state.hasStatus(state.opponentOf(action.actor), StatusEffects.wet)) {
       percent += 25;
+    }
     return (damage * percent / 100).ceil();
   }
 

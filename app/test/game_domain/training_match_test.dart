@@ -129,12 +129,15 @@ void main() {
       );
     });
 
-    test('a mutation unlocked by Jogador A applies to every action they '
-        'take, hitting the opponent', () {
-      final match = TrainingMatch(initialProgressA: _allElementsUnlocked());
+    test('a mutation unlocked by Jogador A applies to a paid combo', () {
+      final match = TrainingMatch(
+        initialEquippedElementsA: ['fire', 'earth'],
+        initialProgressA: _allElementsUnlocked(),
+        initialApA: const ApPool(max: 5, current: 3),
+      );
       match.unlockSkillForCurrentPlayer('ember_mastery'); // Jogador A
 
-      match.playElementIds(['fire']);
+      match.playElementIds(['fire', 'earth']);
 
       expect(match.lastAppliedStatusNames, contains('Queimadura'));
       expect(match.playerBStatusNames, contains('Queimadura'));
@@ -277,10 +280,14 @@ void main() {
 
   test('playerAActiveStatuses/playerBActiveStatuses resolve id and '
       'remainingTurns from an applied mutation status', () {
-    final match = TrainingMatch(initialProgressA: _allElementsUnlocked());
+    final match = TrainingMatch(
+      initialEquippedElementsA: ['fire', 'earth'],
+      initialProgressA: _allElementsUnlocked(),
+      initialApA: const ApPool(max: 5, current: 3),
+    );
     match.unlockSkillForCurrentPlayer('ember_mastery'); // Jogador A
 
-    match.playElementIds(['fire']); // aplica Queimadura em Jogador B
+    match.playElementIds(['fire', 'earth']); // aplica Queimadura em Jogador B
 
     expect(match.playerAActiveStatuses, isEmpty);
     expect(match.playerBActiveStatuses, [
@@ -303,15 +310,16 @@ void main() {
   });
 
   test('a player seeded with Maestria da Brasa already unlocked applies '
-      'Queimadura on the first action, no need to unlock again', () {
+      'Queimadura on the first combo, no need to unlock again', () {
     final match = TrainingMatch(
+      initialApA: const ApPool(max: 5, current: 3),
       initialProgressA: SkillProgress(
         defaultSkillTree,
-        unlockedNodeIds: ['ember_mastery', 'unlock_fire'],
+        unlockedNodeIds: ['ember_mastery', 'unlock_fire', 'unlock_earth'],
       ),
     );
 
-    match.playElementIds(['fire']);
+    match.playElementIds(['fire', 'earth']);
 
     expect(match.lastAppliedStatusNames, contains('Queimadura'));
   });

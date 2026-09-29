@@ -3,6 +3,7 @@ import 'package:app/game_domain/dungeon_campaign.dart';
 import 'package:app/game_domain/dungeon_progress.dart';
 import 'package:app/game_domain/dungeon_progress_store.dart';
 import 'package:app/game_presentation/battle_scene_widget.dart';
+import 'package:app/game_presentation/dungeon_intent_banner.dart';
 import 'package:app/game_presentation/sfx_player.dart';
 import 'package:app/ui/dungeon_screen.dart';
 import 'package:app/ui/training_screen.dart';
@@ -18,6 +19,30 @@ void main() {
     addTearDown(() => sfxPlayer = previous);
   });
   for (final size in [const Size(360, 640), const Size(568, 320)]) {
+    testWidgets('intent and play button visible at $size', (tester) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final c = DungeonCampaign(
+        DungeonProgress().prepare(['fire', 'wind']),
+        DungeonProgressStore(),
+      );
+      await c.start();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TrainingScreen(dungeon: c, encounter: c.enter()),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('Próxima: Fogo').hitTestable(), findsOneWidget);
+      expect(find.byType(DungeonIntentBanner), findsOneWidget);
+      await tester.tap(find.text('Fogo'));
+      await tester.pump();
+      expect(find.text('Jogar').hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
     testWidgets('camp actions visible at $size', (tester) async {
       final p = DungeonProgress().prepare(['fire', 'wind']);
       SharedPreferences.setMockInitialValues({

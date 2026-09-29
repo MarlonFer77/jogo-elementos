@@ -16,7 +16,7 @@ bool didTakeDamage({required int? previousHp, required int currentHp}) {
 }
 
 /// Jogo Flame que renderiza um [BattleSceneView]: um fundo procedural mais
-/// dois personagens genéricos em pixel art (um por lado), com sequência de
+/// dois combatentes em pixel art (avatar ou criatura), com sequência de
 /// ataque quando uma combinação é jogada. Barra de HP e indicador de vez
 /// moram no `BattleHudWidget` (Flutter, fora deste jogo). Apresentação
 /// pura — nenhuma regra de batalha mora aqui; o estado a renderizar vem de
@@ -120,6 +120,9 @@ class BattleSceneGame extends FlameGame {
   void _applyView(BattleSceneView view) {
     final left = _left!;
     final right = _right!;
+
+    left.appearance = view.leftAppearance;
+    right.appearance = view.rightAppearance;
 
     left.setFrozen(view.leftStatuses.any((status) => status.id == 'freeze'));
     right.setFrozen(view.rightStatuses.any((status) => status.id == 'freeze'));

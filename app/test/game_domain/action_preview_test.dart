@@ -13,11 +13,11 @@ void main() {
       ),
     );
     final p = m.previewAction(['water', 'light']);
-    expect(p.summary, contains('+12 HP'));
+    expect(p.summary, contains('+14 HP'));
     expect(p.summary, contains('Purificação'));
     expect(m.playerACurrentHp, 50);
     m.playElementIds(['water', 'light']);
-    expect(m.playerACurrentHp, 62);
+    expect(m.playerACurrentHp, 64);
     expect(m.equippedAttackIdsForPlayerA, ['purifying_water']);
     expect(m.discoveredCombinationIds, ['purifying_water']);
   });

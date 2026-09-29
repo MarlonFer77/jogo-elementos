@@ -203,7 +203,7 @@ void main() {
     final player = _buildPlayer();
     player.update(0.01);
 
-    expect(playedPaths, contains('cast.ogg'));
+    expect(playedPaths, contains(SfxId.cast.path));
   });
 
   test('plays the impact sound when the impact step resolves', () {
@@ -214,6 +214,6 @@ void main() {
     final player = _buildPlayer();
     player.update(0.56);
 
-    expect(playedPaths, contains('impact.ogg'));
+    expect(playedPaths, contains(SfxId.fire.path));
   });
 }

@@ -110,6 +110,7 @@ export async function handleSeal(req: IncomingMessage, res: ServerResponse, stor
         if (!isNonEmptyString(body.sealId)) throw new TurnValidationError('Selo obrigatório.');
         return current.finishSeal(id, actorId, body.sealId, body.trace);
       }
+      if (body.sealVersion !== 2) throw new TurnValidationError('Atualize o aplicativo para usar os novos selos. Nenhum AP foi gasto.');
       return current.startSeal(id, parseTurnAction(body), revision(body));
     }, true));
   } catch (error) { sendErrorResponse(res, error); }

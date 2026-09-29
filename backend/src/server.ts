@@ -12,6 +12,8 @@ import {
   handleSeal,
 } from "./routes/matches.js";
 import { handleValidateTurn } from "./routes/validate-turn.js";
+import { RequestLimits } from './http/request-limits.js';
+import { sendJson } from './http/respond.js';
 
 /**
  * Builds the HTTP server without starting it — kept separate from
@@ -20,17 +22,20 @@ import { handleValidateTurn } from "./routes/validate-turn.js";
  * each other.
  */
 export function createServer(matchStore = new MatchStore({filePath: process.env.MATCH_STORE_FILE})): Server {
+  const limits = new RequestLimits();
+  const server = createHttpServer((req, res) => {
+    let pathname: string;
+    try { pathname = new URL(req.url ?? '/', 'http://localhost').pathname; }
+    catch { sendJson(res, 400, {error: 'Endereço inválido.'}); return; }
 
-  return createHttpServer((req, res) => {
-    const pathname = new URL(req.url ?? "/", "http://localhost").pathname;
-
-    // Permissive CORS: there's no auth or per-origin concern here (see
-    // DECISION-016 — identity is just a client-provided string), and the
-    // Flutter web app runs on its own dev-server origin, separate from
-    // this server's. See DECISION-021.
+    // CORS is not authentication: rooms require a per-installation bearer token.
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader('Access-Control-Expose-Headers', 'Retry-After');
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    if (!limits.allow(req, res, pathname)) return;
 
     if (req.method === "OPTIONS") {
       res.writeHead(204);
@@ -102,4 +107,9 @@ export function createServer(matchStore = new MatchStore({filePath: process.env.
     res.writeHead(404, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: "not_found" }));
   });
+  server.requestTimeout = 15_000;
+  server.headersTimeout = 10_000;
+  server.keepAliveTimeout = 5_000;
+  server.maxHeadersCount = 32;
+  return server;
 }

@@ -1,5 +1,6 @@
 import 'attack_event.dart';
 import 'effect_badge_view.dart';
+import 'combatant_appearance.dart';
 
 /// Read-only view of what the battle scene should show: a fraction of HP
 /// per side and whose turn it is. Game Presentation (Flame) nunca toca em
@@ -22,6 +23,7 @@ class BattleSceneView {
   final int leftApMax;
   final int rightAp;
   final int rightApMax;
+  final CombatantAppearance leftAppearance, rightAppearance;
 
   const BattleSceneView({
     required this.leftCurrentHp,
@@ -39,5 +41,7 @@ class BattleSceneView {
     this.leftApMax = 5,
     this.rightAp = 0,
     this.rightApMax = 5,
+    this.leftAppearance = CombatantAppearance.adventurer,
+    this.rightAppearance = CombatantAppearance.adventurer,
   });
 }

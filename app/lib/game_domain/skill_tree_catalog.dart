@@ -112,7 +112,7 @@ const _skillTreeBranchDisplayNames = {
 
 String skillTreeBranchIdentity(String branch) => switch (branch) {
   'fogo' => 'Pressão • desgaste por Queimadura',
-  'precisao' => 'Precisão • crítico e multigolpe ainda em desenvolvimento',
+  'precisao' => 'Precisão • acumular AP e romper defesas',
   'elemental' => 'Sinergia • duração ou impacto dos combos',
   'vitalidade' => 'Resistência • mais tempo para preparar combos',
   'defesa' => 'Proteção • absorver golpes enquanto recupera AP',
@@ -122,8 +122,9 @@ String skillTreeBranchIdentity(String branch) => switch (branch) {
 
 String? skillTreeNodeCaveat(String id) => switch (id) {
   'unstable_core_training' || 'fragment_strikes' =>
-    'Em desenvolvimento: este desbloqueio é salvo, mas ainda não modifica o dano da batalha.',
-  'wildfire_path' => 'O campo criado ainda não causa dano contínuo próprio.',
+    'Só combos ativam. A prévia inclui concentração, fragmentação e defesas.',
+  'wildfire_path' =>
+    'Mais duração, não mais dano por ação. Purificação remove a Queimadura.',
   _ => null,
 };
 
@@ -134,3 +135,44 @@ String? skillTreeNodeCaveat(String id) => switch (id) {
 /// atualizar este mapa).
 String skillTreeBranchDisplayName(String branch) =>
     _skillTreeBranchDisplayNames[branch] ?? branch;
+
+/// Tactical guidance, not additional rules or free bonuses.
+String skillTreeTactic(String id) => switch (id) {
+  'ember_mastery' =>
+    'Favorece pressão contínua. Combine com proteção para sobreviver enquanto a Queimadura age.',
+  'wildfire_path' =>
+    'Invista se as lutas duram várias ações. Purificação é uma resposta do adversário.',
+  'unstable_core_training' =>
+    'Prepare AP com básicos antes do combo. Mire o centro do selo para aproveitar melhor o dano.',
+  'fragment_strikes' =>
+    'Útil contra Escudo e Defesa; contra alvos desprotegidos, você abre mão de parte do dano.',
+  'elemental_insight' =>
+    'Procure combos de Queimadura ou Veneno no Livro. O benefício depende desses efeitos.',
+  'elemental_mastery' =>
+    'Troca desgaste prolongado por impacto imediato. Avalie se o alvo precisa cair agora.',
+  'vitality_training' =>
+    'Mais margem para acumular AP e conjurar triplas. Não substitui administrar a defesa.',
+  'guard_training' =>
+    'Favorece alternar combos e preparação. Golpes fragmentados podem atravessar parte da proteção.',
+  _ =>
+    'Amplia suas receitas possíveis. Depois de desbloquear, escolha quais elementos levar entre os 4 espaços da batalha.',
+};
+
+String skillBuildIdentity(Iterable<String> unlockedIds) {
+  final unlocked = unlockedIds.toSet();
+  final counts = <String, int>{};
+  for (final node in allSkillTreeNodes()) {
+    if (node.branch != 'elementos' && unlocked.contains(node.id)) {
+      counts.update(node.branch, (count) => count + 1, ifAbsent: () => 1);
+    }
+  }
+  if (counts.isEmpty) return 'Explorador · escolha seu estilo';
+  final max = counts.values.reduce((a, b) => a > b ? a : b);
+  final leaders = counts.entries
+      .where((e) => e.value == max)
+      .map((e) => skillTreeBranchDisplayName(e.key))
+      .toList();
+  return leaders.length > 2
+      ? 'Build versátil · caminhos combinados'
+      : 'Estilo: ${leaders.join(' + ')}';
+}

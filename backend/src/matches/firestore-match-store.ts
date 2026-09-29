@@ -11,7 +11,36 @@ const profileKey = (player: string, credential: string) => digest(JSON.stringify
  * short cache; mutations always read and validate the authoritative revision. */
 export class FirestoreMatchStore extends MatchStore {
   private readonly cache = new Map<string, {until: number; store: MatchStore}>();
+  private readonly pendingReads = new Map<string, Promise<MatchStore>>();
   constructor(private readonly db: Firestore) { super(); }
+
+  private cacheStore(id: string, store: MatchStore): MatchStore {
+    const current = this.cache.get(id);
+    // A slow GET must never overwrite a newer committed transaction.
+    if (current && current.store.get(id).revision > store.get(id).revision) return current.store;
+    if (this.cache.size >= 500 && !this.cache.has(id)) {
+      this.cache.delete(this.cache.keys().next().value!);
+    }
+    this.cache.set(id, {until: Date.now() + 1500, store});
+    return store;
+  }
+
+  private async read(id: string): Promise<MatchStore> {
+    const cached = this.cache.get(id);
+    if (cached && cached.until > Date.now()) return cached.store;
+    const pending = this.pendingReads.get(id);
+    if (pending) return pending;
+    const load = (async () => {
+      const document = await this.db.collection('elementosMatches').doc(id).get();
+      if (!document.exists) throw new MatchError('Sala não encontrada.', 404);
+      const store = new MatchStore();
+      store.restore(document.data() as MatchSnapshot);
+      return this.cacheStore(id, store);
+    })();
+    this.pendingReads.set(id, load);
+    try { return await load; }
+    finally { this.pendingReads.delete(id); }
+  }
 
   override async run<T>(id: string | undefined, action: (store: MatchStore) => T,
       write = false, profile?: ProfileSeed): Promise<T> {
@@ -26,15 +55,7 @@ export class FirestoreMatchStore extends MatchStore {
       write: boolean, profile?: ProfileSeed): Promise<T> {
     if (id && !/^[A-F0-9]{6}$/.test(id)) throw new MatchError('Código de sala inválido.', 400);
     if (!write && id) {
-      const cached = this.cache.get(id);
-      if (cached && cached.until > Date.now()) return action(cached.store);
-      const document = await this.db.collection('elementosMatches').doc(id).get();
-      if (!document.exists) throw new MatchError('Sala não encontrada.', 404);
-      const store = new MatchStore();
-      store.restore(document.data() as MatchSnapshot);
-      if (this.cache.size >= 500) this.cache.clear();
-      this.cache.set(id, {until: Date.now() + 1500, store});
-      return action(store);
+      return action(await this.read(id));
     }
     const output = await this.db.runTransaction(async transaction => {
       const store = new MatchStore();
@@ -56,6 +77,7 @@ export class FirestoreMatchStore extends MatchStore {
       const snapshot = store.snapshot(match.id);
       // Serialize once to remove optional undefined fields before Firestore.
       const data = JSON.parse(JSON.stringify(snapshot));
+      data.updatedAt = Date.now(); // Maintenance metadata; polling never writes it.
       const reference = this.db.collection('elementosMatches').doc(match.id);
       if (id) transaction.set(reference, data);
       else transaction.create(reference, data);
@@ -66,9 +88,9 @@ export class FirestoreMatchStore extends MatchStore {
             {progress, skills: match.skillProgress[player] ?? []});
         }
       }
-      return {result, id: match.id};
+      return {result, id: match.id, store};
     });
-    this.cache.delete(output.id);
+    this.cacheStore(output.id, output.store);
     return output.result;
   }
 }

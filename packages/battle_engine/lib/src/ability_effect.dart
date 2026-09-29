@@ -4,9 +4,8 @@ import 'targeted_status.dart';
 /// The accumulated effect of resolving an [Ability]'s mutations, before it
 /// is applied to a [BattleState].
 ///
-/// [hitCount] and [critChanceBonus] are not consumed by anything yet — there
-/// is no damage/crit system in the engine. They are carried as data for
-/// whichever system implements that later, rather than being computed here.
+/// [hitCount] splits direct combo damage. The legacy [critChanceBonus] name is
+/// retained, but now means a deterministic full-AP damage bonus, not RNG.
 class AbilityEffect {
   final List<TargetedStatus> statusesToApply;
   final FieldEffect? fieldEffect;

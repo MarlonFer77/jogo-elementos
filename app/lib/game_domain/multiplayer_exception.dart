@@ -4,8 +4,9 @@
 class MultiplayerException implements Exception {
   final String message;
   final int? statusCode;
+  final Duration? retryAfter;
 
-  MultiplayerException(this.message, {this.statusCode});
+  MultiplayerException(this.message, {this.statusCode, this.retryAfter});
 
   @override
   String toString() => message;

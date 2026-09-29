@@ -1,5 +1,4 @@
 import 'active_status.dart';
-import 'field_effect.dart';
 import 'mutation.dart';
 import 'status_effects.dart';
 import 'targeted_status.dart';
@@ -13,7 +12,8 @@ class Mutations {
   static final combustion = Mutation(
     id: 'combustion',
     name: 'Combustão',
-    description: 'Aplica queimadura ao alvo (8 de dano por 2 turnos).',
+    description:
+        'Combos aplicam queimadura: 3 de dano por 2 ações. Escudo bloqueia.',
     apply: (effect) => effect.copyWith(
       statusesToApply: [
         ...effect.statusesToApply,
@@ -21,7 +21,7 @@ class Mutations {
           status: ActiveStatus(
             effect: StatusEffects.burn,
             turnsRemaining: 2,
-            damagePerTick: 8,
+            damagePerTick: 3,
           ),
           target: StatusTarget.opponent,
         ),
@@ -32,30 +32,52 @@ class Mutations {
   static final fragmentation = Mutation(
     id: 'fragmentation',
     name: 'Fragmentação',
-    description: 'Divide o ataque em múltiplos golpes.',
+    description:
+        'Combos causam 80% do dano em 2 golpes. Escudo bloqueia só o primeiro; efeitos aplicam uma vez.',
     apply: (effect) => effect.copyWith(hitCount: effect.hitCount + 1),
   );
 
   static final wildfire = Mutation(
     id: 'wildfire',
     name: 'Incêndio',
-    description: 'Cria uma área de fogo no campo.',
+    description:
+        'Prolonga a Queimadura passiva para 3 ações, sem acumular dano por ação.',
     apply: (effect) => effect.copyWith(
-      fieldEffect: const FieldEffect(
-        id: 'fire_zone',
-        name: 'Área em Chamas',
-        description: 'Zona de fogo persistente no campo.',
-      ),
+      statusesToApply: [
+        if (!effect.statusesToApply.any(
+          (t) => t.status.effect == StatusEffects.burn,
+        ))
+          TargetedStatus(
+            target: StatusTarget.opponent,
+            status: ActiveStatus(
+              effect: StatusEffects.burn,
+              turnsRemaining: 3,
+              damagePerTick: 3,
+            ),
+          ),
+        for (final targeted in effect.statusesToApply)
+          if (targeted.status.effect == StatusEffects.burn)
+            TargetedStatus(
+              target: targeted.target,
+              status: ActiveStatus(
+                effect: StatusEffects.burn,
+                turnsRemaining: 3,
+                damagePerTick: targeted.status.damagePerTick,
+              ),
+            )
+          else
+            targeted,
+      ],
     ),
   );
 
   static final unstableCore = Mutation(
     id: 'unstable_core',
     name: 'Núcleo Instável',
-    description: 'Aumenta a chance de crítico.',
-    apply: (effect) => effect.copyWith(
-      critChanceBonus: effect.critChanceBonus + 0.15,
-    ),
+    description:
+        'Com AP cheio ao conjurar (inclui regeneração), combos causam +25% de dano direto. Sem sorte.',
+    apply: (effect) =>
+        effect.copyWith(critChanceBonus: effect.critChanceBonus + 0.25),
   );
 
   /// Grants Escudo to whoever plays this ability — unlike every other
@@ -63,13 +85,13 @@ class Mutations {
   static final guard = Mutation(
     id: 'guard',
     name: 'Guarda',
-    description: 'Ergue um escudo que bloqueia o próximo dano de combo '
-        'recebido.',
+    description:
+        'Conjurar um combo ergue Escudo por 2 ações, bloqueando o próximo golpe. Básicos não ativam.',
     apply: (effect) => effect.copyWith(
       statusesToApply: [
         ...effect.statusesToApply,
         TargetedStatus(
-          status: ActiveStatus(effect: StatusEffects.shield),
+          status: ActiveStatus(effect: StatusEffects.shield, turnsRemaining: 2),
           target: StatusTarget.actor,
         ),
       ],

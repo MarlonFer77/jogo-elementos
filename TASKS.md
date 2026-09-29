@@ -4,6 +4,119 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Preparação da release v0.29.0/build 29 na branch codex/release-v0.29.0,
+reunindo as alterações acumuladas desde v0.28.0. Workflow manual existente
+mantido; roteiro em docs/release-v0.29.0.md. Nenhum build, tag, release ou deploy
+disparado nesta preparação. Publicação exige backend no mesmo commit e
+validação da assinatura/atualização em aparelho real.
+
+Checkpoint anterior:
+
+Livro e Skill Tree renovados localmente no tema pergaminho/RPG: filtros por
+função, ordenação, receita clicável, sinergias e informações corretas de selos.
+Árvore por especialização com cores/progresso, Minha build, dicas táticas,
+filtro de disponíveis e objetivo temporário de planejamento. 18 talentos,
+IDs/custos/callbacks/saves preservados; nenhum novo efeito de combate.
+19 testes focados aprovados, incluindo orientação e teclado; análise estática
+limpa. Falta avaliação visual em aparelho. Sem APK/release/deploy neste bloco.
+Detalhes: docs/progression-journals.md.
+
+Checkpoint anterior:
+
+Selos v2 implementados localmente: dificuldade por receita (4/5 nós para
+duplas, 6/7 para triplas), precisão média dos centros com 100/80/60/40% do dano
+direto. Captura refina a passagem pelo nó, não penaliza a primeira borda;
+alvo central, dificuldade e feedback da faixa visíveis. AP/cura/status e
+falha anteriores preservados. Dart/servidor calculam a nota; HTTP exige versão
+2 antes de reservar a conjuração. Prévia explicita selo perfeito.
+9 testes focados do app, 5 do engine e 10 do backend aprovados. Typecheck TS
+limpo e análise Dart sem alertas. Falta playtest da precisão no celular.
+Sem APK/release/deploy. Próxima publicação exige app + servidor coordenados,
+sem partidas ativas. Regras/limites: docs/seal-quality.md.
+
+Checkpoint anterior:
+
+Acabamento implementado localmente: guia opcional de quatro passos no menu
+(Comece aqui/Como jogar), com pular/rever e orientação sobre modos, elementos,
+HP/AP, habilidades e selos. Volume/mudo persistidos por aparelho, sem tocar
+nos saves; mudo rápido no combate Treino/Dungeon/Multiplayer sem pausar turnos.
+Áudio aplica volume a todas as pistas e encerra vozes ativas ao silenciar.
+27 verificações focadas aprovadas (preferências, guia, áudio, menu e comandos
+responsivos); análise estática dos arquivos alterados limpa. Falta ouvir em
+aparelho real. Sem APK/release/deploy; regras e backend não alterados neste bloco.
+
+Checkpoint anterior:
+
+Multiplayer preparado localmente para beta restrito de até 10 pessoas: limites
+de tráfego/criação, 40 requisições concorrentes, credencial validada antes do DB,
+corpo 64 KiB, erros seguros e URLs malformadas tratadas. Firestore compartilha
+leituras simultâneas e cache não retrocede após escrita. Polling Android pausa
+em segundo plano; falhas usam backoff/Retry-After sem repetir POST. Sem novas
+dependências/serviços ou alteração de faturamento. Simulação local de cinco
+salas/dez sessões e testes de cache/backoff passaram. Typecheck TS/análise Dart
+limpos. Falta publicar app + servidor e playtest físico; retenção/backups e
+recuperação de conta não implementados. Sem APK/deploy neste bloco.
+Detalhes/limites: docs/multiplayer-beta-10.md.
+
+Checkpoint anterior:
+
+Skill Tree atual concluída localmente: Concentração (+25% de dano com AP cheio,
+sem RNG), Fragmentação (80% do dano em dois golpes, rompe proteção no primeiro)
+e Incêndio (Queimadura passiva por 3 ações). IDs/compras/pré-requisitos mantidos;
+Precisão liberada na dungeon. Dart/TypeScript alinhados; prévia e feedback de
+batalha mostram ativações, com códigos opcionais enviados pelo servidor.
+28 testes focados do engine, 17 do backend e 53 do app passaram. Typecheck TS
+aprovado; falta playtest em aparelhos. Sem APK, release ou deploy. Regras e
+limites: docs/skill-tree-completion.md. Próxima publicação: app + servidor.
+
+Checkpoint anterior:
+
+Balanceamento de combos/progressão implementado localmente: passivas exigem
+combo pago; Combustão 3 × 2 respeita Escudo, Guarda dura 2 ações e básicos não
+renovam proteção. Oito combos ajustados em Dart/TypeScript, mantendo 3/5 AP.
+Primeiro ponto da dungeon chega com 40 XP; demais custos mantidos, 5 pontos por
+1.000 XP. Saves/IDs/compras preservados. Regras e justificativas: docs/balance.md.
+Verificação concluída: 30 testes focados do engine, 19 do backend e 64 do app
+aprovados; análise estática Dart e typecheck TS limpos. Playtest humano de
+dificuldade/duração continua pendente; não há promessa de equilíbrio definitivo.
+Sem APK, release ou deploy; próxima publicação exige app + servidor alinhados.
+
+Checkpoint anterior:
+
+IA da dungeon e intenção concluídas localmente: 10 padrões por sala, separados
+da arte; próximo ataque/custo anunciado no HUD antes da jogada. Congelamento,
+silêncio e falta de AP interrompem planos com fallback legal. Dragão entra em
+FÚRIA abaixo de metade do HP (inclusive), sem bônus grátis nem mudança surpresa
+da ação já anunciada. Custos/status seguem o engine; saves, Treino e Multiplayer
+mantidos. 19 verificações focadas aprovadas, incluindo as 10 salas, interrupções
+e HUD vertical/horizontal. Falta playtest da dificuldade em celular. Sem APK,
+release ou deploy neste bloco. Detalhes: docs/dungeon.md.
+
+Checkpoint anterior:
+
+Áudio concluído localmente: 19 OGG novos dos pacotes CC0 Kenney RPG/Impact/
+Interface (193 KiB), créditos/licença incluídos. Preparação por arma/material
+da criatura, impactos por elemento, cura/purificação, defesa/descongelamento,
+falha e nós/alerta do selo. Player limita 4 vozes, descarta repetição <65 ms,
+ajusta volumes e libera recursos. 42 verificações focadas aprovadas; assets
+OGG/duração e análise estática conferidos. Falta avaliação auditiva de mixagem/
+latência em celular. Sem nova biblioteca de runtime, backend, APK ou publicação.
+Detalhes e origem de cada arquivo: docs/audio.md.
+
+Checkpoint anterior:
+
+Bestiário visual da dungeon concluído localmente: 10 identidades próprias
+(goblin, dois elfos negros, golem, escaravelho, harpia, ent, troll, aranha e
+dragão). Arte procedural original, membros/armas por espécie, poses de ataque
+e conjuração; retratos do acampamento reutilizam a arte da batalha. Identidade
+passada pela BattleSceneView, com avatar padrão preservado nos modos PvP.
+21 verificações focadas aprovadas; análise estática limpa. Prévias conferidas
+em repouso/ataque/conjuração e arenas 360x230/568x200. Sem alteração de regras,
+HP/XP, IA, persistência, backend, APK ou release. Playtest em celular pendente.
+Prévia local: app/build/art-preview/dungeon-creatures.png.
+
+Checkpoint anterior:
+
 v0.28.0 publicada em 2026-09-27: versionCode 28, commit 9a29a1e,
 CI 36346800307 aprovado. Release latest com app-release.apk; assinatura
 igual à v0.27.0 e SHA-256 local igual ao digest do asset público:

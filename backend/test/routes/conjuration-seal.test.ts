@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {MatchStore} from '../../src/matches/match-store.js';
 import {defaultCombinationBook} from '../../src/battle-rules/combination-book.js';
-import {sealFor, validSealTrace} from '../../src/battle-rules/seal.js';
+import {sealFor, validSealTrace, sealDamagePercent} from '../../src/battle-rules/seal.js';
 
 function ready() {
   const store = new MatchStore();
@@ -54,4 +54,21 @@ test('trace requires correct ordered geometry and finite monotonic bounded times
   const {store,match}=ready();
   const cast=store.startSeal(match.id,{actorId:'a',elementIds:elements},match.revision,0);
   assert.equal(store.finishSeal(match.id,'a',cast.seal!.id,[],100).lastAction!.kind,'fizzle');
+});
+
+test('quality comes from trace, with all four bands and recipe difficulty', () => {
+  const elements = ['fire', 'wind'];
+  const trace = (offset: number) => sealFor(elements).nodes.map((n,i) => ({x:n.x+offset,y:n.y,ms:i*100}));
+  for (const [offset, percent] of [[0,100],[.0325,100],[.033,80],[.065,80],[.066,60],[.0975,60],[.098,40],[.117,40],[.14,0]]) {
+    assert.equal(sealDamagePercent(elements, trace(offset!), 500), percent);
+  }
+  assert.equal(sealFor(elements).nodes.length, 4);
+  assert.equal(sealFor(['fire','earth']).nodes.length, 5);
+  assert.equal(sealFor(['fire','light','lightning']).nodes.length, 7);
+  const {store,match} = ready();
+  const cast = store.startSeal(match.id,{actorId:'a',elementIds:elements},match.revision,1000);
+  const resolved = store.finishSeal(match.id,'a',cast.seal!.id,trace(.05),1500);
+  assert.deepEqual(resolved.lastAction!.feedback,['seal_80']);
+  assert.equal(resolved.state!.ap.a!.current,0);
+  assert.equal(resolved.state!.currentTurnId,'b');
 });

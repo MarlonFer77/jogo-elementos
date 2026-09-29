@@ -17,18 +17,17 @@ export const combustion: Mutation = {
     statusesToApply: [
       ...effect.statusesToApply,
       {
-        status: { effectId: "burn", turnsRemaining: 2, damagePerTick: 8 },
+        status: { effectId: "burn", turnsRemaining: 2, damagePerTick: 3 },
         target: "opponent",
       },
     ],
   }),
 };
 
-/** Mirrors Mutations.fragmentation. No-op here: `hitCount` isn't modeled
- * server-side (see ability-effect.ts/DECISION-025) — nothing to change. */
+/** Two direct hits, with the 80% damage tradeoff resolved by TurnEngine. */
 export const fragmentation: Mutation = {
   id: "fragmentation",
-  apply: (effect) => effect,
+  apply: (effect) => ({...effect, hitCount: effect.hitCount + 1}),
 };
 
 /** Mirrors Mutations.wildfire. */
@@ -36,15 +35,19 @@ export const wildfire: Mutation = {
   id: "wildfire",
   apply: (effect) => ({
     ...effect,
-    fieldEffect: { id: "fire_zone", area: 1, duration: null, damage: 0 },
+    statusesToApply: [
+      ...(!effect.statusesToApply.some(t => t.status.effectId === 'burn')
+        ? [{target: 'opponent' as const, status: {effectId: 'burn', turnsRemaining: 3, damagePerTick: 3}}] : []),
+      ...effect.statusesToApply.map(targeted => targeted.status.effectId === 'burn'
+        ? {...targeted, status: {...targeted.status, turnsRemaining: 3}} : targeted),
+    ],
   }),
 };
 
-/** Mirrors Mutations.unstableCore. No-op here: `critChanceBonus` isn't
- * modeled server-side (see ability-effect.ts/DECISION-025). */
+/** Legacy property name; deterministic +25% damage at full AP, not RNG. */
 export const unstableCore: Mutation = {
   id: "unstable_core",
-  apply: (effect) => effect,
+  apply: (effect) => ({...effect, critChanceBonus: effect.critChanceBonus + .25}),
 };
 
 /** Mirrors Mutations.guard. Unlike every other built-in mutation, this one
@@ -56,7 +59,7 @@ export const guard: Mutation = {
     statusesToApply: [
       ...effect.statusesToApply,
       {
-        status: { effectId: SHIELD_STATUS_ID, turnsRemaining: null, damagePerTick: 0 },
+        status: { effectId: SHIELD_STATUS_ID, turnsRemaining: 2, damagePerTick: 0 },
         target: "actor",
       },
     ],

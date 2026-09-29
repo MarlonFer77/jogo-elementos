@@ -15,9 +15,8 @@ import 'status_effects.dart';
 /// then applies whatever its mutations add — a field effect, and any
 /// [TargetedStatus]es on whichever side each one targets (most, like
 /// Combustão, land on the opponent; a defensive one like Guarda targets
-/// the actor instead — see [StatusTarget]). [AbilityEffect.hitCount] and
-/// [AbilityEffect.critChanceBonus] are still not consumed by anything;
-/// they're carried through for a future combat system to read.
+/// the actor instead — see [StatusTarget]). Precision modifies direct combo
+/// damage before defense; preview and execution are deterministic.
 class AbilityEngine {
   final TurnEngine turnEngine;
 
@@ -31,16 +30,46 @@ class AbilityEngine {
     Combatant actor,
     Ability ability, {
     List<CombinationModifier> combinationModifiers = const [],
+    int? sealDamagePercent,
   }) {
+    final combo = ability.baseElements.length > 1
+        ? turnEngine.combinationBook.resolve(ability.baseElements)
+        : null;
+    var effect = const AbilityEffect();
+    if (combo != null) {
+      for (final mutation in ability.mutations) {
+        effect = mutation.apply(effect);
+      }
+    }
+    final focused =
+        combo != null &&
+        combo.damage > 0 &&
+        effect.critChanceBonus > 0 &&
+        TurnEngine.availableAp(state, actor) >= state.apOf(actor).max;
+    final feedback = <String>[
+      if (sealDamagePercent != null) 'seal_$sealDamagePercent',
+      if (focused) 'focused',
+      if (combo != null && combo.damage > 0 && effect.hitCount > 1)
+        'fragmented',
+    ];
     final turnResult = turnEngine.playTurn(
       state,
       TurnAction(actor: actor, elements: ability.baseElements),
       combinationModifiers: combinationModifiers,
+      hitCount: effect.hitCount,
+      focusedBonus: focused ? effect.critChanceBonus : 0,
+      sealDamagePercent: sealDamagePercent ?? 100,
     );
 
-    var effect = const AbilityEffect();
-    for (final mutation in ability.mutations) {
-      effect = mutation.apply(effect);
+    // Passives require a real combo (and its AP cost), never a free basic hit.
+    if (turnResult.triggeredCombination == null ||
+        turnResult.state.winner != null) {
+      return AbilityResult(
+        state: turnResult.state,
+        effect: const AbilityEffect(),
+        feedback: feedback,
+        triggeredCombination: turnResult.triggeredCombination,
+      );
     }
 
     var nextState = turnResult.state;
@@ -51,12 +80,20 @@ class AbilityEngine {
       final opponent = state.opponentOf(actor);
       for (final targeted in effect.statusesToApply) {
         final target = targeted.target == StatusTarget.actor ? actor : opponent;
+        if (target == opponent &&
+            state.hasStatus(opponent, StatusEffects.shield)) {
+          continue;
+        }
         if (targeted.status.effect == StatusEffects.burn) {
           final existing = nextState
               .statusesOf(target)
               .where((s) => s.effect == StatusEffects.burn);
           if (existing.any(
-            (s) => s.damagePerTick >= targeted.status.damagePerTick,
+            (s) =>
+                s.damagePerTick > targeted.status.damagePerTick ||
+                (s.damagePerTick == targeted.status.damagePerTick &&
+                    (s.turnsRemaining ?? 999) >=
+                        (targeted.status.turnsRemaining ?? 999)),
           )) {
             continue;
           }
@@ -69,6 +106,7 @@ class AbilityEngine {
     return AbilityResult(
       state: nextState,
       effect: effect,
+      feedback: feedback,
       triggeredCombination: turnResult.triggeredCombination,
     );
   }

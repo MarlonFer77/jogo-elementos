@@ -11,10 +11,14 @@ class DiscoveryEntry {
     required this.learned,
     required this.equipped,
     required this.unavailableReason,
+    this.healing = 0,
+    this.roles = const ['Ataque'],
   });
   final String id, name, description;
   final List<String> elements;
   final int damage, apCost;
+  final int healing;
+  final List<String> roles;
   final bool learned, equipped;
   final String? unavailableReason;
 
@@ -23,13 +27,15 @@ class DiscoveryEntry {
     String? element,
     int? cost,
     bool equippedOnly = false,
+    String? role,
   }) {
     final search = _normalize(query.trim());
     final recipeNames = Elements.all
         .where((e) => elements.contains(e.id))
         .map((e) => e.name)
         .join(' ');
-    return (!equippedOnly || equipped) &&
+    return (role == null || roles.contains(role)) &&
+        (!equippedOnly || equipped) &&
         (element == null || elements.contains(element)) &&
         (cost == null || apCost == cost) &&
         _normalize('$name $description $recipeNames').contains(search);
@@ -77,6 +83,29 @@ class DiscoveryCatalog {
             description: combo.description,
             elements: List.unmodifiable(combo.elements.map((e) => e.id)),
             damage: combo.damage,
+            healing: combo.healing,
+            roles: [
+              if (combo.damage > 0) 'Ataque',
+              if (combo.healing > 0 ||
+                  combo.cleanses ||
+                  combo.statusesToApply.any(
+                    (s) => s.target == StatusTarget.actor,
+                  ))
+                'Suporte',
+              if (combo.apDrain > 0 ||
+                  combo.statusesToApply.any(
+                    (s) =>
+                        s.target == StatusTarget.opponent &&
+                        s.status.damagePerTick == 0,
+                  ))
+                'Controle',
+              if (combo.statusesToApply.any(
+                (s) =>
+                    s.target == StatusTarget.opponent &&
+                    s.status.damagePerTick > 0,
+              ))
+                'Desgaste',
+            ],
             apCost: combo.elements.length == 2 ? 3 : 5,
             learned: learned.contains(combo.resultId),
             equipped:

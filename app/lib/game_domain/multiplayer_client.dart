@@ -190,9 +190,13 @@ class MultiplayerClient {
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      final retrySeconds = int.tryParse(response.headers['retry-after'] ?? '');
       throw MultiplayerException(
         body['error'] as String? ?? 'falha na requisição',
         statusCode: response.statusCode,
+        retryAfter: retrySeconds == null
+            ? null
+            : Duration(seconds: retrySeconds.clamp(1, 600)),
       );
     }
     final match =

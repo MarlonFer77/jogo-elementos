@@ -14,25 +14,63 @@ os patamares seguintes também ampliam o repertório e o AP inicial dos inimigos
 
 | Sala | Inimigo | HP | AP inicial | XP |
 | --- | --- | ---: | ---: | ---: |
-| 1 | Vigia das Brasas | 35 | 0 | 40 |
-| 2 | Sentinela Glacial | 55 | 0 | 60 |
+| 1 | Goblin das Brasas | 35 | 0 | 40 |
+| 2 | Elfa Negra Glacial | 55 | 0 | 60 |
 | 3 | Golem do Pântano | 65 | 0 | 70 |
-| 4 | Arauto Solar | 75 | 1 | 80 |
-| 5 | Vigia da Tempestade | 85 | 1 | 90 |
-| 6 | Oráculo Sombrio | 95 | 1 | 100 |
-| 7 | Guardião do Bosque | 105 | 2 | 110 |
-| 8 | Senhor dos Trovões | 115 | 2 | 120 |
-| 9 | Soberano da Peste | 130 | 2 | 150 |
-| 10 | Guardião da Ruína | 150 | 3 | 180 |
+| 4 | Escaravelho Solar | 75 | 1 | 80 |
+| 5 | Harpia da Tempestade | 85 | 1 | 90 |
+| 6 | Oráculo dos Elfos Negros | 95 | 1 | 100 |
+| 7 | Ent do Bosque | 105 | 2 | 110 |
+| 8 | Troll dos Trovões | 115 | 2 | 120 |
+| 9 | Aranha da Peste | 130 | 2 | 150 |
+| 10 | Dragão da Ruína | 150 | 3 | 180 |
+
+## Bestiário visual
+
+Cada sala define uma identidade visual, sem guardar paths de assets no domínio.
+`CreatureArt` desenha pixel art original por espécie no Flame e nos retratos do
+acampamento. Goblin baixo com orelhas/presas/adaga; elfos negros com cabelo
+branco, lança glacial ou cajado; golem rochoso; escaravelho dourado com pinças;
+harpia alada; ent com raízes; troll com martelo; aranha de oito patas; dragão
+com asas, cauda e chifres. Membros respondem a movimento, ataque e canalização.
+Avatares do Treino e Multiplayer permanecem iguais; congelamento e impacto
+usam o feedback compartilhado. Nomes/visuais não alteram números, IA, receitas
+ou índices de sala nos saves. Não há migração de progresso.
+
+## Intenção e comportamento
+
+Antes de agir, o jogador vê a próxima ação do inimigo e o custo de AP dos
+combos. Segurar o aviso exibe a dica completa. Ícones distinguem ataque básico,
+conjuração, defesa e quebra de gelo; FÚRIA sinaliza a fase ofensiva do chefe.
+A intenção é comprometida durante sua vez: a IA não troca por um ataque mais
+forte depois de ver sua jogada. Congelamento cancela a ação; silêncio ou falta
+de AP transformam a conjuração em ataque básico, com aviso de interrupção.
+
+Padrões são dados do catálogo, separados da aparência:
+
+- Goblin alterna fogo/vento e Tempestade Ígnea; elfa intercala gelo com recuperação.
+- Golem alterna proteção e lentidão; escaravelho alterna seus dois combos de fogo.
+- Harpia alterna choque/defesa elétrica; oráculo intercala silêncio e veneno.
+- Ent combina proteção e Bosque Sagrado; troll acumula AP para Temporal Elétrico.
+- Aranha abre com veneno e acumula AP para Jardim da Peste.
+- Dragão prepara Lava e controle; com metade do HP ou menos, seu próximo plano
+  entra em FÚRIA e troca defesas por pressão ofensiva. Não ganha AP/dano grátis.
+
+Planos inviáveis já começam como básicos; não há espera infinita por AP nem
+controle consecutivo no padrão. Custos e regeneração vêm do mesmo engine.
+Padrões reiniciam ao reentrar na sala, como o próprio encontro.
+
+## Regras da expedição
 
 - Salas 1–3 equipam uma habilidade; 4–6, duas; 7–10, três.
-- Elites saudáveis conservam AP para suas conjurações de três elementos.
+- Os padrões das elites reservam ações para acumular AP e conjurar três elementos.
   Dano, custo, regeneração e status continuam seguindo as mesmas regras.
-- Nível 1 começa em 0 XP. Próximo nível exige 100 XP; cada patamar custa
-  mais 50 XP que o anterior. Cada nível concede 1 ponto.
+- Nível 1 começa em 0 XP. Primeiro nível exige 40 XP (primeira sala); depois
+  os custos são 150, 200, 250… Cada nível concede 1 ponto. Uma expedição
+  completa ainda rende 5 pontos. Saves antigos não perdem níveis/compras.
 - Cada nó custa 1 ponto e respeita os pré-requisitos da árvore. Os dois
-  elementos iniciais são gratuitos. Precisão/multigolpe ainda sem efeito
-  ficam indisponíveis para compra, sem alterar a árvore dos outros modos.
+  elementos iniciais são gratuitos. Precisão/multigolpe estão funcionais e
+  liberados para compra; detalhes em `skill-tree-completion.md`.
 - Os bônus existentes da árvore se aplicam normalmente. Limites de 4 elementos
   e 3 habilidades equipadas são preservados.
 - HP restante persiste entre salas; fogueira cura até 25. Seu AP reinicia em 0;
@@ -44,7 +82,8 @@ os patamares seguintes também ampliam o repertório e o AP inicial dos inimigos
 ## Integração e persistência
 
 `DungeonProgress` contém regras de nível/pontos. `DungeonCampaign` controla
-encontros e checkpoints; `DungeonOpponent` escolhe ações legais pelas prévias.
+encontros, checkpoints e intenção; `DungeonOpponent` planeja pelo catálogo e
+revalida a ação anunciada antes da execução.
 `TrainingScreen` reutiliza combate/HUD/selos com uma sessão opcional de dungeon,
 desativa controle do inimigo e não grava nos slots do Treino neste modo.
 

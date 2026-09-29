@@ -4,6 +4,7 @@ import 'multiplayer_client.dart';
 import 'multiplayer_exception.dart';
 import 'multiplayer_models.dart';
 import 'action_preview.dart';
+import 'skill_feedback.dart';
 import 'combination_catalog.dart';
 import 'status_catalog.dart';
 
@@ -21,9 +22,20 @@ class MultiplayerMatch {
   MultiplayerMatch({
     required MultiplayerClient client,
     required this.localPlayerId,
-  }) : _client = client;
+    DateTime Function()? now,
+  }) : _client = client,
+       _now = now ?? DateTime.now;
 
   final MultiplayerClient _client;
+  final DateTime Function() _now;
+  DateTime? _retryAt;
+  int _refreshFailures = 0;
+  void _connected() {
+    _retryAt = null;
+    _refreshFailures = 0;
+    connectionError = null;
+  }
+
   final String localPlayerId;
 
   RemoteMatch? _match;
@@ -109,6 +121,7 @@ class MultiplayerMatch {
     try {
       _match = await _client.seal(matchId!, {
         'actorId': localPlayerId,
+        'sealVersion': 2,
         'elementIds': ids,
         'revision': _match!.revision,
       });
@@ -228,6 +241,7 @@ class MultiplayerMatch {
   Future<void> create() async {
     _lastError = null;
     _match = await _client.createMatch(localPlayerId);
+    _connected();
     _startingProgress = null;
     _canCaptureProgress = true;
     _captureStartingProgress();
@@ -237,6 +251,7 @@ class MultiplayerMatch {
   Future<void> join(String matchId) async {
     _lastError = null;
     _match = await _client.joinMatch(matchId, localPlayerId);
+    _connected();
     _startingProgress = null;
     _canCaptureProgress = true;
     _captureStartingProgress();
@@ -257,6 +272,7 @@ class MultiplayerMatch {
       throw MultiplayerException('você não faz parte da partida "$matchId"');
     }
     _match = fetched;
+    _connected();
     // A reconnect cannot reconstruct gains from before this session.
     _startingProgress = null;
     _canCaptureProgress = false;
@@ -267,6 +283,7 @@ class MultiplayerMatch {
   /// out about the opponent joining or playing (see class doc).
   Future<void> refresh() async {
     if (_submitting || _refreshing) return;
+    if (_retryAt != null && _now().isBefore(_retryAt!)) return;
     final generation = _stateGeneration;
     final id = matchId;
     if (id == null) return;
@@ -274,16 +291,25 @@ class MultiplayerMatch {
       _refreshing = true;
       final fetched = await _client.getMatch(id);
       if (!_submitting &&
+          id == matchId &&
           generation == _stateGeneration &&
           fetched.revision >= (_match?.revision ?? 0)) {
         _match = fetched;
         _captureStartingProgress();
       }
-      connectionError = null;
+      if (id == matchId && generation == _stateGeneration) _connected();
     } catch (error) {
+      if (id != matchId || generation != _stateGeneration) return;
+      _refreshFailures = (_refreshFailures + 1).clamp(1, 5);
+      final wait = error is MultiplayerException && error.retryAfter != null
+          ? error.retryAfter!
+          : Duration(seconds: (1 << _refreshFailures).clamp(2, 30));
+      _retryAt = _now().add(wait);
       connectionError = error is MultiplayerException && error.statusCode == 404
-          ? 'Sala não encontrada. O servidor pode ter reiniciado; crie uma nova partida.'
-          : 'Conexão interrompida. Tentando reconectar…';
+          ? 'Sala não encontrada. Confira o código para reconectar.'
+          : error is MultiplayerException && error.statusCode == 403
+          ? 'Sessão inválida. Use o mesmo nome e aparelho da partida.'
+          : 'Conexão pausada. Nova tentativa em ${wait.inSeconds}s…';
       // Transient network hiccup during polling: keep the last known
       // state and let the next poll try again.
     } finally {
@@ -374,6 +400,7 @@ class MultiplayerMatch {
           !thawing &&
           (const CombinationCatalog().byElements(ids)?.cleanses ?? false),
       effects: [
+        ...skillFeedbackLabels(result.match.lastAction?['feedback']),
         if (thawing) 'Congelamento removido · ação perdida.',
         for (final entry in after.combatantStatuses.entries)
           for (final status in entry.value)

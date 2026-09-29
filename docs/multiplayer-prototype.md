@@ -12,8 +12,9 @@ Cada ação é uma transação que revalida a revisão. Polling usa cache curto 
 1,5 segundo; falha na persistência retorna erro, sem confirmar ação em memória.
 O banco Standard existente em southamerica-east1 tem free tier e o projeto
 teve cobrança desativada confirmada em 2026-09-23. Não ativar faturamento para
-contornar quotas. Este protótipo ainda precisa de limites de tráfego e retenção
-antes de abertura pública ampla.
+contornar quotas. Limites de tráfego para o beta restrito foram implementados
+localmente (ver `multiplayer-beta-10.md`); retenção/backup e recuperação de
+identidade continuam pendentes antes de abertura pública ampla.
 
 ## Incluído
 

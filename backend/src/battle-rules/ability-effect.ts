@@ -14,16 +14,18 @@ export interface TargetedStatus {
 
 /** Mirrors AbilityEffect in battle_engine (Dart) — the accumulated effect
  * of resolving an ability's mutations, before it's applied to a
- * BattleState. `hitCount`/`critChanceBonus` from the Dart source aren't
- * mirrored: nothing on either side consumes them yet (see the doc comment
- * on AbilityEffect in ability_effect.dart), so carrying them here would be
- * dead weight — see DECISION-025. */
+ * BattleState. Precision parameters are computed from server-owned skills,
+ * never from the submitted action. Full AP gives deterministic focus, not RNG. */
 export interface AbilityEffect {
+  readonly hitCount: number;
+  readonly critChanceBonus: number;
   readonly statusesToApply: readonly TargetedStatus[];
   readonly fieldEffect: FieldEffect | null;
 }
 
 export const emptyAbilityEffect: AbilityEffect = {
+  hitCount: 1,
+  critChanceBonus: 0,
   statusesToApply: [],
   fieldEffect: null,
 };

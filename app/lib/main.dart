@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 
 import 'ui/update_gate_screen.dart';
+import 'settings/game_settings.dart';
+import 'game_presentation/sfx_player.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await gameSettings.load();
+  void updateAudio() => sfxPlayer.volume = gameSettings.effectiveVolume;
+  updateAudio();
+  gameSettings.addListener(updateAudio);
   runApp(const GameApp());
 }
 

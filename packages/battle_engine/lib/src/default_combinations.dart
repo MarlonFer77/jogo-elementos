@@ -84,7 +84,7 @@ final defaultCombinationBook = CombinationBook([
     [Elements.water, Elements.light],
     0,
     [],
-    healing: 12,
+    healing: 14,
     cleanses: true,
   ),
   _combo(
@@ -152,7 +152,7 @@ final defaultCombinationBook = CombinationBook([
     [Elements.ice, Elements.nature],
     0,
     [_status(StatusEffects.guard, turns: 1, tick: 0, self: true)],
-    healing: 8,
+    healing: 10,
   ),
   _combo(
     'sacred_ice',
@@ -331,7 +331,7 @@ final defaultCombinationBook = CombinationBook([
     'colossus',
     'Colosso',
     [Elements.earth, Elements.nature, Elements.shadow],
-    18,
+    14,
     [
       _status(StatusEffects.shield, turns: 2, tick: 0, self: true),
       _status(StatusEffects.buff, turns: 2, tick: 0, self: true),
@@ -370,7 +370,7 @@ final defaultCombinationBook = CombinationBook([
     [Elements.water, Elements.nature, Elements.light],
     0,
     [],
-    healing: 24,
+    healing: 26,
     cleanses: true,
   ),
   _combo(
@@ -385,7 +385,7 @@ final defaultCombinationBook = CombinationBook([
     'celestial_storm',
     'Tempestade Celestial',
     [Elements.lightning, Elements.light, Elements.wind],
-    24,
+    22,
     [_status(StatusEffects.buff, turns: 2, tick: 0, self: true)],
     cleanses: true,
   ),
@@ -421,7 +421,7 @@ final defaultCombinationBook = CombinationBook([
     'nova',
     'Nova',
     [Elements.fire, Elements.light, Elements.lightning],
-    32,
+    30,
     [],
     cleanses: true,
   ),
@@ -534,7 +534,7 @@ final defaultCombinationBook = CombinationBook([
     'living_ward',
     'Guarda Viva',
     [Elements.nature, Elements.light],
-    14,
+    12,
     [_status(StatusEffects.guard, self: true)],
   ),
   _combo(
@@ -582,7 +582,7 @@ final defaultCombinationBook = CombinationBook([
     'thunderstorm',
     'Temporal Elétrico',
     [Elements.water, Elements.lightning, Elements.wind],
-    24,
+    28,
     [_status(StatusEffects.shock)],
   ),
   _combo(

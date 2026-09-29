@@ -9,10 +9,12 @@ class AbilityResult {
   final BattleState state;
   final AbilityEffect effect;
   final ElementCombination? triggeredCombination;
+  final List<String> feedback;
 
   const AbilityResult({
     required this.state,
     required this.effect,
     this.triggeredCombination,
+    this.feedback = const [],
   });
 }

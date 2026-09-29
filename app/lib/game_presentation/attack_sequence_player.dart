@@ -7,6 +7,7 @@ import '../game_domain/attack_event.dart';
 import 'battle_character_component.dart';
 import 'element_visuals.dart';
 import 'sfx_player.dart';
+import 'battle_audio.dart';
 
 enum _AttackStep {
   preparation,
@@ -191,7 +192,8 @@ class AttackSequencePlayer extends Component {
       if (_step == _AttackStep.preparation && !_preparationStarted) {
         _preparationStarted = true;
         attacker.playPreparationPulse();
-        sfxPlayer.play(SfxId.cast);
+        final sound = BattleAudio.preparation(event, attacker.appearance);
+        if (sound != null) sfxPlayer.play(sound);
       }
 
       final timeLeftInStep = _stepDuration - _stepElapsed;
@@ -210,9 +212,7 @@ class AttackSequencePlayer extends Component {
               !event.isFizzle) {
             target.playHitEffect();
           }
-          if (!event.isDefend && !event.isFrozenRecovery && !event.isFizzle) {
-            sfxPlayer.play(SfxId.impact);
-          }
+          sfxPlayer.play(BattleAudio.impact(event));
           onImpact?.call();
         }
       }
@@ -411,9 +411,16 @@ class AttackSequencePlayer extends Component {
 
     _drawText(
       canvas,
-      event.appliedStatusNames.join(', '),
-      Offset(_targetPosition.x, _targetPosition.y - 20),
-      fontSize: 14,
+      event.appliedStatusNames.toSet().join('\n'),
+      Offset(
+        (_attackerPosition.x + _targetPosition.x) / 2,
+        math.min(_attackerPosition.y, _targetPosition.y) - 40,
+      ),
+      fontSize: 12,
+      maxWidth: math.max(
+        100,
+        (_attackerPosition.x - _targetPosition.x).abs() * 1.5,
+      ),
       color: Color.fromRGBO(255, 255, 255, opacity),
     );
   }
@@ -426,6 +433,7 @@ class AttackSequencePlayer extends Component {
     Color color = Colors.white,
     bool bold = false,
     double? plateOpacity,
+    double maxWidth = double.infinity,
   }) {
     final painter = TextPainter(
       text: TextSpan(
@@ -437,7 +445,7 @@ class AttackSequencePlayer extends Component {
         ),
       ),
       textDirection: TextDirection.ltr,
-    )..layout();
+    )..layout(maxWidth: maxWidth);
     if (plateOpacity != null) {
       final plate = Rect.fromCenter(
         center: center,

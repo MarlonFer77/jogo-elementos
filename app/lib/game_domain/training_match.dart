@@ -1,5 +1,6 @@
 import 'package:battle_engine/battle_engine.dart';
 import 'battle_progress.dart';
+import 'skill_feedback.dart';
 
 import 'effect_badge_view.dart';
 import 'attack_catalog.dart';
@@ -59,31 +60,13 @@ class TrainingMatch {
     final pending = _seal;
     if (pending == null) throw StateError('Nenhum selo ativo.');
     final diagram = ConjurationSeal(pending.ids);
-    var previous = -1;
-    final success =
-        pending.clock.elapsedMilliseconds <= diagram.durationMs &&
-        trace.length == diagram.nodes.length &&
-        trace.indexed.every((entry) {
-          final (i, sample) = entry;
-          final ms = sample['ms']?.toInt() ?? -1;
-          final valid =
-              ms > previous &&
-              ms <= diagram.durationMs &&
-              diagram.hits(
-                i,
-                sample['x']?.toDouble() ?? -1,
-                sample['y']?.toDouble() ?? -1,
-              );
-          previous = ms;
-          return valid;
-        });
+    final elapsed = pending.clock.elapsedMilliseconds;
+    final percent = diagram.damagePercent(trace, elapsedMs: elapsed);
+    final success = elapsed <= diagram.durationMs && percent > 0;
     _seal = null;
     if (success) {
-      if (pending.attackId != null) {
-        playEquippedAttack(pending.attackId!);
-      } else {
-        playElementIds(pending.ids);
-      }
+      // The reserved action/loadout was validated at start and stays locked.
+      _resolveElements(pending.ids, sealDamagePercent: percent);
     } else {
       final actor = _state.currentTurn;
       _state = _abilityEngine.turnEngine
@@ -308,6 +291,11 @@ class TrainingMatch {
 
   int attackApCost(int elementCount) =>
       TurnEngine.actionCost(_state, _currentCombatant, elementCount);
+
+  // Read-only planning for the dungeon; uses the engine's regeneration/status rules.
+  int get opponentAvailableAp => TurnEngine.availableAp(_state, _playerB);
+  int opponentAttackCost(int count) =>
+      TurnEngine.actionCost(_state, _playerB, count);
 
   bool get currentPlayerIsSilenced =>
       _state.hasStatus(_currentCombatant, StatusEffects.silence);
@@ -623,15 +611,21 @@ class TrainingMatch {
     _resolveElements(elementIds);
   }
 
-  void _resolveElements(List<String> elementIds) {
+  void _resolveElements(List<String> elementIds, {int? sealDamagePercent}) {
     _checkSealIdle();
     final wasPlayerATurn = _isPlayerATurn;
     final loadoutBeforeThisPlay = _currentLoadout;
-    final result = _simulateElements(elementIds);
+    final result = _simulateElements(
+      elementIds,
+      sealDamagePercent: sealDamagePercent,
+    );
     _applyResolvedAction(result, wasPlayerATurn, loadoutBeforeThisPlay);
   }
 
-  AbilityResult _simulateElements(List<String> elementIds) {
+  AbilityResult _simulateElements(
+    List<String> elementIds, {
+    int? sealDamagePercent,
+  }) {
     if (isOver) throw StateError('A partida terminou.');
     final elements = elementIds
         .map(
@@ -682,6 +676,7 @@ class TrainingMatch {
       _state.currentTurn,
       build.abilityById('turn_action')!,
       combinationModifiers: build.combinationModifiers,
+      sealDamagePercent: sealDamagePercent,
     );
   }
 
@@ -693,8 +688,17 @@ class TrainingMatch {
     _state = result.state;
     _lastTriggeredCombinationName = result.triggeredCombination?.resultName;
     _lastAppliedStatusNames = result.effect.statusesToApply
+        .where(
+          (t) => _state.hasStatus(
+            t.target == StatusTarget.actor
+                ? _state.opponentOf(_state.currentTurn)
+                : _state.currentTurn,
+            t.status.effect,
+          ),
+        )
         .map((targeted) => targeted.status.effect.name)
         .toList();
+    _lastAppliedStatusNames.addAll(skillFeedbackLabels(result.feedback));
     _lastAppliedStatusNames.addAll(
       result.triggeredCombination?.statusesToApply
               .where(
@@ -808,6 +812,7 @@ class TrainingMatch {
     }
     final actor = _state.currentTurn;
     final opponent = _state.opponentOf(actor);
+    final simulated = !thawing && !defending ? _simulateElements(ids) : null;
     final next = thawing
         ? _abilityEngine.turnEngine
               .playTurn(_state, TurnAction.thaw(actor: actor))
@@ -816,7 +821,7 @@ class TrainingMatch {
         ? _abilityEngine.turnEngine
               .playTurn(_state, TurnAction.defend(actor: actor))
               .state
-        : _simulateElements(ids).state;
+        : simulated!.state;
     final combo = !defending && !thawing && ids.length > 1
         ? defaultCombinationBook.resolve(
             ids
@@ -836,6 +841,7 @@ class TrainingMatch {
           _state.apOf(opponent).current - next.apOf(opponent).current,
       cleanses: combo?.cleanses ?? false,
       effects: [
+        ...skillFeedbackLabels(simulated?.feedback),
         if (thawing) 'Congelamento removido · ação perdida.',
         for (final target in [actor, opponent])
           for (final status in next.statusesOf(target))

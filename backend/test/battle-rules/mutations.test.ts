@@ -15,7 +15,7 @@ test("combustion adds a burn status targeting the opponent", () => {
   const effect = combustion.apply(emptyAbilityEffect);
   assert.deepEqual(effect.statusesToApply, [
     {
-      status: { effectId: "burn", turnsRemaining: 2, damagePerTick: 8 },
+      status: { effectId: "burn", turnsRemaining: 2, damagePerTick: 3 },
       target: "opponent",
     },
   ]);
@@ -25,20 +25,20 @@ test("guard adds a shield status targeting the actor", () => {
   const effect = guard.apply(emptyAbilityEffect);
   assert.deepEqual(effect.statusesToApply, [
     {
-      status: { effectId: "shield", turnsRemaining: null, damagePerTick: 0 },
+      status: { effectId: "shield", turnsRemaining: 2, damagePerTick: 0 },
       target: "actor",
     },
   ]);
 });
 
-test("wildfire sets a fire_zone field effect", () => {
-  const effect = wildfire.apply(emptyAbilityEffect);
-  assert.equal(effect.fieldEffect?.id, "fire_zone");
+test("wildfire extends combustion without stacking", () => {
+  const effect = wildfire.apply(combustion.apply(emptyAbilityEffect));
+  assert.equal(effect.statusesToApply[0]!.status.turnsRemaining, 3);
 });
 
-test("fragmentation and unstableCore are no-ops (hitCount/critChanceBonus not modeled server-side)", () => {
-  assert.deepEqual(fragmentation.apply(emptyAbilityEffect), emptyAbilityEffect);
-  assert.deepEqual(unstableCore.apply(emptyAbilityEffect), emptyAbilityEffect);
+test("precision provides deterministic combo parameters", () => {
+  assert.equal(fragmentation.apply(emptyAbilityEffect).hitCount, 2);
+  assert.equal(unstableCore.apply(emptyAbilityEffect).critChanceBonus, .25);
 });
 
 test("mutationsById indexes every built-in mutation by id", () => {

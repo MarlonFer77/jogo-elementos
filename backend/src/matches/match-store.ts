@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { elementIds } from '../battle-rules/skill-tree.js';
 import { defaultCombinationBook } from '../battle-rules/combination-book.js';
-import { sealFor, validSealTrace } from '../battle-rules/seal.js';
+import { sealFor, sealDamagePercent } from '../battle-rules/seal.js';
 
 import { useAbility } from "../battle-rules/ability-engine.js";
 import { createBattleState, withMaxHpIncreased } from "../battle-rules/battle-state.js";
@@ -202,6 +202,7 @@ export class MatchStore {
     preview = false,
     revision?: number,
     sealResolution = false,
+    sealPercent?: number,
   ): { match: Match; result: TurnResult } {
     const match = this.get(id);
     if (!sealResolution && match.seal) throw new MatchError('Conclua o selo ou aguarde seu prazo.', 409);
@@ -228,6 +229,7 @@ export class MatchStore {
       combinationBook,
       grantedMutations(unlockedNodeIds),
       grantedCombinationModifiers(unlockedNodeIds),
+      sealPercent,
     );
     const updated: Match = {
       ...match,
@@ -236,7 +238,7 @@ export class MatchStore {
       players: {...match.players, [action.actorId]: {...player, turns: player.turns + 1,
         discoveries: combo && !known ? [...player.discoveries, combo.id] : player.discoveries,
         attacks: combo && !known && player.attacks.length < 3 ? [...player.attacks, combo.id] : player.attacks}},
-      lastAction: {revision: match.revision + 1, actorId: action.actorId, elementIds: action.elementIds, kind: action.kind ?? 'attack', comboId: result.triggeredCombinationId},
+      lastAction: {revision: match.revision + 1, actorId: action.actorId, elementIds: action.elementIds, kind: action.kind ?? 'attack', comboId: result.triggeredCombinationId, feedback: result.feedback ?? []},
       state: result.state,
       status: result.state.winner !== null ? "finished" : match.status,
     };
@@ -265,9 +267,10 @@ export class MatchStore {
     const match = this.get(id);
     const seal = match.seal;
     if (!seal || seal.id !== sealId || seal.actorId !== actorId) throw new MatchError('Selo expirado ou já resolvido. Sincronize.', 409);
-    const success = now <= seal.deadline && validSealTrace(seal.elementIds, trace, now - seal.startedAt);
+    const percent = now <= seal.deadline ? sealDamagePercent(seal.elementIds, trace, now - seal.startedAt) : 0;
+    const success = percent > 0;
     return this.applyTurn(id, {actorId, elementIds: success ? seal.elementIds : [],
-      kind: success ? 'attack' : 'fizzle'}, defaultCombinationBook, false, match.revision, true).match;
+      kind: success ? 'attack' : 'fizzle'}, defaultCombinationBook, false, match.revision, true, success ? percent : undefined).match;
   }
 
   expireSeal(id: string, now = Date.now()): Match {

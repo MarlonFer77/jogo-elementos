@@ -6,14 +6,16 @@ import 'package:flutter/material.dart' show Colors;
 
 import 'pixel_sprite.dart';
 import 'element_visuals.dart';
+import '../game_domain/combatant_appearance.dart';
+import 'creature_art.dart';
 
 /// Qual lado do campo de batalha um [BattleCharacterComponent] representa.
 /// Puramente cosmético (paleta, direção do espelhamento/shake) — sem
 /// significado de jogo.
 enum BattleSide { left, right }
 
-/// Um combatente genérico, diferenciado só por lado: um sprite em pixel
-/// art desenhado em código (ver `pixel_sprite.dart`), um flash+shake breve
+/// Combatente com arte própria por espécie ou avatar padrão por lado.
+/// Pixel art em código, flash+shake breve
 /// quando toma dano, e um pulso de escala na preparação de ataque. Barra
 /// de HP e indicador de vez moraram no `BattleHudWidget` — não são
 /// responsabilidade deste componente.
@@ -26,15 +28,19 @@ class BattleCharacterComponent extends PositionComponent {
           .map((row) => row.skip(leg * 8).take(8).toList())
           .toList(),
   ];
-  BattleCharacterComponent({required this.side, required Vector2 position})
-    : _basePosition = position.clone(),
-      super(
-        size: Vector2(64, 80),
-        position: position,
-        anchor: Anchor.bottomCenter,
-      );
+  BattleCharacterComponent({
+    required this.side,
+    required Vector2 position,
+    this.appearance = CombatantAppearance.adventurer,
+  }) : _basePosition = position.clone(),
+       super(
+         size: Vector2(64, 80),
+         position: position,
+         anchor: Anchor.bottomCenter,
+       );
 
   final BattleSide side;
+  CombatantAppearance appearance;
   final Vector2 _basePosition;
 
   static const double _hitEffectDuration = 0.3;
@@ -107,7 +113,7 @@ class BattleCharacterComponent extends PositionComponent {
   @override
   void update(double dt) {
     super.update(dt);
-    _idleTime += dt;
+    if (!_frozen) _idleTime += dt;
     final idleBobY =
         math.sin(_idleTime / _idleBobPeriodSeconds * 2 * math.pi) *
         _idleBobAmplitude;
@@ -167,52 +173,64 @@ class BattleCharacterComponent extends PositionComponent {
     canvas.scale(1, 1 + math.sin(_idleTime * 4) * .012);
     canvas.translate(-size.x / 2, -size.y);
 
-    final palette = side == BattleSide.left
-        ? pixelPaletteLeft
-        : pixelPaletteRight;
-    final pixelSize = size.x / trainerSpriteGrid.first.length;
-    drawPixelGrid(canvas, _upperBody, palette, pixelSize: pixelSize);
-    // Two independently animated legs, using the original pixel art.
-    final stride = _striding ? math.sin(_idleTime * 30) * 4 : 0.0;
-    for (var leg = 0; leg < 2; leg++) {
-      canvas.save();
-      canvas.translate(
-        leg * 8 * pixelSize,
-        14 * pixelSize + (leg == 0 ? stride : -stride),
+    if (appearance != CombatantAppearance.adventurer) {
+      CreatureArt.draw(
+        canvas,
+        appearance,
+        time: _idleTime,
+        charge: _charge,
+        strike: _strike,
+        striding: _striding,
+        element: _swordElement,
       );
-      drawPixelGrid(canvas, _legs[leg], palette, pixelSize: pixelSize);
-      canvas.restore();
-    }
-    final sway =
-        math.sin(_idleTime * (_striding ? 30 : 4)) * (_striding ? 5 : 1.5);
-    final armed = _swordElement != null;
-    final backHand = Offset(10 + _charge * 12, 51 - _charge * 31 - sway);
-    final frontHand = Offset(
-      52 + (armed ? _strike * 7 : _charge * 3),
-      51 - _charge * 31 - (armed ? 15 - _strike * 9 : 0) + sway,
-    );
-    _drawArm(canvas, palette, const Offset(16, 30), backHand);
-    _drawArm(canvas, palette, const Offset(46, 30), frontHand);
-    if (armed) _drawSword(canvas, frontHand, _swordElement!);
-    if (!armed && _charge > .6) {
-      final center = Offset.lerp(backHand, frontHand, .5)!;
-      final energy = Paint()
-        ..color = const Color(0xFFC9AD6A)
-        ..strokeWidth = 2
-        ..style = PaintingStyle.stroke;
-      canvas.save();
-      canvas.translate(center.dx, center.dy - 4);
-      canvas.rotate(_idleTime * 1.6);
-      canvas.drawRect(
-        Rect.fromCenter(center: Offset.zero, width: 13, height: 13),
-        energy,
+    } else {
+      final palette = side == BattleSide.left
+          ? pixelPaletteLeft
+          : pixelPaletteRight;
+      final pixelSize = size.x / trainerSpriteGrid.first.length;
+      drawPixelGrid(canvas, _upperBody, palette, pixelSize: pixelSize);
+      // Two independently animated legs, using the original pixel art.
+      final stride = _striding ? math.sin(_idleTime * 30) * 4 : 0.0;
+      for (var leg = 0; leg < 2; leg++) {
+        canvas.save();
+        canvas.translate(
+          leg * 8 * pixelSize,
+          14 * pixelSize + (leg == 0 ? stride : -stride),
+        );
+        drawPixelGrid(canvas, _legs[leg], palette, pixelSize: pixelSize);
+        canvas.restore();
+      }
+      final sway =
+          math.sin(_idleTime * (_striding ? 30 : 4)) * (_striding ? 5 : 1.5);
+      final armed = _swordElement != null;
+      final backHand = Offset(10 + _charge * 12, 51 - _charge * 31 - sway);
+      final frontHand = Offset(
+        52 + (armed ? _strike * 7 : _charge * 3),
+        51 - _charge * 31 - (armed ? 15 - _strike * 9 : 0) + sway,
       );
-      canvas.rotate(.785);
-      canvas.drawRect(
-        Rect.fromCenter(center: Offset.zero, width: 10, height: 10),
-        energy,
-      );
-      canvas.restore();
+      _drawArm(canvas, palette, const Offset(16, 30), backHand);
+      _drawArm(canvas, palette, const Offset(46, 30), frontHand);
+      if (armed) _drawSword(canvas, frontHand, _swordElement!);
+      if (!armed && _charge > .6) {
+        final center = Offset.lerp(backHand, frontHand, .5)!;
+        final energy = Paint()
+          ..color = const Color(0xFFC9AD6A)
+          ..strokeWidth = 2
+          ..style = PaintingStyle.stroke;
+        canvas.save();
+        canvas.translate(center.dx, center.dy - 4);
+        canvas.rotate(_idleTime * 1.6);
+        canvas.drawRect(
+          Rect.fromCenter(center: Offset.zero, width: 13, height: 13),
+          energy,
+        );
+        canvas.rotate(.785);
+        canvas.drawRect(
+          Rect.fromCenter(center: Offset.zero, width: 10, height: 10),
+          energy,
+        );
+        canvas.restore();
+      }
     }
 
     if (_frozen) {

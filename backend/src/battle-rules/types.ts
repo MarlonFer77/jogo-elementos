@@ -71,6 +71,7 @@ export interface TurnAction {
 }
 
 export interface TurnResult {
+  readonly feedback?: readonly string[];
   readonly state: BattleState;
   readonly triggeredCombinationId: string | null;
 }

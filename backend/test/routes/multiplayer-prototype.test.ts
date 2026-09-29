@@ -33,11 +33,13 @@ test('two HTTP clients prepare, discover, equip and reject stale/forged actions'
       const turn = await request(`${path}/turns`,actorId,{actorId,elementIds:[],kind:'defend',revision:match.revision});
       assert.equal(turn.status,200,JSON.stringify(turn.body)); match=turn.body.match;
     }
-    const action = {actorId:'a',elementIds:['fire','wind'],revision:match.revision};
+    const action = {actorId:'a',elementIds:['fire','wind'],revision:match.revision,sealVersion:2};
     const preview = await request(`${path}/preview`,'a',action);
     assert.equal(preview.status,200);
     assert.equal((await request(path,'a')).body.revision,match.revision);
     assert.equal((await request(`${path}/turns`,'a',action)).status,409);
+    assert.equal((await request(`${path}/seal/start`,'a',{...action,sealVersion:1})).status,400);
+    assert.equal((await request(path,'a')).body.revision,match.revision);
     const casting = (await request(`${path}/seal/start`,'a',action)).body;
     assert.ok(casting.seal);
     assert.equal((await request(`${path}/seal/finish`,'b',{actorId:'a',sealId:casting.seal.id,trace:[]})).status,403);

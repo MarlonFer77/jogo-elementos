@@ -21,8 +21,7 @@ final defaultSkillTree = SkillTree([
     id: 'ember_mastery',
     name: 'Maestria da Brasa',
     description:
-        'Desbloqueia Combustão: habilidades passam a poder aplicar '
-        'queimadura.',
+        'Combos aplicam Queimadura: 3 de dano por 2 ações. Básicos não ativam; Escudo bloqueia. Não acumula com queimadura mais forte.',
     branch: 'fogo',
     grants: Mutations.combustion,
   ),
@@ -30,8 +29,7 @@ final defaultSkillTree = SkillTree([
     id: 'wildfire_path',
     name: 'Caminho do Incêndio',
     description:
-        'Desbloqueia Incêndio: habilidades passam a poder criar '
-        'uma área de fogo no campo.',
+        'Incêndio: a Queimadura passiva dura 3 ações em vez de 2. Não acumula dano por ação; Escudo bloqueia.',
     branch: 'fogo',
     prerequisites: ['ember_mastery'],
     grants: Mutations.wildfire,
@@ -40,8 +38,7 @@ final defaultSkillTree = SkillTree([
     id: 'unstable_core_training',
     name: 'Treino do Núcleo Instável',
     description:
-        'Desbloqueia Núcleo Instável: habilidades passam a poder '
-        'ganhar chance de crítico.',
+        'Concentração: combos com AP cheio ao conjurar causam +25% de dano direto. Inclui regeneração; sem sorte.',
     branch: 'precisao',
     grants: Mutations.unstableCore,
   ),
@@ -49,8 +46,7 @@ final defaultSkillTree = SkillTree([
     id: 'fragment_strikes',
     name: 'Golpes Fragmentados',
     description:
-        'Desbloqueia Fragmentação: habilidades passam a poder '
-        'dividir o ataque.',
+        'Fragmentação: 80% do dano em 2 golpes. Escudo/Defesa protegem só do primeiro. Status, cura e AP não duplicam; Escudo ainda barra status.',
     branch: 'precisao',
     prerequisites: ['unstable_core_training'],
     grants: Mutations.fragmentation,
@@ -83,8 +79,7 @@ final defaultSkillTree = SkillTree([
     id: 'guard_training',
     name: 'Treino de Guarda',
     description:
-        'Desbloqueia Guarda: habilidades passam a poder erguer um '
-        'escudo protetor.',
+        'Conjurar um combo ergue Escudo por 2 ações: bloqueia o próximo golpe. Básicos não ativam.',
     branch: 'defesa',
     grants: Mutations.guard,
   ),

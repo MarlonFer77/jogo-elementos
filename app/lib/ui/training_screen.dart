@@ -4,6 +4,7 @@ import 'discovery_book_screen.dart';
 import '../game_domain/discovery_catalog.dart';
 
 import 'package:flutter/material.dart';
+import 'audio_settings.dart';
 
 import '../game_domain/attack_catalog.dart';
 import '../game_domain/attack_event.dart';
@@ -12,8 +13,10 @@ import '../game_domain/element_catalog.dart';
 import '../game_domain/training_match.dart';
 import '../game_domain/training_progress_store.dart';
 import '../game_domain/dungeon_campaign.dart';
+import '../game_domain/combatant_appearance.dart';
 import '../game_domain/combination_catalog.dart';
 import '../game_presentation/battle_scene_widget.dart';
+import '../game_presentation/dungeon_intent_banner.dart';
 import '../game_presentation/battle_result_panel.dart';
 import '../game_presentation/battle_command_panel.dart';
 import '../game_presentation/pixel_element_chip.dart';
@@ -389,11 +392,13 @@ class _TrainingScreenState extends State<TrainingScreen> {
 
   Future<void> _runEnemy() async {
     if (!_enemyTurn || _aiThinking || _executing) return;
-    final choice = DungeonOpponent.choose(_match);
+    final choice = widget.encounter!.chooseAction();
     setState(() {
       _aiThinking = true;
       _channelingLeft = choice.elements.length > 1 ? false : null;
-      _actionText = '${widget.encounter!.room.name} prepara sua ação…';
+      _actionText =
+          '${choice.interruption == null ? '' : '${choice.interruption}\n'}'
+          '${widget.encounter!.room.name}: ${choice.name}…';
     });
     await Future<void>.delayed(const Duration(milliseconds: 650));
     if (!mounted) return;
@@ -604,6 +609,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
             ),
           ),
           actions: [
+            const MuteButton(),
             IconButton(
               icon: const Icon(Icons.menu_book),
               tooltip: 'Livro de Descobertas',
@@ -672,6 +678,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
                             ? 'Jogador A'
                             : 'Você',
                         rightLabel: widget.encounter?.room.name ?? 'Jogador B',
+                        rightAppearance:
+                            widget.encounter?.room.appearance ??
+                            CombatantAppearance.adventurer,
                         leftStatuses: _match.playerAActiveStatuses,
                         rightStatuses: _match.playerBActiveStatuses,
                         fieldEffects: _match.activeFieldEffectBadges,
@@ -698,6 +707,12 @@ class _TrainingScreenState extends State<TrainingScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          if (widget.encounter != null &&
+                              !_match.isOver &&
+                              !_controlsLocked)
+                            DungeonIntentBanner(
+                              intent: widget.encounter!.intent,
+                            ),
                           Text(
                             _controlsLocked
                                 ? 'Ataque em execução…'

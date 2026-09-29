@@ -37,7 +37,7 @@ test('purification before ticks retains benefits and pays original AP cost', () 
     s = withStatusApplied(s,'a',{effectId:id,turnsRemaining:3,damagePerTick:['burn','poison'].includes(id)?5:0});
   }
   const next = play(s,['water','light']);
-  assert.equal(next.hp.a!.current,62); assert.equal(next.ap.a!.current,1);
+  assert.equal(next.hp.a!.current,64); assert.equal(next.ap.a!.current,1);
   assert.deepEqual(next.combatantStatuses.a!.map(s=>s.effectId).sort(),['buff','guard','shield']);
   assert.equal(s.hp.a!.current,50);
 });

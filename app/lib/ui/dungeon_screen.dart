@@ -4,6 +4,7 @@ import '../game_domain/dungeon_progress_store.dart';
 import '../game_presentation/pixel_content_panel.dart';
 import '../game_presentation/pixel_menu_button.dart';
 import '../game_presentation/pixel_page_route.dart';
+import '../game_presentation/creature_portrait.dart';
 import 'element_starter_screen.dart';
 import 'skill_tree_screen.dart';
 import 'training_screen.dart';
@@ -189,7 +190,8 @@ class _DungeonScreenState extends State<DungeonScreen> {
                                     ),
                               ),
                               Text(
-                                '${progress.levelXp}/${progress.nextLevelXp} XP · Cada nível concede 1 ponto para a árvore.',
+                                '${progress.levelXp}/${progress.nextLevelXp} XP · '
+                                '${progress.level == 1 ? 'Primeira vitória: 1 ponto para habilidade ou elemento.' : 'Cada nível concede 1 ponto para a árvore.'}',
                                 style: const TextStyle(fontSize: 12),
                               ),
                             ],
@@ -278,14 +280,20 @@ class _DungeonScreenState extends State<DungeonScreen> {
       ),
       child: Row(
         children: [
-          Icon(
-            done
-                ? Icons.check
-                : index == DungeonRoom.all.length - 1
-                ? Icons.shield
-                : Icons.local_fire_department,
-            color: const Color(0xFF6A5235),
-            size: 28,
+          Stack(
+            children: [
+              CreaturePortrait(appearance: room.appearance, label: room.name),
+              if (done)
+                const Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Icon(
+                    Icons.check_circle,
+                    color: Color(0xFF38604A),
+                    size: 18,
+                  ),
+                ),
+            ],
           ),
           const SizedBox(width: 8),
           Expanded(

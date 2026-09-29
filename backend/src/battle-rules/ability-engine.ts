@@ -1,5 +1,5 @@
 import { emptyAbilityEffect } from "./ability-effect.js";
-import { opponentOf, withStatusApplied, withStatusRemoved, statusesOf } from "./battle-state.js";
+import { opponentOf, withStatusApplied, withStatusRemoved, statusesOf, hasStatus, apOf } from "./battle-state.js";
 import type { CombinationBook } from "./combination-book.js";
 import type { CombinationModifier } from "./combination-modifiers.js";
 import type { Mutation } from "./mutations.js";
@@ -22,14 +22,23 @@ export function useAbility(
   combinationBook: CombinationBook,
   mutations: readonly Mutation[],
   combinationModifiers: readonly CombinationModifier[] = [],
+  sealDamagePercent?: number,
 ): TurnResult {
-  const turnResult = playTurn(state, action, combinationBook, combinationModifiers);
-  if (action.kind === 'defend' || action.kind === 'thaw' || action.kind === 'fizzle') return turnResult;
-
+  const combo = action.elementIds.length > 1 ? combinationBook.resolve(action.elementIds) : null;
   let effect = emptyAbilityEffect;
-  for (const mutation of mutations) {
-    effect = mutation.apply(effect);
-  }
+  if (combo) for (const mutation of mutations) effect = mutation.apply(effect);
+  const pool = apOf(state, action.actorId);
+  const available = hasStatus(state, action.actorId, 'slow') || hasStatus(state, action.actorId, 'freeze')
+    ? pool.current : Math.min(pool.max, pool.current + 1);
+  const focused = !!combo && combo.damage > 0 && effect.critChanceBonus > 0 && available >= pool.max;
+  const feedback = [
+    ...(sealDamagePercent === undefined ? [] : [`seal_${sealDamagePercent}`]),
+    ...(focused ? ['focused'] : []),
+    ...(combo && combo.damage > 0 && effect.hitCount > 1 ? ['fragmented'] : []),
+  ];
+  const turnResult = playTurn(state, action, combinationBook, combinationModifiers,
+    {hitCount: effect.hitCount, focusedBonus: focused ? effect.critChanceBonus : 0}, sealDamagePercent);
+  if (!turnResult.triggeredCombinationId || turnResult.state.winner) return {...turnResult, feedback};
 
   let nextState = turnResult.state;
   if (effect.fieldEffect) {
@@ -42,13 +51,14 @@ export function useAbility(
     const opponentId = opponentOf(state, action.actorId);
     for (const targeted of effect.statusesToApply) {
       const targetId = targeted.target === "actor" ? action.actorId : opponentId;
+      if (targetId === opponentId && hasStatus(state, opponentId, 'shield')) continue;
       if (targeted.status.effectId === 'burn') {
-        if (statusesOf(nextState, targetId).some(s => s.effectId === 'burn' && s.damagePerTick >= targeted.status.damagePerTick)) continue;
+        if (statusesOf(nextState, targetId).some(s => s.effectId === 'burn' && (s.damagePerTick > targeted.status.damagePerTick || (s.damagePerTick === targeted.status.damagePerTick && (s.turnsRemaining ?? 999) >= (targeted.status.turnsRemaining ?? 999))))) continue;
         nextState = withStatusRemoved(nextState, targetId, 'burn');
       }
       nextState = withStatusApplied(nextState, targetId, targeted.status);
     }
   }
 
-  return { state: nextState, triggeredCombinationId: turnResult.triggeredCombinationId };
+  return { state: nextState, triggeredCombinationId: turnResult.triggeredCombinationId, feedback };
 }

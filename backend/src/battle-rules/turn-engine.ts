@@ -44,7 +44,10 @@ export function playTurn(
   action: TurnAction,
   combinationBook: CombinationBook,
   combinationModifiers: readonly CombinationModifier[] = [],
+  precision: {hitCount: number; focusedBonus: number} = {hitCount: 1, focusedBonus: 0},
+  sealDamagePercent = 100,
 ): TurnResult {
+  if (![40, 60, 80, 100].includes(sealDamagePercent)) throw new TurnValidationError('Qualidade de selo inválida.');
   if (state.winner !== null) {
     throw new TurnValidationError("the battle is already over");
   }
@@ -108,7 +111,14 @@ export function playTurn(
   if (action.kind === 'thaw') {
     // Breaking free consumes the action without AP regeneration or damage.
   } else if (combination && combination.damage > 0) {
-    nextState = applyDamage(nextState, opponentId, modifiedDamage(state, action, combination.damage));
+    const hits = Math.max(1, Math.min(2, precision.hitCount));
+    const fullDamage = Math.ceil(modifiedDamage(state, action, combination.damage) *
+      (1 + Math.max(0, Math.min(.25, precision.focusedBonus))) * (hits > 1 ? .8 : 1));
+    const damage = Math.ceil(fullDamage * sealDamagePercent / 100);
+    for (let hit = 0; hit < hits && nextState.winner === null; hit++) {
+      const part = Math.floor(damage / hits) + (hit < damage % hits ? 1 : 0);
+      if (part > 0) nextState = applyDamage(nextState, opponentId, part);
+    }
   } else if (elementCount === 1) {
     nextState = applyDamage(nextState, opponentId, modifiedDamage(state, action, BASIC_DAMAGE));
   }

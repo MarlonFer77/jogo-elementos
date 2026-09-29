@@ -23,7 +23,7 @@ class ActionPreview {
   String get summary =>
       'Custo $apCost AP · restam $apAfter AP '
       '${regeneratesAp ? '(inclui +1 ao agir)' : '(sem regeneração nesta ação)'}\n'
-      'HP previsto: adversário −$opponentHpLoss'
+      'HP previsto${apCost > 0 ? ' (selo perfeito)' : ''}: adversário −$opponentHpLoss'
       '${selfHpLoss > 0 ? ' · você −$selfHpLoss' : ''}'
       '${selfHpLoss < 0 ? ' · você +${-selfHpLoss} HP' : ''}'
       '${opponentApLoss > 0 ? ' · alvo −$opponentApLoss AP' : ''}'

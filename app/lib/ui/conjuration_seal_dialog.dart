@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../game_domain/conjuration_seal.dart';
+import '../game_presentation/sfx_player.dart';
 
 /// Null means cancelled before touching the first node. Empty trace is failure.
 Future<List<Map<String, num>>?> showConjurationSeal(
@@ -43,7 +44,9 @@ class _SealDialogState extends State<_SealDialog> with WidgetsBindingObserver {
       ? 'Aguarde a confirmação para traçar.'
       : correction ??
             (!started
-                ? 'Comece no nó 1. O tempo ainda não começou.'
+                ? 'Mire o centro dos nós para causar dano completo.'
+                : trace.length == seal.nodes.length
+                ? 'Aproxime do centro ou solte para concluir.'
                 : pointer == null
                 ? 'Retome pelo nó ${resumeIndex + 1} aceso.'
                 : 'Siga até o nó ${trace.length + 1}.');
@@ -74,6 +77,10 @@ class _SealDialogState extends State<_SealDialog> with WidgetsBindingObserver {
 
   void pointerEnd(PointerEvent event) {
     if (event.pointer != pointer) return;
+    if (trace.length == seal.nodes.length && !loading) {
+      finish(clock.elapsedMilliseconds < limit);
+      return;
+    }
     setState(() {
       pointer = null;
       correction = null;
@@ -134,6 +141,22 @@ class _SealDialogState extends State<_SealDialog> with WidgetsBindingObserver {
   Future<void> touch(Offset point, double side) async {
     if (loading || done) return;
     final x = point.dx / side, y = point.dy / side;
+    // Keep the closest point while crossing a node, not the first edge hit.
+    // Otherwise a continuous drag would always receive the lowest grade.
+    if (trace.isNotEmpty && clock.elapsedMilliseconds < limit) {
+      final i = trace.length - 1;
+      final n = seal.nodes[i];
+      final old = trace.last;
+      final distance = pow(x - n.x, 2) + pow(y - n.y, 2);
+      final oldDistance = pow(old['x']! - n.x, 2) + pow(old['y']! - n.y, 2);
+      if (distance < oldDistance) {
+        trace[i] = {'x': x, 'y': y, 'ms': old['ms']!};
+      }
+      if (trace.length == seal.nodes.length) {
+        if (distance <= pow(ConjurationSeal.tolerance * .25, 2)) finish(true);
+        return;
+      }
+    }
     if (!seal.hits(trace.length, x, y)) {
       for (var i = 0; i < seal.nodes.length; i++) {
         if (i != resumeIndex && seal.hits(i, x, y)) {
@@ -166,6 +189,7 @@ class _SealDialogState extends State<_SealDialog> with WidgetsBindingObserver {
           } else if (mounted) {
             if (urgent && !timeWarningSent) {
               timeWarningSent = true;
+              sfxPlayer.play(SfxId.sealWarning);
               unawaited(HapticFeedback.mediumImpact());
             }
             setState(() {});
@@ -186,11 +210,18 @@ class _SealDialogState extends State<_SealDialog> with WidgetsBindingObserver {
       trace.isEmpty ? 0 : trace.last['ms']!.toInt() + 1,
     );
     trace.add({'x': x, 'y': y, 'ms': ms});
+    sfxPlayer.play(SfxId.sealNode);
     correction = null;
     warnedNode = null;
     unawaited(HapticFeedback.selectionClick());
     setState(() {});
-    if (trace.length == seal.nodes.length) finish(true);
+    if (trace.length == seal.nodes.length) {
+      final n = seal.nodes.last;
+      if (pow(x - n.x, 2) + pow(y - n.y, 2) <=
+          pow(ConjurationSeal.tolerance * .25, 2)) {
+        finish(true);
+      }
+    }
   }
 
   @override
@@ -219,13 +250,13 @@ class _SealDialogState extends State<_SealDialog> with WidgetsBindingObserver {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(
+                SizedBox(
                   height: 20,
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      'SELO DE CONJURAÇÃO',
-                      style: TextStyle(
+                      'SELO · ${seal.difficulty.toUpperCase()}',
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -317,7 +348,7 @@ class _SealDialogState extends State<_SealDialog> with WidgetsBindingObserver {
                   height: 28,
                   child: Center(
                     child: Text(
-                      'Falha: −1 AP, sem regeneração · encerra o turno',
+                      'Dano: 100% / 80% / 60% / 40% · mire o centro\nFalha: −1 AP, sem regeneração · encerra o turno',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 10),
                     ),
@@ -440,6 +471,15 @@ class _SealPainter extends CustomPainter {
           ..color = i < reached
               ? colors[elements[i % elements.length]] ?? Colors.brown
               : const Color(0xFFFDF8E5),
+      );
+      // The accuracy target scales with the same normalized geometry as input.
+      canvas.drawCircle(
+        points[i],
+        size.width * ConjurationSeal.tolerance * .25,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1
+          ..color = const Color(0xFF997242),
       );
       canvas.drawCircle(
         points[i],

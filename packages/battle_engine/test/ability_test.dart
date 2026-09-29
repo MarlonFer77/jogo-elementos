@@ -33,13 +33,14 @@ void main() {
     });
 
     test('mutations attach in order', () {
-      final ability = Ability(
-        id: 'fireball',
-        name: 'Bola de Fogo',
-        baseElements: [Elements.fire],
-      )
-          .withMutation(Mutations.combustion)
-          .withMutation(Mutations.fragmentation);
+      final ability =
+          Ability(
+                id: 'fireball',
+                name: 'Bola de Fogo',
+                baseElements: [Elements.fire],
+              )
+              .withMutation(Mutations.combustion)
+              .withMutation(Mutations.fragmentation);
 
       expect(
         ability.mutations,
@@ -90,25 +91,27 @@ void main() {
       expect(result.hitCount, equals(2));
     });
 
-    test('wildfire sets a fire field effect', () {
+    test('wildfire extends combustion without stacking burn', () {
       const effect = AbilityEffect();
-      final result = Mutations.wildfire.apply(effect);
-      expect(result.fieldEffect?.id, equals('fire_zone'));
+      final result = Mutations.wildfire.apply(
+        Mutations.combustion.apply(effect),
+      );
+      expect(result.statusesToApply.single.status.turnsRemaining, 3);
+      expect(result.statusesToApply.single.status.damagePerTick, 3);
     });
 
     test('unstableCore increases critChanceBonus', () {
       const effect = AbilityEffect();
       final result = Mutations.unstableCore.apply(effect);
-      expect(result.critChanceBonus, closeTo(0.15, 1e-9));
+      expect(result.critChanceBonus, closeTo(0.25, 1e-9));
     });
 
-    test('combustion\'s burn status deals 8 damage per tick for 2 ticks',
-        () {
+    test('combustion\'s burn status deals 3 damage per tick for 2 ticks', () {
       const effect = AbilityEffect();
       final result = Mutations.combustion.apply(effect);
 
       final burn = result.statusesToApply.single.status;
-      expect(burn.damagePerTick, equals(8));
+      expect(burn.damagePerTick, equals(3));
       expect(burn.turnsRemaining, equals(2));
     });
 

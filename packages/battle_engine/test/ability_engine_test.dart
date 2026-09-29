@@ -10,7 +10,9 @@ void main() {
     var ability = Ability(
       id: 'fireball',
       name: 'Bola de Fogo',
-      baseElements: [Elements.fire],
+      baseElements: mutations == null
+          ? [Elements.fire]
+          : [Elements.fire, Elements.earth],
     );
     for (final m in mutations ?? const []) {
       ability = ability.withMutation(m);
@@ -20,7 +22,11 @@ void main() {
 
   group('AbilityEngine.useAbility', () {
     test('rejects use from a combatant whose turn it is not', () {
-      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
+      );
       expect(
         () => abilityEngine.useAbility(state, playerB, fireball()),
         throwsStateError,
@@ -28,7 +34,11 @@ void main() {
     });
 
     test('plain ability (no mutations) just plays its base elements', () {
-      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
+      );
 
       final result = abilityEngine.useAbility(state, playerA, fireball());
 
@@ -53,15 +63,15 @@ void main() {
 
       expect(result.triggeredCombination?.resultId, equals('ignited_storm'));
       expect(result.state.activeFieldEffects, hasLength(1));
-      expect(
-        result.state.activeFieldEffects.first.id,
-        equals('ignited_storm'),
-      );
+      expect(result.state.activeFieldEffects.first.id, equals('ignited_storm'));
     });
 
-    test('Combustão mutation applies burn to the opponent, not the actor',
-        () {
-      final state = BattleState.start(playerA: playerA, playerB: playerB);
+    test('Combustão mutation applies burn to the opponent, not the actor', () {
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
+      );
 
       final result = abilityEngine.useAbility(
         state,
@@ -74,7 +84,11 @@ void main() {
     });
 
     test('Guarda mutation applies Escudo to the actor, not the opponent', () {
-      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
+      );
 
       final result = abilityEngine.useAbility(
         state,
@@ -91,21 +105,23 @@ void main() {
       final state = BattleState.start(
         playerA: playerA,
         playerB: playerB,
-        ap: {playerB: const ApPool(max: 5, current: 3)},
+        ap: {
+          playerA: const ApPool(max: 5, current: 3),
+          playerB: const ApPool(max: 5, current: 3),
+        },
       );
-      final guarded = abilityEngine.useAbility(
-        state,
-        playerA,
-        fireball(mutations: [Mutations.guard]),
-      ).state; // playerA guarded, turn passed to playerB
+      final guarded = abilityEngine
+          .useAbility(state, playerA, fireball(mutations: [Mutations.guard]))
+          .state; // playerA guarded, turn passed to playerB
 
       final windCall = Ability(
         id: 'wind_call',
         name: 'Chamado do Vento',
         baseElements: [Elements.fire, Elements.wind],
       );
-      final afterOpponentCombo =
-          abilityEngine.useAbility(guarded, playerB, windCall).state;
+      final afterOpponentCombo = abilityEngine
+          .useAbility(guarded, playerB, windCall)
+          .state;
 
       expect(afterOpponentCombo.hpOf(playerA).current, equals(100));
       expect(
@@ -114,7 +130,7 @@ void main() {
       );
     });
 
-    test('Incêndio mutation adds its field effect alongside a triggered '
+    test('Incêndio mutation prolongs combustion alongside a triggered '
         'combination', () {
       final state = BattleState.start(
         playerA: playerA,
@@ -125,20 +141,25 @@ void main() {
         id: 'wind_call',
         name: 'Chamado do Vento',
         baseElements: [Elements.fire, Elements.wind],
-      ).withMutation(Mutations.wildfire);
+      ).withMutation(Mutations.combustion).withMutation(Mutations.wildfire);
 
       final result = abilityEngine.useAbility(state, playerA, windCall);
 
-      expect(result.state.activeFieldEffects, hasLength(2));
+      expect(result.state.activeFieldEffects, hasLength(1));
+      expect(result.state.statusesOf(playerB).single.turnsRemaining, 3);
       expect(
         result.state.activeFieldEffects.map((e) => e.id),
-        containsAll(['ignited_storm', 'fire_zone']),
+        contains('ignited_storm'),
       );
     });
 
     test('Núcleo Instável mutation reports a crit bonus without applying '
         'any status or field effect', () {
-      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
+      );
 
       final result = abilityEngine.useAbility(
         state,
@@ -146,20 +167,22 @@ void main() {
         fireball(mutations: [Mutations.unstableCore]),
       );
 
-      expect(result.effect.critChanceBonus, closeTo(0.15, 1e-9));
-      expect(result.state.activeFieldEffects, isEmpty);
+      expect(result.effect.critChanceBonus, closeTo(0.25, 1e-9));
+      expect(result.state.activeFieldEffects, hasLength(1));
       expect(result.state.statusesOf(playerB), isEmpty);
     });
 
     test('multiple mutations combine and the turn still passes once', () {
-      final state = BattleState.start(playerA: playerA, playerB: playerB);
+      final state = BattleState.start(
+        playerA: playerA,
+        playerB: playerB,
+        ap: {playerA: const ApPool(max: 5, current: 3)},
+      );
 
       final result = abilityEngine.useAbility(
         state,
         playerA,
-        fireball(
-          mutations: [Mutations.combustion, Mutations.fragmentation],
-        ),
+        fireball(mutations: [Mutations.combustion, Mutations.fragmentation]),
       );
 
       expect(result.effect.hitCount, equals(2));
@@ -187,8 +210,9 @@ void main() {
         combinationModifiers: [CombinationModifiers.propagation],
       );
 
-      final triggered = result.state.activeFieldEffects
-          .firstWhere((e) => e.id == 'ignited_storm');
+      final triggered = result.state.activeFieldEffects.firstWhere(
+        (e) => e.id == 'ignited_storm',
+      );
       expect(triggered.area, equals(3));
     });
   });

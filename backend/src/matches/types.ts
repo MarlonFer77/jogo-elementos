@@ -7,7 +7,7 @@ export interface Match {
     startedAt: number; deadline: number; durationMs: number; reservedAp: number} | null;
   readonly revision: number;
   readonly players: Readonly<Record<string, PlayerProgress>>;
-  readonly lastAction?: { revision: number; actorId: string; elementIds: readonly string[]; kind: string; comboId: string | null };
+  readonly lastAction?: { revision: number; actorId: string; elementIds: readonly string[]; kind: string; comboId: string | null; feedback?: readonly string[] };
   readonly id: string;
   readonly playerAId: string;
   readonly playerBId: string | null;

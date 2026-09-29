@@ -34,8 +34,10 @@ class DungeonProgress {
     return level;
   }
 
-  static int xpForLevel(int level) => 100 + (level - 1) * 50;
-  int get levelXp => xp - 25 * (level - 1) * (level + 2);
+  // First room grants the first build choice; later level costs stay unchanged.
+  static int xpForLevel(int level) => level == 1 ? 40 : 100 + (level - 1) * 50;
+  int get levelXp =>
+      xp - (25 * (level - 1) * (level + 2) - (level > 1 ? 60 : 0));
   int get nextLevelXp => xpForLevel(level);
   int get points => level - 1 - (prepared ? nodes.length - 2 : 0);
 
@@ -77,9 +79,6 @@ class DungeonProgress {
   }
 
   String? unlockReason(String id) {
-    if (const {'unstable_core_training', 'fragment_strikes'}.contains(id)) {
-      return 'Talento em desenvolvimento: compra indisponível para preservar seus pontos.';
-    }
     if (!prepared || points < 1) return 'Ganhe um nível para obter 1 ponto.';
     if (!skills.canUnlock(id)) {
       return 'Habilidade indisponível ou já desbloqueada.';

@@ -6,6 +6,9 @@ import '../game_presentation/pixel_page_route.dart';
 import 'multiplayer_lobby_screen.dart';
 import 'training_screen.dart';
 import 'dungeon_screen.dart';
+import 'audio_settings.dart';
+import 'quick_tutorial_screen.dart';
+import '../settings/game_settings.dart';
 
 /// Menu de entrada; regras, progresso e conexão continuam nas telas de destino.
 class HomeScreen extends StatefulWidget {
@@ -98,20 +101,52 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'ESCOLHA SUA JORNADA',
-            style: TextStyle(
-              fontFamily: 'monospace',
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1,
-              color: ink,
+          if (!compact)
+            const Text(
+              'ESCOLHA SUA JORNADA',
+              style: TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1,
+                color: ink,
+              ),
             ),
-          ),
           if (!compact) ...[
             const SizedBox(height: 6),
             const Text('Cada combinação abre um novo caminho.', style: text),
           ],
+          ListenableBuilder(
+            listenable: gameSettings,
+            builder: (context, _) => Row(
+              children: [
+                Expanded(
+                  child: TextButton.icon(
+                    style: TextButton.styleFrom(foregroundColor: ink),
+                    icon: const Icon(Icons.help_outline),
+                    label: Text(
+                      gameSettings.tutorialSeen ? 'Como jogar' : 'Comece aqui',
+                    ),
+                    onPressed: _opening
+                        ? null
+                        : () => _open((_) => const QuickTutorialScreen()),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Configurações de som',
+                  color: ink,
+                  icon: Icon(
+                    gameSettings.effectiveVolume == 0
+                        ? Icons.volume_off
+                        : Icons.volume_up,
+                  ),
+                  onPressed: _opening
+                      ? null
+                      : () => _open((_) => const AudioSettingsScreen()),
+                ),
+              ],
+            ),
+          ),
           SizedBox(height: compact ? 12 : 18),
           PixelMenuButton(
             label: 'DUNGEON · SOLO',
