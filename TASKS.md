@@ -10,9 +10,18 @@ Testes focados com Firebase simulado e análise estática aprovados. Em 05/10/20
 confirmado no console do projeto elements-1173d: provedor E-mail/senha ativado
 pelo usuário. FIREBASE_API_KEY configurada e confirmada no GitHub com a chave
 de cliente existente do mesmo projeto; nenhuma permissão Firebase ampliada.
-Publicação autorizada: preparando v0.30.0+30 e backend correspondente. Cache da
-assinatura anterior localizado; workflow agora interrompe se ele faltar.
-Falta concluir build/deploy e validação real Firebase/Android em dois celulares.
+Publicação autorizada: v0.30.0+30, commit 7c509f3, branch codex/release-v0.30.0.
+Backend publicado no Render (dep-db1r4tmgekts73f40nug): /health confirmou
+accounts:true e persistence:firestore; /account sem autenticação retornou 401.
+APK gerado com sucesso no Actions 37323904719 (0.30.0/build 30, Android 7+).
+Certificado SHA-256 comparado com APK v0.29.0: idêntico; ambos verificados pelo
+apksigner. Artefato local ignorado: build/release-check/v0.30.0/app-release.apk.
+Falta validar login, recuperação, vínculo e partida em dois celulares, além da
+instalação por cima. Nenhuma release GitHub publicada; APK disponível no Actions.
+Auditoria de dependências apontou dois alertas moderados indiretos (gaxios/uuid,
+GHSA-w5hq-g745-h8pq); correção pendente, sem mudança de pacotes neste deploy.
+Actions também avisou sobre versões antigas das actions e futura troca da imagem
+ubuntu-latest; revisar no bloco de operação, sem alterar a assinatura existente.
 Detalhes/limitações: docs/recoverable-identity.md.
 Backup, operação e assinatura permanecem NEXT.
 

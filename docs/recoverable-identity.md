@@ -31,7 +31,8 @@
    Variável configurada em 05/10/2026, reutilizando a chave de cliente existente.
 4. Publicar backend e app coordenadamente quando autorizado. `/health` deve mostrar
    `accounts: true` e `persistence: firestore`. App não confunde backend antigo
-   sem `/account` com um perfil novo. Nenhum deploy foi realizado neste bloco.
+   sem `/account` com um perfil novo. Backend 7c509f3 publicado em 05/10/2026:
+   health confirmou ambos os campos; `/account` sem credencial respondeu 401.
 5. Em aparelho de teste: cadastro → e-mail confirmado → vincular o nome antigo →
    terminar partida → sair → entrar em outro aparelho → conferir progresso;
    recuperar senha, entrar novamente e reconectar sala com código.
@@ -54,8 +55,8 @@
   não os saves offline. Isso evita restaurar token cifrado sem a chave do aparelho.
 - Dependência nova: flutter_secure_storage 10.3.4. `pub get` baixou e resolveu as
   dependências, mas avisou sobre symlinks/Developer Mode no Windows. Testes Dart/
-  Flutter locais funcionaram; build Android ainda não realizado. Nenhuma configuração
-  de segurança do Windows foi alterada.
+  Flutter locais funcionaram; build Android concluído no Actions 37323904719 em
+  05/10/2026. Nenhuma configuração de segurança do Windows foi alterada.
 
 ## Verificação local
 

@@ -1,5 +1,11 @@
 # Elementos v0.30.0 — Conta recuperável e abandono
 
+APK build 30 gerado no [Actions](https://github.com/MarlonFer77/jogo-elementos/actions/runs/37323904719),
+commit `7c509f3`. Backend do mesmo commit publicado no Render em 05/10/2026:
+`accounts:true`, `persistence:firestore` e `/account` sem credencial retorna 401.
+Certificado do APK verificado e idêntico ao da v0.29.0; instalação real pendente.
+APK requer Android 7 ou superior. Ainda não publicado como release do GitHub.
+
 - Login e cadastro por e-mail/senha, confirmação de e-mail e recuperação de senha.
 - Vínculo do perfil multiplayer antigo à conta, com comprovação de posse.
 - Sessão protegida no aparelho e recuperação do perfil online ao trocar de celular.
