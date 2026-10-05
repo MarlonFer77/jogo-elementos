@@ -4,6 +4,30 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Identidade recuperável/login implementado localmente: cadastro, confirmação de
+e-mail, recuperação, logout, refresh protegido e vínculo transacional do perfil.
+Testes focados com Firebase simulado e análise estática aprovados. Em 05/10/2026,
+confirmado no console do projeto elements-1173d: provedor E-mail/senha ativado
+pelo usuário. FIREBASE_API_KEY configurada e confirmada no GitHub com a chave
+de cliente existente do mesmo projeto; nenhuma permissão Firebase ampliada.
+Publicação autorizada: preparando v0.30.0+30 e backend correspondente. Cache da
+assinatura anterior localizado; workflow agora interrompe se ele faltar.
+Falta concluir build/deploy e validação real Firebase/Android em dois celulares.
+Detalhes/limitações: docs/recoverable-identity.md.
+Backup, operação e assinatura permanecem NEXT.
+
+Checkpoint anterior:
+
+Checkpoint: abandono multiplayer implementado localmente. Sala/preparação 5 min,
+turno 90 s, desistência confirmada, cancelamento sem vencedor e resultado pelo
+servidor. Prazos sobrevivem no Firestore; consultas autenticadas encerram salas
+vencidas sem worker/heartbeat. Repetição não regrava perfis; salas antigas recebem
+carência. Testes focados e análise estática aprovados; falta playtest em dois
+aparelhos. Treino/Dungeon preservados. Sem APK/release/deploy.
+Regras e limitações: docs/multiplayer-abandonment.md.
+
+Checkpoint anterior:
+
 Preparação da release v0.29.0/build 29 na branch codex/release-v0.29.0,
 reunindo as alterações acumuladas desde v0.28.0. Workflow manual existente
 mantido; roteiro em docs/release-v0.29.0.md. Nenhum build, tag, release ou deploy
@@ -326,9 +350,10 @@ Validação manual em aparelhos e balanceamento pendentes. Sem commit/release/de
 
 # NEXT
 
-Validar o protótipo multiplayer em dois aparelhos e decidir persistência durável
-dentro do orçamento R$ 0. Migrar fixtures legadas do protocolo e revisar limites
-de acesso/armazenamento antes de publicação pública. Publicação não autorizada.
+Ordem solicitada em 30/09: identidade recuperável/tela de login; backup e proteção
+da progressão; operação/atualização confiáveis; assinatura definitiva do APK.
+Preservar sessões/progresso legados na migração. Validar abandono nos dois
+aparelhos antes de publicar app + servidor. Sem publicação neste bloco.
 
 # BACKLOG
 
@@ -345,14 +370,14 @@ uma tarefa nova terminar revelando um gap novo.
 - Artefatos não implementado (`MaxHpBonus` é o modelo pronto pra isso)
 
 **Backend (backend/)**
-- Persistência durável de produção não configurada; snapshot local opcional
-  não resolve disco efêmero nem múltiplas instâncias.
+- Firestore configurado em produção (`elementosMatches`/`elementosProfiles`);
+  faltam backup/recuperação, retenção e proteção contra sobrescrita entre salas.
 - Credencial por instalação implementada; contas e recuperação ainda ausentes.
 - Sem push em tempo real — só polling (cliente já poll a cada 2s)
 - CORS liberado pra `*` — ok sem deploy real, reavaliar quando existir um (DECISION-021)
 
 **Firebase (firebase/)**
-- Nenhum projeto real criado — exige login numa conta Google do usuário
+- Projeto real `elements-1173d`; autenticação recuperável ainda pendente.
 - Emulador do Firestore nunca verificado rodando de verdade nesta máquina
   (limitação de ambiente já diagnosticada, não da config — DECISION-015)
 

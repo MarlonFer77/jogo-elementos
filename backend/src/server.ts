@@ -10,10 +10,15 @@ import {
   handleSubmitTurn,
   handleUnlockSkill,
   handleSeal,
+  handleSurrender,
 } from "./routes/matches.js";
 import { handleValidateTurn } from "./routes/validate-turn.js";
 import { RequestLimits } from './http/request-limits.js';
 import { sendJson } from './http/respond.js';
+import {sendErrorResponse} from './http/respond.js';
+import {readJsonBody} from './http/json-body.js';
+import {MatchError} from './matches/errors.js';
+import type {Accounts} from './auth/accounts.js';
 
 /**
  * Builds the HTTP server without starting it — kept separate from
@@ -21,9 +26,9 @@ import { sendJson } from './http/respond.js';
  * its own in-memory `MatchStore`, which also keeps tests isolated from
  * each other.
  */
-export function createServer(matchStore = new MatchStore({filePath: process.env.MATCH_STORE_FILE})): Server {
+export function createServer(matchStore = new MatchStore({filePath: process.env.MATCH_STORE_FILE}), accounts?: Accounts): Server {
   const limits = new RequestLimits();
-  const server = createHttpServer((req, res) => {
+  const server = createHttpServer(async (req, res) => {
     let pathname: string;
     try { pathname = new URL(req.url ?? '/', 'http://localhost').pathname; }
     catch { sendJson(res, 400, {error: 'Endereço inválido.'}); return; }
@@ -43,9 +48,23 @@ export function createServer(matchStore = new MatchStore({filePath: process.env.
       return;
     }
 
+    try {
+      if (pathname === '/account') {
+        if (!accounts) throw new MatchError('Login ainda não configurado no servidor.', 503);
+        if (req.method === 'GET') sendJson(res, 200, await accounts.read(req));
+        else if (req.method === 'POST') sendJson(res, 200, await accounts.link(req, await readJsonBody(req)));
+        else sendJson(res, 405, {error:'Método não permitido.'});
+        return;
+      }
+      if (pathname.startsWith('/matches')) {
+        if (accounts) await accounts.authenticate(req);
+        else if (!/^Bearer [a-f0-9]{64}$/.test(req.headers.authorization ?? '')) throw new MatchError('Login indisponível neste servidor.', 503);
+      }
+    } catch (error) { sendErrorResponse(res, error instanceof MatchError ? error : new MatchError('Identidade indisponível. Tente novamente.', 503)); return; }
+
     if (req.method === "GET" && pathname === "/health") {
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "ok", protocol: 2, persistence: process.env.MATCH_STORE === 'firestore' ? 'firestore' : 'local' }));
+      res.end(JSON.stringify({ status: "ok", protocol: 2, accounts: !!accounts, persistence: process.env.MATCH_STORE === 'firestore' ? 'firestore' : 'local' }));
       return;
     }
 
@@ -60,6 +79,11 @@ export function createServer(matchStore = new MatchStore({filePath: process.env.
     }
 
     const configureParams = req.method === 'POST' ? matchPath('/matches/:id/configure', pathname) : null;
+    const surrenderParams = req.method === 'POST' ? matchPath('/matches/:id/surrender', pathname) : null;
+    if (surrenderParams) {
+      void handleSurrender(req, res, matchStore, surrenderParams.id!);
+      return;
+    }
     for (const stage of ['start', 'finish']) {
       const params = req.method === 'POST' ? matchPath(`/matches/:id/seal/${stage}`, pathname) : null;
       if (params) {

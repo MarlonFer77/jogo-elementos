@@ -32,9 +32,9 @@ export class RequestLimits {
     };
     const globalWait = this.consume('global', 900, 60_000);
     if (globalWait) return reject(429, globalWait, 'Servidor recebeu muitas requisições. Aguarde antes de tentar novamente.');
-    if (pathname.startsWith('/matches') && req.method !== 'OPTIONS') {
+    if ((pathname.startsWith('/matches') || pathname === '/account') && req.method !== 'OPTIONS') {
       const authorization = req.headers.authorization;
-      if (!authorization || !/^Bearer [a-f0-9]{64}$/.test(authorization)) {
+      if (!authorization || authorization.length > 8200 || !/^Bearer ([a-f0-9]{64}|[\w-]+\.[\w-]+\.[\w-]+)$/.test(authorization)) {
         sendJson(res, 401, {error: 'Credencial de sessão obrigatória. Atualize o aplicativo.'});
         return false;
       }

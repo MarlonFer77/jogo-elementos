@@ -13,11 +13,18 @@ import 'multiplayer_battle_screen.dart';
 
 enum _LobbyAction { create, join, reconnect }
 
-/// Identity still uses the existing installation credential and player name.
+/// The authenticated entry supplies a fixed account name; injected legacy
+/// clients remain supported while existing installations migrate.
 class MultiplayerLobbyScreen extends StatefulWidget {
-  const MultiplayerLobbyScreen({super.key, MultiplayerClient? client})
-    : _client = client;
+  const MultiplayerLobbyScreen({
+    super.key,
+    MultiplayerClient? client,
+    this.accountName,
+    this.onSignOut,
+  }) : _client = client;
   final MultiplayerClient? _client;
+  final String? accountName;
+  final Future<void> Function()? onSignOut;
   @override
   State<MultiplayerLobbyScreen> createState() => _MultiplayerLobbyScreenState();
 }
@@ -47,7 +54,7 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
         _saved = session.$1.isNotEmpty && session.$2.isNotEmpty
             ? session
             : null;
-        if (_nameController.text.isEmpty) _nameController.text = session.$1;
+        _nameController.text = widget.accountName ?? session.$1;
         if (_codeController.text.isEmpty) _codeController.text = session.$2;
       });
     } catch (_) {
@@ -65,7 +72,9 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
   Future<void> _connect({_LobbyAction? action, bool saved = false}) async {
     if (_loading) return;
     final mode = action ?? _selected;
-    final player = saved ? _saved!.$1 : _nameController.text.trim();
+    final player =
+        widget.accountName ??
+        (saved ? _saved!.$1 : _nameController.text.trim());
     final code = (saved ? _saved!.$2 : _codeController.text)
         .trim()
         .toUpperCase();
@@ -119,7 +128,7 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
           () => _error = switch (e.statusCode ?? 0) {
             404 => 'Sala não encontrada. Confira o código com seu amigo.',
             401 || 403 =>
-              'Esta identidade não tem acesso à sala. Use o mesmo nome e aparelho da partida.',
+              'Esta identidade não tem acesso à sala. Confira a conta ou entre novamente.',
             409 =>
               'Não foi possível entrar. A sala pode estar ocupada ou já iniciada; se você já participa, use Retomar.',
             >= 500 =>
@@ -155,6 +164,50 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
         backgroundColor: const Color(0xFF172D2C),
         foregroundColor: const Color(0xFFF1E8C9),
         automaticallyImplyLeading: !_loading,
+        actions: [
+          if (widget.onSignOut != null)
+            IconButton(
+              tooltip: 'Sair da conta',
+              icon: const Icon(Icons.logout),
+              onPressed: _loading
+                  ? null
+                  : () async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Sair da conta?'),
+                          content: const Text(
+                            'Seu progresso online permanece salvo. Uma partida em andamento não será pausada.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('Cancelar'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('Sair'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed != true || !mounted) return;
+                      setState(() => _loading = true);
+                      try {
+                        await widget.onSignOut!();
+                        if (context.mounted) Navigator.of(context).pop();
+                      } catch (_) {
+                        if (mounted) {
+                          setState(() {
+                            _loading = false;
+                            _error =
+                                'Não foi possível encerrar a sessão. Tente novamente.';
+                          });
+                        }
+                      }
+                    },
+            ),
+        ],
         title: const Text(
           'MULTIPLAYER',
           style: TextStyle(fontFamily: 'monospace', fontSize: 18),
@@ -204,11 +257,19 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
     mainAxisSize: MainAxisSize.min,
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      PixelTextField(controller: _nameController, label: 'Seu nome'),
+      if (widget.accountName == null)
+        PixelTextField(controller: _nameController, label: 'Seu nome')
+      else
+        Text(
+          'Aventureiro: ${widget.accountName}',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
       const SizedBox(height: 4),
-      const Text(
-        'Seu perfil usa este nome e aparelho.',
-        style: TextStyle(fontSize: 11),
+      Text(
+        widget.accountName == null
+            ? 'Seu perfil usa este nome e aparelho.'
+            : 'Perfil protegido pela sua conta. Entre com ela para recuperar em outro aparelho.',
+        style: const TextStyle(fontSize: 11),
       ),
       const SizedBox(height: 6),
       Wrap(
@@ -247,7 +308,7 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
         Text(
           _selected == _LobbyAction.join
               ? 'Digite o código que seu amigo enviou.'
-              : 'Volte à sala usando o mesmo nome e aparelho.',
+              : 'Volte à sala usando a mesma identidade.',
         ),
       ],
       if (_error != null)

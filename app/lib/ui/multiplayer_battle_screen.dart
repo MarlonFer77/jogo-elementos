@@ -70,6 +70,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen>
   Set<String> _previousFieldEffectIds = {};
   bool _playedGameOverSound = false;
   bool _submitting = false;
+  bool _exitDialogOpen = false;
   bool _showAbilities = false;
   bool _defending = false;
   bool _previewLoading = false;
@@ -234,7 +235,10 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen>
   }
 
   void _maybePlayGameOverSound() {
-    if (_match.isFinished && _pendingAttack == null && !_playedGameOverSound) {
+    if (_match.isFinished &&
+        !_match.wasCancelled &&
+        _pendingAttack == null &&
+        !_playedGameOverSound) {
       _playedGameOverSound = true;
       sfxPlayer.play(_match.amIWinner ? SfxId.victory : SfxId.defeat);
     }
@@ -434,7 +438,8 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen>
                           success = true;
                         } catch (_) {
                           await _match.refresh();
-                          success = !_match.needsPreparation;
+                          success =
+                              _match.isFinished || !_match.needsPreparation;
                           if (!success && context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -468,47 +473,159 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: (_match.isInProgress && _match.bothReady) || _match.isFinished
-              ? CustomPaint(painter: ArenaBackdropPainter())
-              : const ColoredBox(color: Color(0xFF172D2C)),
-        ),
-        Scaffold(
-          backgroundColor: Colors.transparent,
-          appBar: AppBar(
-            toolbarHeight: 44,
-            backgroundColor: Colors.transparent,
-            foregroundColor: _match.bothReady
-                ? const Color(0xFF283C36)
-                : const Color(0xFFF1E8C9),
-            elevation: 0,
-            title: PixelOutlinedText(
-              'Partida ${_match.matchId ?? ""}',
-              fontSize: 20,
-            ),
-            actions: [
-              const MuteButton(),
-              IconButton(
-                icon: const Icon(Icons.menu_book),
-                tooltip: 'Livro de Descobertas',
-                onPressed: _submitting ? null : _openDiscoveryBook,
-              ),
-              if (_match.isInProgress)
-                IconButton(
-                  icon: const Icon(Icons.auto_awesome),
-                  tooltip: 'Habilidades',
-                  onPressed: _openSkillTree,
-                ),
-            ],
+    return PopScope(
+      canPop: _match.isFinished,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) unawaited(_confirmExit());
+      },
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child:
+                !_match.wasCancelled &&
+                    ((_match.isInProgress && _match.bothReady) ||
+                        _match.isFinished)
+                ? CustomPaint(painter: ArenaBackdropPainter())
+                : const ColoredBox(color: Color(0xFF172D2C)),
           ),
-          body: (_match.isInProgress && _match.bothReady) || _match.isFinished
-              ? SafeArea(child: _battleLayout(context))
-              : SafeArea(child: _waitingRoom()),
-        ),
-      ],
+          Scaffold(
+            backgroundColor: Colors.transparent,
+            appBar: AppBar(
+              leading: BackButton(onPressed: _submitting ? null : _confirmExit),
+              toolbarHeight: 44,
+              backgroundColor: Colors.transparent,
+              foregroundColor: _match.bothReady
+                  ? const Color(0xFF283C36)
+                  : const Color(0xFFF1E8C9),
+              elevation: 0,
+              title: PixelOutlinedText(
+                'Partida ${_match.matchId ?? ""}',
+                fontSize: 20,
+              ),
+              actions: [
+                const MuteButton(),
+                IconButton(
+                  icon: const Icon(Icons.menu_book),
+                  tooltip: 'Livro de Descobertas',
+                  onPressed: _submitting ? null : _openDiscoveryBook,
+                ),
+                if (_match.isInProgress)
+                  IconButton(
+                    icon: const Icon(Icons.auto_awesome),
+                    tooltip: 'Habilidades',
+                    onPressed: _openSkillTree,
+                  ),
+              ],
+            ),
+            body: _match.wasCancelled
+                ? SafeArea(
+                    child: MultiplayerConnectionPanel(
+                      title: 'SALA ENCERRADA',
+                      message: 'Você pode criar outra sala quando quiser.',
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(_match.endingMessage ?? 'Sem vencedor.'),
+                          const SizedBox(height: 12),
+                          PixelMenuButton(
+                            label: 'Voltar ao menu',
+                            onPressed: () => Navigator.of(
+                              context,
+                            ).popUntil((route) => route.isFirst),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : (_match.isInProgress && _match.bothReady) || _match.isFinished
+                ? SafeArea(child: _battleLayout(context))
+                : SafeArea(child: _waitingRoom()),
+          ),
+        ],
+      ),
     );
+  }
+
+  Future<void> _confirmExit() async {
+    if (_submitting || _exitDialogOpen) return;
+    if (_match.isFinished) {
+      Navigator.of(context).pop();
+      return;
+    }
+    _exitDialogOpen = true;
+    final fighting = _match.bothReady && _match.isInProgress;
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFFF1E8C9),
+        titleTextStyle: const TextStyle(
+          fontFamily: 'monospace',
+          color: Color(0xFF283C36),
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+        contentTextStyle: const TextStyle(
+          fontFamily: 'monospace',
+          color: Color(0xFF283C36),
+          fontSize: 14,
+        ),
+        title: Text(fighting ? 'Sair do duelo?' : 'Sair da sala?'),
+        content: Text(
+          fighting
+              ? 'Voltar ao lobby mantém o duelo. Reconecte com a mesma identidade antes do prazo acabar. Desistir dá a vitória ao oponente.'
+              : 'Você pode voltar ao lobby e reconectar dentro do prazo. Cancelar encerra a sala sem vencedor.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Continuar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'leave'),
+            child: const Text('Voltar ao lobby'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'surrender'),
+            child: Text(fighting ? 'Desistir' : 'Cancelar sala'),
+          ),
+        ],
+      ),
+    );
+    _exitDialogOpen = false;
+    if (!mounted || choice == null) return;
+    if (choice == 'leave') {
+      Navigator.of(context).pop();
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      await _match.surrender();
+    } catch (_) {
+      await _match
+          .refresh(); // An uncertain POST is never automatically repeated.
+      if (!_match.isFinished && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Não foi possível confirmar a saída. Reconectando; o prazo continua correndo.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+    _maybePlayGameOverSound();
+  }
+
+  String get _deadlineLabel {
+    final seconds = _match.secondsRemaining;
+    if (seconds == null) return '';
+    if (seconds == 0) return ' · confirmando prazo…';
+    return ' · ${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}';
   }
 
   Widget _waitingRoom() => MultiplayerConnectionPanel(
@@ -565,6 +682,10 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen>
                 },
         ),
         const Divider(),
+        Text(
+          'Entrada/preparação$_deadlineLabel',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         for (final id in [_match.match?.playerAId, _match.match?.playerBId])
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
@@ -598,7 +719,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen>
           ),
         const SizedBox(height: 12),
         const Text(
-          'Pode compartilhar o código enquanto escolhe seus elementos. Voltar ao lobby não apaga esta sala.',
+          '5 min para entrada/preparação; 90 s por turno. Sair do app não pausa o prazo. Reconecte com a mesma identidade.',
         ),
       ],
     ),
@@ -608,9 +729,11 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen>
     return [
       BattleResultPanel(
         title: _match.amIWinner ? 'VITÓRIA' : 'DERROTA',
-        subtitle: _match.amIWinner
-            ? 'Você venceu o duelo!'
-            : 'Outra combinação pode mudar a próxima batalha.',
+        subtitle:
+            _match.endingMessage ??
+            (_match.amIWinner
+                ? 'Você venceu o duelo!'
+                : 'Outra combinação pode mudar a próxima batalha.'),
         players: [
           BattleResultPlayer(
             label: 'Você',
@@ -888,8 +1011,8 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen>
                       _match.isFinished
                           ? 'Batalha encerrada'
                           : _match.isMyTurn
-                          ? 'Sua vez'
-                          : 'Vez do oponente',
+                          ? 'Sua vez$_deadlineLabel'
+                          : 'Vez do oponente$_deadlineLabel',
                       style: const TextStyle(
                         fontFamily: 'monospace',
                         fontWeight: FontWeight.bold,

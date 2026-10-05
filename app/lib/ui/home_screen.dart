@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../game_presentation/home_title_scene.dart';
 import '../game_presentation/pixel_menu_button.dart';
 import '../game_presentation/pixel_page_route.dart';
-import 'multiplayer_lobby_screen.dart';
+import 'multiplayer_login_screen.dart';
 import 'training_screen.dart';
 import 'dungeon_screen.dart';
 import 'audio_settings.dart';
@@ -191,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
               label: 'MULTIPLAYER',
               onPressed: _opening
                   ? null
-                  : () => _open((_) => const MultiplayerLobbyScreen()),
+                  : () => _open((_) => const MultiplayerLoginScreen()),
             ),
           ),
           if (!compact)

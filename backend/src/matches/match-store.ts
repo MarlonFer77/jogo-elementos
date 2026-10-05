@@ -1,4 +1,5 @@
-import { randomUUID, createHash } from "node:crypto";
+import { randomUUID } from "node:crypto";
+import { credentialDigest } from '../auth/identity.js';
 import { readFileSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { elementIds } from '../battle-rules/skill-tree.js';
@@ -18,6 +19,7 @@ import {
 import type { TurnAction, TurnResult } from "../battle-rules/types.js";
 import { MatchError } from "./errors.js";
 import type { Match, PlayerProgress } from "./types.js";
+import { battleReady, PREPARATION_MS, TURN_MS } from './lifecycle.js';
 
 export interface MatchSnapshot { match: Match; credentials: Record<string, string>; }
 export interface ProfileSeed { playerId: string; token: string; }
@@ -58,11 +60,12 @@ export class MatchStore {
   }
 
   private previousProgress(playerId: string, token: string) {
-    const digest = createHash('sha256').update(token).digest('hex');
-    return [...this.matches.values()].reverse().find(match => match.status === 'finished' && this.credentials.get(match.id)?.get(playerId) === digest);
+    const digest = credentialDigest(token);
+    return [...this.matches.values()].reverse().find(match => match.status === 'finished' &&
+      (!match.ending || !!match.state?.winner) && this.credentials.get(match.id)?.get(playerId) === digest);
   }
 
-  constructor(private readonly options: {filePath?: string} = {}) {
+  constructor(private readonly options: {filePath?: string; now?: () => number} = {}) {
     if (!options.filePath) return;
     try {
       const saved = JSON.parse(readFileSync(options.filePath, 'utf8'));
@@ -79,7 +82,7 @@ export class MatchStore {
 
   private commit(match: Match, playerId?: string, token?: string): void {
     const credentials = new Map(this.credentials.get(match.id));
-    if (playerId && token) credentials.set(playerId, createHash('sha256').update(token).digest('hex'));
+    if (playerId && token) credentials.set(playerId, credentialDigest(token));
     if (this.options.filePath) {
       const matches = new Map(this.matches).set(match.id, match);
       const sessions = new Map(this.credentials).set(match.id, credentials);
@@ -96,7 +99,7 @@ export class MatchStore {
   authorize(id: string, token: string | undefined, playerId?: string): void {
     this.get(id);
     const credentials = this.credentials.get(id);
-    const digest = token ? createHash('sha256').update(token).digest('hex') : '';
+    const digest = token ? credentialDigest(token) : '';
     if (!token || !(playerId ? credentials?.get(playerId) === digest : [...(credentials?.values() ?? [])].includes(digest))) {
       throw new MatchError('Credencial inválida. Reconecte pelo aparelho que entrou na sala.', 403);
     }
@@ -106,8 +109,57 @@ export class MatchStore {
     if (revision !== match.revision) throw new MatchError('Estado desatualizado. Sincronize antes de agir.', 409);
   }
 
+  private now(): number { return this.options.now?.() ?? Date.now(); }
+
+  private checkDeadline(match: Match): void {
+    if (match.deadline !== undefined && this.now() >= match.deadline) {
+      throw new MatchError('Prazo encerrado. Sincronize para ver o resultado.', 409);
+    }
+  }
+
+  private close(match: Match, reason: NonNullable<Match['ending']>['reason'], playerId?: string): Match {
+    const winner = battleReady(match) && playerId
+      ? (playerId === match.playerAId ? match.playerBId : match.playerAId) : null;
+    const updated: Match = {...match, status: 'finished', revision: match.revision + 1,
+      deadline: undefined, seal: null, ending: {reason, playerId},
+      state: match.state ? {...match.state, winner} : null};
+    this.commit(updated);
+    return updated;
+  }
+
+  /** Persisted deadlines, resolved lazily on an authenticated poll/reconnect.
+   * No background heartbeat writes and no client-declared winner. */
+  expire(id: string): Match {
+    const match = this.get(id);
+    if (match.status === 'finished') return match;
+    const now = this.now();
+    // Old rooms receive a full grace period on their first authenticated read.
+    if (match.deadline === undefined) {
+      const updated = {...match, revision: match.revision + 1,
+        deadline: now + (battleReady(match) ? TURN_MS : PREPARATION_MS)};
+      this.commit(updated);
+      return updated;
+    }
+    // A started seal is already a committed action; finish/fizzle it normally.
+    if (match.seal) return this.expireSeal(id, now);
+    if (now < match.deadline) return match;
+    return this.close(match, battleReady(match) ? 'timeout' : 'preparation_timeout',
+      battleReady(match) ? match.state!.currentTurnId : undefined);
+  }
+
+  surrender(id: string, playerId: string): Match {
+    let match = this.get(id);
+    if (!match.players[playerId]) throw new MatchError('Jogador não pertence à sala.', 403);
+    if (match.status === 'finished') return match; // Safe retry, no duplicate rewards.
+    // Timeout takes precedence, so a late surrender cannot change its winner.
+    if (!match.seal) match = this.expire(id);
+    if (match.status === 'finished') return match;
+    return this.close(match, battleReady(match) ? 'surrender' : 'cancelled', playerId);
+  }
+
   configure(id: string, playerId: string, kind: string, ids: string[], revision: number): Match {
     const match = this.get(id);
+    this.checkDeadline(match);
     if (match.seal) throw new MatchError('Conjuração em andamento.', 409);
     this.checkRevision(match, revision);
     const player = match.players[playerId];
@@ -129,9 +181,10 @@ export class MatchStore {
         updatedPlayer = {...player, attacks: ids};
       } else throw new MatchError('Configuração desconhecida.', 400);
     }
-    const updated = {...match, revision: match.revision + 1,
+    let updated: Match = {...match, revision: match.revision + 1,
       players: {...match.players, [playerId]: updatedPlayer},
       skillProgress: {...match.skillProgress, [playerId]: skills}};
+    if (!battleReady(match) && battleReady(updated)) updated = {...updated, deadline: this.now() + TURN_MS};
     this.commit(updated);
     return updated;
   }
@@ -144,6 +197,7 @@ export class MatchStore {
     }
     const match: Match = {
       revision: 0,
+      deadline: this.now() + PREPARATION_MS,
       players: {[playerAId]: previous?.players[playerAId] ?? {ready: false, elements: [], attacks: [], discoveries: [], turns: 0}},
       id,
       playerAId,
@@ -167,6 +221,7 @@ export class MatchStore {
   join(id: string, playerBId: string, token: string = randomUUID()): Match {
     const previous = this.previousProgress(playerBId, token);
     const match = this.get(id);
+    this.checkDeadline(match);
     if (match.status !== "waiting_for_opponent") {
       throw new MatchError(`match "${id}" is not waiting for an opponent`, 409);
     }
@@ -182,15 +237,17 @@ export class MatchStore {
         if (node?.grant.kind === 'maxHpBonus') initialState = withMaxHpIncreased(initialState, playerId, maxHpBonusesById[node.grant.id]!);
       }
     }
-    const updated: Match = {
+    let updated: Match = {
       ...match,
       revision: match.revision + 1,
+      deadline: this.now() + PREPARATION_MS,
       players: {...match.players, [playerBId]: previous?.players[playerBId] ?? {ready: false, elements: [], attacks: [], discoveries: [], turns: 0}},
       playerBId,
       status: "in_progress",
       state: initialState,
       skillProgress: progress,
     };
+    if (battleReady(updated)) updated = {...updated, deadline: this.now() + TURN_MS};
     this.commit(updated, playerBId, token);
     return updated;
   }
@@ -205,6 +262,7 @@ export class MatchStore {
     sealPercent?: number,
   ): { match: Match; result: TurnResult } {
     const match = this.get(id);
+    if (!sealResolution) this.checkDeadline(match);
     if (!sealResolution && match.seal) throw new MatchError('Conclua o selo ou aguarde seu prazo.', 409);
     if (!preview && !sealResolution && action.elementIds.length > 1) throw new MatchError('Conjure o selo para combinar elementos. Atualize o aplicativo.', 409);
     if (revision !== undefined) this.checkRevision(match, revision);
@@ -241,6 +299,7 @@ export class MatchStore {
       lastAction: {revision: match.revision + 1, actorId: action.actorId, elementIds: action.elementIds, kind: action.kind ?? 'attack', comboId: result.triggeredCombinationId, feedback: result.feedback ?? []},
       state: result.state,
       status: result.state.winner !== null ? "finished" : match.status,
+      deadline: result.state.winner !== null ? undefined : this.now() + TURN_MS,
     };
     if (!preview) this.commit(updated);
     return { match: updated, result };
@@ -256,7 +315,8 @@ export class MatchStore {
     const beforeAp = match.state!.ap[action.actorId]!;
     const slowed = match.state!.combatantStatuses[action.actorId]?.some(s => s.effectId === 'slow');
     const reservedAp = Math.min(beforeAp.max, beforeAp.current + (slowed ? 0 : 1)) - preview.match.state!.ap[action.actorId]!.current;
-    const updated: Match = {...match, revision: match.revision + 1, seal: {
+    const updated: Match = {...match, revision: match.revision + 1,
+      deadline: Math.max(match.deadline ?? 0, now + durationMs + 1500), seal: {
       id: randomUUID(), actorId: action.actorId, elementIds: [...action.elementIds],
       startedAt: now, durationMs, deadline: now + durationMs + 1500, reservedAp}};
     this.commit(updated);
@@ -291,6 +351,7 @@ export class MatchStore {
     nodeId: string,
   ): { match: Match } {
     const match = this.get(id);
+    this.checkDeadline(match);
     if (match.seal) throw new MatchError('Conjuração em andamento.', 409);
     if (match.status !== "in_progress" || match.state === null) {
       throw new MatchError(`match "${id}" is not in progress`, 409);

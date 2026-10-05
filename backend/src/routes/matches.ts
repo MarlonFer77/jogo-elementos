@@ -7,12 +7,8 @@ import { readJsonBody } from "../http/json-body.js";
 import { sendErrorResponse, sendJson } from "../http/respond.js";
 import { isNonEmptyString } from "../http/validation.js";
 import type { MatchStore } from "../matches/match-store.js";
-
-function token(req: IncomingMessage): string {
-  const value = req.headers.authorization?.replace(/^Bearer /, '');
-  if (!value || !/^[a-f0-9]{64}$/.test(value)) throw new TurnValidationError('Atualize o aplicativo: credencial de sessão obrigatória.');
-  return value;
-}
+import { needsExpiry } from '../matches/lifecycle.js';
+import {sessionToken as token} from '../auth/identity.js';
 
 function revision(body: unknown): number {
   const value = (body as Record<string, unknown>)?.revision;
@@ -27,7 +23,7 @@ export async function handleConfigure(req: IncomingMessage, res: ServerResponse,
     const playerId = body.playerId;
     const kind = body.kind;
     sendJson(res, 200, await store.run(id, current => {
-      current.authorize(id, token(req), playerId);
+      current.authorize(id, token(req, playerId), playerId);
       return current.configure(id, playerId, kind, body.ids as string[], revision(body));
     }, true));
   } catch (error) { sendErrorResponse(res, error); }
@@ -56,7 +52,8 @@ export async function handleCreateMatch(
 ): Promise<void> {
   try {
     const playerAId = await readRequiredStringField(req, "playerAId");
-    sendJson(res, 201, await store.run(undefined, current => current.create(playerAId, token(req)), true, {playerId: playerAId, token: token(req)}));
+    const credential = token(req, playerAId);
+    sendJson(res, 201, await store.run(undefined, current => current.create(playerAId, credential), true, {playerId: playerAId, token: credential}));
   } catch (error) {
     sendErrorResponse(res, error);
   }
@@ -71,7 +68,8 @@ export async function handleJoinMatch(
 ): Promise<void> {
   try {
     const playerBId = await readRequiredStringField(req, "playerBId");
-    sendJson(res, 200, await store.run(matchId, current => current.join(matchId, playerBId, token(req)), true, {playerId: playerBId, token: token(req)}));
+    const credential = token(req, playerBId);
+    sendJson(res, 200, await store.run(matchId, current => current.join(matchId, playerBId, credential), true, {playerId: playerBId, token: credential}));
   } catch (error) {
     sendErrorResponse(res, error);
   }
@@ -90,13 +88,26 @@ export async function handleGetMatch(
       current.authorize(matchId, token(req));
       return current.get(matchId);
     });
-    if (match.seal && Date.now() > match.seal.deadline) {
-      match = await store.run(matchId, current => current.expireSeal(matchId), true);
+    if (needsExpiry(match, Date.now())) {
+      match = await store.run(matchId, current => {
+        current.authorize(matchId, token(req));
+        return current.expire(matchId);
+      }, true);
     }
-    sendJson(res, 200, match);
+    sendJson(res, 200, {...match, serverNow: Date.now()});
   } catch (error) {
     sendErrorResponse(res, error);
   }
+}
+
+export async function handleSurrender(req: IncomingMessage, res: ServerResponse, store: MatchStore, id: string): Promise<void> {
+  try {
+    const playerId = await readRequiredStringField(req, 'playerId');
+    sendJson(res, 200, await store.run(id, current => {
+      current.authorize(id, token(req, playerId), playerId);
+      return current.surrender(id, playerId);
+    }, true));
+  } catch (error) { sendErrorResponse(res, error); }
 }
 
 export async function handleSeal(req: IncomingMessage, res: ServerResponse, store: MatchStore, id: string, finish: boolean): Promise<void> {
@@ -105,7 +116,7 @@ export async function handleSeal(req: IncomingMessage, res: ServerResponse, stor
     if (!body || !isNonEmptyString(body.actorId)) throw new TurnValidationError('Jogador obrigatório.');
     const actorId = body.actorId;
     sendJson(res, 200, await store.run(id, current => {
-      current.authorize(id, token(req), actorId);
+      current.authorize(id, token(req, actorId), actorId);
       if (finish) {
         if (!isNonEmptyString(body.sealId)) throw new TurnValidationError('Selo obrigatório.');
         return current.finishSeal(id, actorId, body.sealId, body.trace);
@@ -129,7 +140,7 @@ export async function handleSubmitTurn(
     const body = await readJsonBody(req);
     const action = parseTurnAction(body);
     sendJson(res, 200, await store.run(matchId, current => {
-      current.authorize(matchId, token(req), action.actorId);
+      current.authorize(matchId, token(req, action.actorId), action.actorId);
       const beforeState = preview ? current.get(matchId).state : undefined;
       const { match, result } = current.applyTurn(matchId, action, defaultCombinationBook, preview, revision(body));
       return { match, triggeredCombinationId: result.triggeredCombinationId, ...(preview ? {beforeState} : {}) };
@@ -161,7 +172,7 @@ export async function handleUnlockSkill(
     }
 
     sendJson(res, 200, await store.run(matchId, current => {
-      current.authorize(matchId, token(req), playerId);
+      current.authorize(matchId, token(req, playerId), playerId);
       if (revision(body) !== current.get(matchId).revision) throw new TurnValidationError('Estado desatualizado. Sincronize antes de desbloquear.');
       return current.unlockSkill(matchId, playerId, nodeId);
     }, true));

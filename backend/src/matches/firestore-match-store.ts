@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import {credentialDigest} from '../auth/identity.js';
 import type { Firestore } from 'firebase-admin/firestore';
 import { MatchStore, type MatchSnapshot, type ProfileSeed } from './match-store.js';
 import { MatchError } from './errors.js';
@@ -59,13 +60,15 @@ export class FirestoreMatchStore extends MatchStore {
     }
     const output = await this.db.runTransaction(async transaction => {
       const store = new MatchStore();
+      let previousRevision: number | undefined;
       if (id) {
         const document = await transaction.get(this.db.collection('elementosMatches').doc(id));
         if (!document.exists) throw new MatchError('Sala não encontrada.', 404);
         store.restore(document.data() as MatchSnapshot);
+        previousRevision = store.get(id).revision;
       }
       if (profile) {
-        const credential = digest(profile.token);
+        const credential = credentialDigest(profile.token);
         const saved = await transaction.get(this.db.collection('elementosProfiles').doc(profileKey(profile.playerId, credential)));
         if (saved.exists) {
           const data = saved.data() as {progress: PlayerProgress; skills: string[]};
@@ -74,14 +77,15 @@ export class FirestoreMatchStore extends MatchStore {
       }
       const result = action(store);
       const match = ((result as {match?: Match}).match ?? result) as Match;
+      if (match.revision === previousRevision) return {result, id: match.id, store};
       const snapshot = store.snapshot(match.id);
       // Serialize once to remove optional undefined fields before Firestore.
       const data = JSON.parse(JSON.stringify(snapshot));
-      data.updatedAt = Date.now(); // Maintenance metadata; polling never writes it.
+      data.updatedAt = Date.now(); // Ordinary polls do not write; expiry writes once.
       const reference = this.db.collection('elementosMatches').doc(match.id);
       if (id) transaction.set(reference, data);
       else transaction.create(reference, data);
-      if (match.status === 'finished') {
+      if (match.status === 'finished' && match.state?.winner) {
         for (const [player, progress] of Object.entries(match.players)) {
           const credential = snapshot.credentials[player]!;
           transaction.set(this.db.collection('elementosProfiles').doc(profileKey(player, credential)),

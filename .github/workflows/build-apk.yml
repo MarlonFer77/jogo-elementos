@@ -33,10 +33,20 @@ jobs:
       # então o cache nunca pegava e cada build continuava gerando uma
       # assinatura nova.
       - name: Cache Android debug keystore
+        id: signing-cache
         uses: actions/cache@v4
         with:
           path: ~/.config/.android/debug.keystore
           key: android-debug-keystore-v2
+
+      - name: Require existing Android signing key
+        env:
+          SIGNING_CACHE_HIT: ${{ steps.signing-cache.outputs.cache-hit }}
+        run: |
+          if [ "$SIGNING_CACHE_HIT" != "true" ] || [ ! -s ~/.config/.android/debug.keystore ]; then
+            echo "Assinatura anterior indisponível. Build interrompido para preservar atualizações sem perda de dados."
+            exit 1
+          fi
 
       - name: flutter pub get
         working-directory: app
@@ -44,7 +54,14 @@ jobs:
 
       - name: flutter build apk --release
         working-directory: app
-        run: flutter build apk --release
+        env:
+          FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY }}
+        run: |
+          if [ -z "$FIREBASE_API_KEY" ]; then
+            echo "Configure a variável FIREBASE_API_KEY do projeto Firebase antes de buildar o login."
+            exit 1
+          fi
+          flutter build apk --release --dart-define=FIREBASE_API_KEY="$FIREBASE_API_KEY"
 
       - uses: actions/upload-artifact@v4
         with:

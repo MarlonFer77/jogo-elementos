@@ -38,7 +38,55 @@ class MultiplayerMatch {
 
   final String localPlayerId;
 
-  RemoteMatch? _match;
+  RemoteMatch? _snapshot;
+  int? _serverOffsetMs;
+  RemoteMatch? get _match => _snapshot;
+  set _match(RemoteMatch? value) {
+    if (value?.id != _snapshot?.id) _serverOffsetMs = null;
+    _snapshot = value;
+    if (value?.serverNow != null) {
+      _serverOffsetMs = value!.serverNow! - _now().millisecondsSinceEpoch;
+    }
+  }
+
+  // Display estimate only. Expiry and the result are always decided remotely.
+  int? get secondsRemaining {
+    final deadline = _match?.deadline;
+    final offset = _serverOffsetMs;
+    if (deadline == null || offset == null || isFinished) return null;
+    return ((deadline - _now().millisecondsSinceEpoch - offset) / 1000)
+        .ceil()
+        .clamp(0, 3600);
+  }
+
+  bool get wasCancelled => isFinished && winnerId == null;
+  String? get endingMessage => switch (_match?.ending?['reason']) {
+    'surrender' =>
+      _match?.ending?['playerId'] == localPlayerId
+          ? 'Você desistiu do duelo.'
+          : 'O oponente desistiu do duelo.',
+    'timeout' =>
+      _match?.ending?['playerId'] == localPlayerId
+          ? 'Seu prazo para agir terminou.'
+          : 'O prazo do oponente terminou.',
+    'cancelled' => 'Sala cancelada antes do combate. Sem vencedor.',
+    'preparation_timeout' =>
+      'Prazo de entrada/preparação encerrado. Sem vencedor.',
+    _ => null,
+  };
+
+  Future<void> surrender() async {
+    if (_submitting || matchId == null || isFinished) return;
+    _submitting = true;
+    _stateGeneration++;
+    try {
+      _match = await _client.surrender(matchId!, localPlayerId);
+      _connected();
+    } finally {
+      _submitting = false;
+    }
+  }
+
   String? _lastError;
   String? _lastTriggeredCombinationId;
   bool _submitting = false;
@@ -171,7 +219,8 @@ class MultiplayerMatch {
   bool get isInProgress => _match?.status == 'in_progress';
   bool get isFinished => _match?.status == 'finished';
 
-  bool get isMyTurn => _match?.state?.currentTurnId == localPlayerId;
+  bool get isMyTurn =>
+      !isFinished && _match?.state?.currentTurnId == localPlayerId;
 
   String? get winnerId => _match?.state?.winner;
   bool get amIWinner => winnerId != null && winnerId == localPlayerId;
@@ -308,7 +357,7 @@ class MultiplayerMatch {
       connectionError = error is MultiplayerException && error.statusCode == 404
           ? 'Sala não encontrada. Confira o código para reconectar.'
           : error is MultiplayerException && error.statusCode == 403
-          ? 'Sessão inválida. Use o mesmo nome e aparelho da partida.'
+          ? 'Sessão inválida. Use a identidade que entrou na partida.'
           : 'Conexão pausada. Nova tentativa em ${wait.inSeconds}s…';
       // Transient network hiccup during polling: keep the last known
       // state and let the next poll try again.

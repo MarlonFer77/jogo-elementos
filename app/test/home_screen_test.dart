@@ -1,5 +1,5 @@
 import 'package:app/ui/home_screen.dart';
-import 'package:app/ui/multiplayer_lobby_screen.dart';
+import 'package:app/ui/multiplayer_login_screen.dart';
 import 'package:app/ui/training_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -68,7 +68,7 @@ void main() {
     ); // dispose the idle AnimationControllers
   });
 
-  testWidgets('MULTIPLAYER navigates to MultiplayerLobbyScreen', (
+  testWidgets('MULTIPLAYER navigates to the recoverable login', (
     tester,
   ) async {
     await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
@@ -77,7 +77,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.byType(MultiplayerLobbyScreen), findsOneWidget);
+    expect(find.byType(MultiplayerLoginScreen), findsOneWidget);
 
     await tester.pumpWidget(
       const SizedBox(),

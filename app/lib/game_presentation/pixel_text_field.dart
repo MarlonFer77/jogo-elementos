@@ -11,12 +11,18 @@ class PixelTextField extends StatelessWidget {
     required this.controller,
     required this.label,
     this.maxLength,
+    this.obscureText = false,
+    this.keyboardType,
+    this.autofillHints,
     this.capitalization = TextCapitalization.none,
   });
 
   final TextEditingController controller;
   final String label;
   final int? maxLength;
+  final bool obscureText;
+  final TextInputType? keyboardType;
+  final Iterable<String>? autofillHints;
   final TextCapitalization capitalization;
 
   @override
@@ -28,6 +34,11 @@ class PixelTextField extends StatelessWidget {
     );
     return TextField(
       controller: controller,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      autofillHints: autofillHints,
+      autocorrect: !obscureText,
+      enableSuggestions: !obscureText,
       maxLength: maxLength,
       textCapitalization: capitalization,
       style: const TextStyle(fontFamily: 'monospace', color: borderColor),
