@@ -9,7 +9,8 @@ class StatusEffects {
   static const burn = StatusEffect(
     id: 'burn',
     name: 'Queimadura',
-    description: 'Sofre dano ao final de cada turno.',
+    description:
+        'Sofre dano ao final de cada turno. Água básica apaga a própria Queimadura antes do dano contínuo, mas causa 3 de dano-base em vez de 5.',
   );
   static const guard = StatusEffect(
     id: 'guard',
@@ -32,7 +33,7 @@ class StatusEffects {
     id: 'poison',
     name: 'Veneno',
     description:
-        'Dano ao fim de cada ação; aumenta em 1 por aplicação de dano. Não acumula.',
+        'Dano ao fim de cada ação; aumenta em 1 por aplicação de dano. Não acumula. Natureza básica neutraliza o próprio Veneno antes do dano contínuo, mas causa 3 de dano-base em vez de 5.',
   );
   static const shock = StatusEffect(
     id: 'shock',

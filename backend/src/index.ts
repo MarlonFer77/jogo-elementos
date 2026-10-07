@@ -4,6 +4,9 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { FirestoreMatchStore } from './matches/firestore-match-store.js';
 import {getAuth} from 'firebase-admin/auth';
 import {Accounts} from './auth/accounts.js';
+import {validateOperation} from './operation.js';
+
+validateOperation(process.env);
 
 const port = Number(process.env.PORT ?? 3000);
 

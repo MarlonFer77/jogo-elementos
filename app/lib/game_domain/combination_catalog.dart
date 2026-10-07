@@ -8,6 +8,7 @@ class CombinationOption {
   final String description;
   final List<String> elementIds;
   final bool cleanses;
+  final int directDamage;
 
   const CombinationOption({
     required this.id,
@@ -15,6 +16,7 @@ class CombinationOption {
     required this.description,
     required this.elementIds,
     this.cleanses = false,
+    this.directDamage = 0,
   });
 }
 
@@ -35,6 +37,7 @@ class CombinationCatalog {
           description: combination.description,
           elementIds: combination.elements.map((e) => e.id).toList(),
           cleanses: combination.cleanses,
+          directDamage: combination.damage,
         );
       }
     }

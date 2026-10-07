@@ -21,6 +21,14 @@ import type { BattleState, TurnAction, TurnResult } from "./types.js";
 const BASIC_DAMAGE = 5;
 const COMBO_AP_COST: Record<number, number> = { 2: 3, 3: 5 };
 
+/** Recovery trades two base damage for a specific self-cleanse, before ticks. */
+export function basicRecoveryStatus(state: BattleState, action: TurnAction): string | null {
+  if (action.elementIds.length !== 1) return null;
+  const status = action.elementIds[0] === 'water' ? 'burn'
+    : action.elementIds[0] === 'nature' ? 'poison' : null;
+  return status && hasStatus(state, action.actorId, status) ? status : null;
+}
+
 /**
  * Server-authoritative mirror of TurnEngine.playTurn in battle_engine.
  * Rejects an action if the battle is already over or outside the actor's
@@ -120,7 +128,10 @@ export function playTurn(
       if (part > 0) nextState = applyDamage(nextState, opponentId, part);
     }
   } else if (elementCount === 1) {
-    nextState = applyDamage(nextState, opponentId, modifiedDamage(state, action, BASIC_DAMAGE));
+    const recovery = basicRecoveryStatus(state, action);
+    if (recovery) nextState = withStatusRemoved(nextState, action.actorId, recovery);
+    nextState = applyDamage(nextState, opponentId,
+      modifiedDamage(state, action, recovery ? 3 : BASIC_DAMAGE));
   }
   if (!shieldBlocked && (elementCount === 1 || (combination?.damage ?? 0) > 0) && action.elementIds.includes('lightning')) {
     nextState = withStatusRemoved(nextState, opponentId, 'wet');

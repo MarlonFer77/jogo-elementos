@@ -65,6 +65,12 @@ class _BattleSceneWidgetState extends State<BattleSceneWidget> {
     _game.setChanneling(widget.channelingLeft);
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _game.ambientMotionEnabled = !MediaQuery.disableAnimationsOf(context);
+  }
+
   void _onImpact(AttackEvent event) {
     if (!mounted || event.sequenceId != _activeAttack?.sequenceId) return;
     setState(() {
@@ -143,6 +149,26 @@ class _BattleSceneWidgetState extends State<BattleSceneWidget> {
       child: Stack(
         children: [
           Positioned.fill(child: GameWidget(game: _game)),
+          if (_activeAttack == null && widget.channelingLeft == null)
+            Positioned(
+              left: 8,
+              right: 8,
+              bottom: 4,
+              child: IgnorePointer(
+                child: Text(
+                  widget.view.arena.label,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 10,
+                    color: Color(0xFFF8F2DA),
+                    backgroundColor: Color(0xDD253843),
+                  ),
+                ),
+              ),
+            ),
           Positioned(
             top: 0,
             left: 0,

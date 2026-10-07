@@ -1,4 +1,5 @@
 import 'combatant_appearance.dart';
+import 'arena_theme.dart';
 
 /// Ordered difficulty curve; shared by checkpoints, battle setup and UI.
 class DungeonRoom {
@@ -13,11 +14,13 @@ class DungeonRoom {
     required this.pattern,
     this.enragedPattern = const [],
     this.initialAp = 0,
+    this.arena = ArenaTheme.training,
   });
   final String name, hint;
   final List<String> elements, attacks;
   final int hp, xp, initialAp;
   final CombatantAppearance appearance;
+  final ArenaTheme arena;
 
   /// Element/attack IDs or 'guard'. A blocked spell becomes a basic attack.
   final List<String> pattern, enragedPattern;
@@ -32,6 +35,7 @@ class DungeonRoom {
       35,
       40,
       appearance: CombatantAppearance.emberGoblin,
+      arena: ArenaTheme.embers,
       pattern: ['fire', 'wind', 'ignited_storm'],
     ),
     DungeonRoom(
@@ -42,6 +46,7 @@ class DungeonRoom {
       55,
       60,
       appearance: CombatantAppearance.frostElf,
+      arena: ArenaTheme.glacier,
       pattern: ['guard', 'water', 'glacial_prison', 'ice'],
     ),
     DungeonRoom(
@@ -52,6 +57,7 @@ class DungeonRoom {
       65,
       70,
       appearance: CombatantAppearance.swampGolem,
+      arena: ArenaTheme.swamp,
       pattern: ['earth', 'guard', 'quagmire', 'earth'],
     ),
     DungeonRoom(
@@ -62,6 +68,7 @@ class DungeonRoom {
       75,
       80,
       appearance: CombatantAppearance.sunScarab,
+      arena: ArenaTheme.sunTemple,
       pattern: ['guard', 'solar_flame', 'wind', 'fire', 'ignited_storm'],
       initialAp: 1,
     ),
@@ -73,6 +80,7 @@ class DungeonRoom {
       85,
       90,
       appearance: CombatantAppearance.stormHarpy,
+      arena: ArenaTheme.stormCliffs,
       pattern: [
         'wind',
         'static_gale',
@@ -90,6 +98,7 @@ class DungeonRoom {
       95,
       100,
       appearance: CombatantAppearance.darkElf,
+      arena: ArenaTheme.moonRuins,
       pattern: ['shadow', 'silent_gale', 'poison', 'guard', 'toxic_hex'],
       initialAp: 1,
     ),
@@ -101,6 +110,7 @@ class DungeonRoom {
       105,
       110,
       appearance: CombatantAppearance.ancientEnt,
+      arena: ArenaTheme.ancientGrove,
       pattern: [
         'guard',
         'nature',
@@ -119,6 +129,7 @@ class DungeonRoom {
       115,
       120,
       appearance: CombatantAppearance.thunderTroll,
+      arena: ArenaTheme.thunderPeaks,
       pattern: ['lightning', 'water', 'thunderstorm', 'lightning', 'water'],
       initialAp: 2,
     ),
@@ -130,6 +141,7 @@ class DungeonRoom {
       130,
       150,
       appearance: CombatantAppearance.plagueSpider,
+      arena: ArenaTheme.plagueCrypt,
       pattern: [
         'toxic_bloom',
         'shadow',
@@ -148,6 +160,7 @@ class DungeonRoom {
       150,
       180,
       appearance: CombatantAppearance.ruinDrake,
+      arena: ArenaTheme.caldera,
       pattern: ['guard', 'lava', 'earth', 'water', 'quagmire', 'fire', 'wind'],
       enragedPattern: ['fire', 'wind', 'ignited_storm', 'fire', 'wind', 'lava'],
       initialAp: 3,

@@ -57,6 +57,8 @@ class BattleCharacterComponent extends PositionComponent {
   double _strike = 0;
   bool _striding = false;
   bool _frozen = false;
+  bool hasShield = false;
+  bool hasGuard = false;
   String? _swordElement;
 
   /// The weapon belongs only to the current visual action, never to a build.
@@ -165,6 +167,31 @@ class BattleCharacterComponent extends PositionComponent {
       ),
       Paint()..color = const Color(0x3320242B),
     );
+
+    if (hasGuard || hasShield) {
+      final color = hasShield
+          ? const Color(0xFF9DDBEF)
+          : const Color(0xFFE7CF87);
+      final outline = Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..isAntiAlias = false;
+      final shape = Path()
+        ..moveTo(7, 28)
+        ..lineTo(7, 66)
+        ..lineTo(20, 77)
+        ..lineTo(44, 77)
+        ..lineTo(57, 66)
+        ..lineTo(57, 28);
+      if (hasShield) {
+        shape
+          ..lineTo(43, 17)
+          ..lineTo(21, 17)
+          ..close();
+      }
+      canvas.drawPath(shape, outline);
+    }
 
     canvas.save();
     canvas.translate(size.x / 2, size.y);

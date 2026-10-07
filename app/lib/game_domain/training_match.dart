@@ -94,6 +94,8 @@ class TrainingMatch {
   final AbilityEngine _abilityEngine = AbilityEngine(
     TurnEngine(defaultCombinationBook),
   );
+  late final List<Mutation> _temporaryMutationsA;
+  late final List<CombinationModifier> _temporaryModifiersA;
 
   late BattleState _state;
   late DiscoveryBook _discoveryBook;
@@ -154,7 +156,12 @@ class TrainingMatch {
     List<String>? initialEquippedElementsB,
     int opponentBaseHp = 100,
     int? initialPlayerHp,
+    List<ActiveStatus> initialPlayerStatuses = const [],
+    List<Mutation> temporaryMutationsA = const [],
+    List<CombinationModifier> temporaryModifiersA = const [],
   }) {
+    _temporaryMutationsA = List.unmodifiable(temporaryMutationsA);
+    _temporaryModifiersA = List.unmodifiable(temporaryModifiersA);
     _progressA = initialProgressA ?? SkillProgress(defaultSkillTree);
     _progressB = initialProgressB ?? SkillProgress(defaultSkillTree);
     _discoveryBook = initialDiscoveryBook ?? DiscoveryBook();
@@ -173,6 +180,9 @@ class TrainingMatch {
       playerBMaxHp: opponentBaseHp + _progressB.grantedMaxHpBonus,
       ap: {_playerA: ?initialApA, _playerB: ?initialApB},
     );
+    for (final status in initialPlayerStatuses) {
+      _state = _state.withStatusApplied(_playerA, status);
+    }
     if (initialPlayerHp != null) {
       if (initialPlayerHp < 1 || initialPlayerHp > playerAMaxHp) {
         throw ArgumentError('HP inicial inválido.');
@@ -671,11 +681,23 @@ class TrainingMatch {
       combinationModifiers: progress.grantedCombinationModifiers,
     );
 
+    // Validate the permanent build first. Trusted encounter grants are separate
+    // and never become unlocked skill nodes or leak into a rematch/profile.
+    var encounterAbility = build.abilityById('turn_action')!;
+    if (_isPlayerATurn) {
+      for (final mutation in _temporaryMutationsA) {
+        encounterAbility = encounterAbility.withMutation(mutation);
+      }
+    }
+
     return _abilityEngine.useAbility(
       _state,
       _state.currentTurn,
-      build.abilityById('turn_action')!,
-      combinationModifiers: build.combinationModifiers,
+      encounterAbility,
+      combinationModifiers: [
+        ...build.combinationModifiers,
+        if (_isPlayerATurn) ..._temporaryModifiersA,
+      ],
       sealDamagePercent: sealDamagePercent,
     );
   }

@@ -2,7 +2,11 @@
 List<String> skillFeedbackLabels(Object? codes) => codes is Iterable
     ? [
         for (final code in codes)
-          if (code == 'focused')
+          if (code == 'recover_burn')
+            'Água apagou Queimadura · ataque base 3'
+          else if (code == 'recover_poison')
+            'Natureza neutralizou Veneno · ataque base 3'
+          else if (code == 'focused')
             'Concentração +25%'
           else if (code == 'fragmented')
             'Fragmentação · 2 golpes'

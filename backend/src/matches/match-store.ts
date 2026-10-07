@@ -53,9 +53,9 @@ export class MatchStore {
     this.credentials.set(snapshot.match.id, new Map(Object.entries(snapshot.credentials)));
   }
 
-  seedProgress(playerId: string, digest: string, progress: PlayerProgress, skills: readonly string[]): void {
+  seedProgress(playerId: string, digest: string, progress: PlayerProgress, skills: readonly string[], revision = 0): void {
     this.restore({match: {id: 'profile', revision: 0, playerAId: playerId, playerBId: null,
-      status: 'finished', state: null, players: {[playerId]: progress}, skillProgress: {[playerId]: skills}},
+      status: 'finished', state: null, players: {[playerId]: progress}, skillProgress: {[playerId]: skills}, progressBaseRevisions: {[playerId]: revision}},
       credentials: {[playerId]: digest}});
   }
 
@@ -199,6 +199,8 @@ export class MatchStore {
       revision: 0,
       deadline: this.now() + PREPARATION_MS,
       players: {[playerAId]: previous?.players[playerAId] ?? {ready: false, elements: [], attacks: [], discoveries: [], turns: 0}},
+      progressBaseTurns: {[playerAId]: previous?.players[playerAId]?.turns ?? 0},
+      progressBaseRevisions: {[playerAId]: previous?.progressBaseRevisions?.[playerAId] ?? 0},
       id,
       playerAId,
       playerBId: null,
@@ -242,6 +244,8 @@ export class MatchStore {
       revision: match.revision + 1,
       deadline: this.now() + PREPARATION_MS,
       players: {...match.players, [playerBId]: previous?.players[playerBId] ?? {ready: false, elements: [], attacks: [], discoveries: [], turns: 0}},
+      progressBaseTurns: {...match.progressBaseTurns, [playerBId]: previous?.players[playerBId]?.turns ?? 0},
+      progressBaseRevisions: {...match.progressBaseRevisions, [playerBId]: previous?.progressBaseRevisions?.[playerBId] ?? 0},
       playerBId,
       status: "in_progress",
       state: initialState,

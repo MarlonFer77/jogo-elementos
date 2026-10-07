@@ -1,5 +1,16 @@
 import 'package:battle_engine/battle_engine.dart';
 
+/// Compact affordance only: the engine/server remains authoritative.
+String basicActionDetail(String elementId, Iterable<String> statusIds) {
+  if (elementId == 'water' && statusIds.contains('burn')) {
+    return '0 AP · apaga fogo · base 3';
+  }
+  if (elementId == 'nature' && statusIds.contains('poison')) {
+    return '0 AP · antídoto · base 3';
+  }
+  return '0 AP';
+}
+
 /// Game Domain's own value type for an element — so UI code never needs to
 /// name (or import) `battle_engine`'s `Element` type, not even implicitly.
 class ElementOption {

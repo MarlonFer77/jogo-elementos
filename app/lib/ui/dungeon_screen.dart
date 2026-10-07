@@ -5,9 +5,11 @@ import '../game_presentation/pixel_content_panel.dart';
 import '../game_presentation/pixel_menu_button.dart';
 import '../game_presentation/pixel_page_route.dart';
 import '../game_presentation/creature_portrait.dart';
+import '../game_presentation/sfx_player.dart';
 import 'element_starter_screen.dart';
 import 'skill_tree_screen.dart';
 import 'training_screen.dart';
+import 'dungeon_blessing_screen.dart';
 
 class DungeonScreen extends StatefulWidget {
   const DungeonScreen({super.key});
@@ -30,6 +32,13 @@ class _DungeonScreenState extends State<DungeonScreen> {
       final store = DungeonProgressStore();
       final progress = await store.load();
       _campaign = DungeonCampaign(progress, store);
+      if (store.recovered && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Expedição recuperada da cópia local anterior.'),
+          ),
+        );
+      }
     });
   }
 
@@ -126,6 +135,25 @@ class _DungeonScreenState extends State<DungeonScreen> {
       );
     }
     final progress = campaign?.progress;
+    if (progress?.pendingAltar != null) {
+      return DungeonBlessingScreen(
+        key: ValueKey('${progress!.run}-${progress.pendingAltar}'),
+        altar: progress.pendingAltar!,
+        offers: progress.blessingOffers,
+        busy: _busy,
+        error: _error,
+        onConfirm: (id) => _perform(() async {
+          await campaign!.chooseBlessing(id);
+          if (!context.mounted) return;
+          sfxPlayer.play(SfxId.unlock);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Bênção recebida · válida nesta expedição.'),
+            ),
+          );
+        }),
+      );
+    }
     return Scaffold(
       backgroundColor: const Color(0xFF263D3D),
       appBar: AppBar(
@@ -194,6 +222,20 @@ class _DungeonScreenState extends State<DungeonScreen> {
                                 '${progress.level == 1 ? 'Primeira vitória: 1 ponto para habilidade ou elemento.' : 'Cada nível concede 1 ponto para a árvore.'}',
                                 style: const TextStyle(fontSize: 12),
                               ),
+                              if (progress.activeBlessings.isNotEmpty)
+                                TextButton.icon(
+                                  onPressed: () => showDungeonBlessings(
+                                    context,
+                                    progress.activeBlessings,
+                                  ),
+                                  icon: const Icon(
+                                    Icons.auto_awesome,
+                                    size: 18,
+                                  ),
+                                  label: Text(
+                                    'Bênçãos da expedição · ${progress.blessings.length}/3',
+                                  ),
+                                ),
                             ],
                           ),
                         ),
@@ -206,7 +248,7 @@ class _DungeonScreenState extends State<DungeonScreen> {
                         PixelContentPanel(
                           child: Text(
                             '${progress.active ? 'Próxima sala: ${progress.room + 1}/${DungeonRoom.all.length} · ${progress.hp}/${progress.maxHp} HP' : 'Nova expedição: ${DungeonRoom.all.length} salas · ${DungeonRoom.totalXp} XP ao concluir'}\n'
-                            'Fogueiras recuperam até 25 HP entre salas. Seu AP e os status reiniciam; o AP inicial inimigo aparece em cada sala. '
+                            'Fogueiras recuperam até 25 HP entre salas. Após as salas 3, 6 e 9, escolha uma bênção temporária. AP e status reiniciam com as bênçãos de abertura; o AP inicial inimigo aparece em cada sala. '
                             'Derrota mantém o XP conquistado. Sair ou fechar o jogo reinicia apenas a sala atual, sem recompensa.\n'
                             'Perfil solo local, separado do Treino e do Multiplayer.',
                             style: const TextStyle(fontSize: 12),

@@ -1,12 +1,29 @@
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'recoverable_preferences.dart';
 import 'dungeon_progress.dart';
 
 class DungeonProgressStore {
+  DungeonProgressStore() {
+    _storage = RecoverablePreferences(onRecovery: () => recovered = true);
+  }
+  late final RecoverablePreferences _storage;
+  bool recovered = false;
   static const key = 'dungeon_profile_v1';
 
+  bool _validate(Object raw) {
+    final data = jsonDecode(raw as String) as Map<String, dynamic>;
+    if (data['version'] is int &&
+        (data['version'] as int) > DungeonProgress.saveVersion) {
+      throw StateError(
+        'Save de uma versão mais recente. Atualize o aplicativo.',
+      );
+    }
+    DungeonProgress.fromJson(data);
+    return true;
+  }
+
   Future<DungeonProgress> load() async {
-    final raw = (await SharedPreferences.getInstance()).get(key);
+    final raw = await _storage.read(key, _validate);
     if (raw == null) return DungeonProgress();
     try {
       return DungeonProgress.fromJson(
@@ -21,10 +38,6 @@ class DungeonProgressStore {
   }
 
   Future<void> save(DungeonProgress progress) async {
-    final saved = await (await SharedPreferences.getInstance()).setString(
-      key,
-      jsonEncode(progress.toJson()),
-    );
-    if (!saved) throw StateError('Não foi possível salvar. Tente novamente.');
+    await _storage.write(key, jsonEncode(progress.toJson()), _validate);
   }
 }

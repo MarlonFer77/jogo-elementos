@@ -4,6 +4,76 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Publicação v0.31.0/build 31 em andamento, reunindo os blocos locais abaixo.
+Preparar commit/branch, APK no Actions com assinatura existente, backend do mesmo
+commit no Render e release estável com app-release.apk e digest verificados.
+Não gerar chave nova nem desinstalar o app. Notas: docs/release-v0.31.0.md.
+
+Checkpoint anterior:
+
+Bênçãos da expedição implementadas localmente: nove opções, três por altar após
+salas 3/6/9, uma escolha fixa por altar. Bônus ofensivos/defensivos/AP temporários,
+só no jogador da Dungeon; desaparecem na derrota/conclusão/abandono. Build da
+árvore continua validada antes dos grants do encontro. Mantidas 10 salas/cura 25.
+Schema 2 na chave existente, migração do schema 1 sem reset e altares alcançados
+oferecidos ao retomar. Entrada bloqueada até escolha salva; retry/duplo toque
+não duplicam benefícios. Cartas responsivas, seleção confirmada, consulta de
+bênçãos no acampamento/batalha e feedback sonoro existente.
+29 testes focados aprovados (regras, persistência, 10 salas, UI/rotação), análise
+Dart limpa, capturas dos altares inspecionadas. Detalhes: docs/dungeon-blessings.md.
+Sem alteração no engine/backend/Multiplayer neste bloco; trabalhos locais anteriores
+preservados. Falta playtest de balanceamento nos celulares. Sem APK/release/deploy.
+
+Checkpoint anterior:
+
+Gameplay/cenários implementados localmente (07/10/2026): Água básica apaga a
+própria Queimadura; Natureza básica neutraliza o próprio Veneno, antes dos ticks,
+com dano-base 3 em vez de 5 quando recupera. Dart/servidor, prévias, botões e guia
+sincronizados. Dez arenas próprias da Dungeon + Treino/Multiplayer, clima leve,
+contornos de Defesa/Escudo no momento correto, partículas de impacto e cura.
+Engine e servidor: 12 testes focados cada; cenas/sequências: 42 aprovados.
+Quatro casos atuais de controles Treino/Multiplayer nas duas orientações passaram;
+capturas do Treino inspecionadas (fontes de teste). Um caso legado de multiplayer
+sem mock de SharedPreferences travou antes de conectar; suíte antiga precisa
+atualizar fixtures de sessão, não foi usada como evidência de partida online.
+Análise Dart/typecheck TS limpos; galeria renderizada e inspecionada. Detalhes em
+docs/elemental-counterplay-arenas.md. Saves e trabalhos anteriores preservados.
+Faltam playtest de balanceamento/desempenho em celulares e partida real online.
+Sem APK, commit, push ou deploy. Assinatura permanece NEXT.
+
+Checkpoint anterior:
+
+Operação/atualização confiáveis implementadas localmente (07/10/2026): consulta
+manual no menu, falhas explícitas com retry/continuação offline, validação do
+asset oficial e digest SHA-256 passado ao OTA. Mensagens de instalação/erro e
+limpeza de stream encerrado para permitir nova tentativa. Backend impede início
+em produção sem Firestore/projeto e expõe revisão do commit no health. Workflow
+manual limita concorrência/tempo/permissões e falha se faltar APK.
+19 testes Dart focados e 6 de backend aprovados; análise Dart e typecheck TS limpos.
+Roteiro/limitações: docs/reliable-updates.md. Sem APK, commit, push ou deploy.
+Falta validar instalação/rede/permissão em Android real. Assinatura e alertas
+anteriores de dependências/actions não foram alterados.
+
+Checkpoint anterior:
+
+Backup e proteção da progressão implementados localmente. Treino/Dungeon mantêm
+uma cópia anterior válida, migram as chaves existentes sem reset, serializam
+gravações e avisam sobre recuperação/falha. Save ilegível sem backup bloqueia
+o carregamento sem apagar dados; versões futuras não são rebaixadas.
+Firestore mantém elementosProfileBackups na mesma transação do resultado,
+valida perfis e recupera o anterior quando necessário. Novas salas registram
+turnos/revisão de origem: encerramentos somam apenas ganhos próprios, preservam
+descobertas/talentos e impedem troca de equipamento por uma sala desatualizada.
+Salas legadas usam máximo conservador de turnos; escolhas iniciais simultâneas
+não liberam elementos acima do gate. Sem escrita extra em polling.
+Testes focados de stores/recuperação e tela de erro aprovados; análise Dart e
+typecheck TS sem erros. Corrigida retenção da fila assíncrona após concluir uma
+operação (teste com tela seguido de stores). Detalhes em docs/progress-backups.md.
+Sem APK, commit, push ou deploy neste bloco. Falta validação em aparelho/Firestore
+real; cópias locais não sobrevivem à desinstalação e o backup online não é externo.
+
+Checkpoint anterior:
+
 Identidade recuperável/login implementado localmente: cadastro, confirmação de
 e-mail, recuperação, logout, refresh protegido e vínculo transacional do perfil.
 Testes focados com Firebase simulado e análise estática aprovados. Em 05/10/2026,
@@ -359,10 +429,10 @@ Validação manual em aparelhos e balanceamento pendentes. Sem commit/release/de
 
 # NEXT
 
-Ordem solicitada em 30/09: identidade recuperável/tela de login; backup e proteção
-da progressão; operação/atualização confiáveis; assinatura definitiva do APK.
-Preservar sessões/progresso legados na migração. Validar abandono nos dois
-aparelhos antes de publicar app + servidor. Sem publicação neste bloco.
+Próximo bloco: assinatura definitiva do APK, preservando compatibilidade com os
+aparelhos instalados. Login/abandono publicados no backend e APK v0.30.0 no Actions;
+backup e operação implementados localmente. Validar conta, abandono e recuperação nos dois
+aparelhos antes da próxima publicação coordenada. Não publicar automaticamente.
 
 # BACKLOG
 
@@ -380,8 +450,9 @@ uma tarefa nova terminar revelando um gap novo.
 
 **Backend (backend/)**
 - Firestore configurado em produção (`elementosMatches`/`elementosProfiles`);
-  faltam backup/recuperação, retenção e proteção contra sobrescrita entre salas.
-- Credencial por instalação implementada; contas e recuperação ainda ausentes.
+  backup anterior e proteção entre salas implementados localmente; faltam
+  retenção de partidas e backup externo para desastre do projeto inteiro.
+- Conta recuperável por Firebase publicada; validar fluxo completo em aparelhos.
 - Sem push em tempo real — só polling (cliente já poll a cada 2s)
 - CORS liberado pra `*` — ok sem deploy real, reavaliar quando existir um (DECISION-021)
 

@@ -39,12 +39,16 @@ class AttackSequencePlayer extends Component {
     required Vector2 targetPosition,
     this.onImpact,
     this.onComplete,
+    this.targetShielded = false,
+    this.targetGuarded = false,
+    this.impactParticles = true,
   }) : _attackerPosition = attackerPosition,
        _targetPosition = targetPosition;
 
   final AttackEvent event;
   final VoidCallback? onImpact;
   final VoidCallback? onComplete;
+  final bool targetShielded, targetGuarded, impactParticles;
   bool _completionReported = false;
   final BattleCharacterComponent attacker;
   final BattleCharacterComponent target;
@@ -212,7 +216,11 @@ class AttackSequencePlayer extends Component {
               !event.isFizzle) {
             target.playHitEffect();
           }
-          sfxPlayer.play(BattleAudio.impact(event));
+          sfxPlayer.play(
+            targetShielded || targetGuarded
+                ? SfxId.defend
+                : BattleAudio.impact(event),
+          );
           onImpact?.call();
         }
       }
@@ -264,6 +272,7 @@ class AttackSequencePlayer extends Component {
         }
         break;
       case _AttackStep.damage:
+        if (impactParticles) _renderImpact(canvas);
         _renderDamageNumber(canvas);
         break;
       case _AttackStep.stateApplied:
@@ -396,13 +405,57 @@ class AttackSequencePlayer extends Component {
 
     _drawText(
       canvas,
-      event.damage > 0 ? '-${event.damage}' : 'Sem dano',
+      '${targetShielded
+          ? 'Escudo · '
+          : targetGuarded
+          ? 'Defesa · '
+          : ''}'
+      '${event.damage > 0 ? '-${event.damage} HP' : 'Sem dano'}',
       Offset(_targetPosition.x, riseY),
-      fontSize: 20,
+      fontSize: targetShielded || targetGuarded ? 13 : 20,
       color: Color.fromRGBO(119, 37, 33, opacity),
       bold: true,
       plateOpacity: opacity,
     );
+    if (event.healing > 0) {
+      _drawText(
+        canvas,
+        '+${event.healing} HP',
+        Offset(_attackerPosition.x, riseY),
+        fontSize: 16,
+        color: const Color(0xFF2D6245).withValues(alpha: opacity),
+        bold: true,
+        plateOpacity: opacity,
+      );
+    }
+  }
+
+  void _renderImpact(Canvas canvas) {
+    if (event.damage <= 0 && !targetShielded && !targetGuarded) return;
+    final p = (_stepElapsed / _damageDuration).clamp(0.0, 1.0);
+    final color = targetShielded
+        ? const Color(0xFFA5DBEC)
+        : targetGuarded
+        ? const Color(0xFFE7CF87)
+        : event.elementIds.isEmpty
+        ? const Color(0xFFD7BE94)
+        : elementColor(event.elementIds.first);
+    final paint = Paint()
+      ..color = color.withValues(alpha: 1 - p)
+      ..isAntiAlias = false;
+    for (var i = 0; i < 8; i++) {
+      final angle = i * math.pi / 4;
+      final radius = 8 + p * 26;
+      canvas.drawRect(
+        Rect.fromLTWH(
+          (_targetPosition.x + math.cos(angle) * radius).roundToDouble(),
+          (_targetPosition.y + math.sin(angle) * radius * .65).roundToDouble(),
+          4,
+          4,
+        ),
+        paint,
+      );
+    }
   }
 
   void _renderStateText(Canvas canvas) {

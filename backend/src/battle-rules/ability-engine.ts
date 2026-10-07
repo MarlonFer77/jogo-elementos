@@ -3,7 +3,7 @@ import { opponentOf, withStatusApplied, withStatusRemoved, statusesOf, hasStatus
 import type { CombinationBook } from "./combination-book.js";
 import type { CombinationModifier } from "./combination-modifiers.js";
 import type { Mutation } from "./mutations.js";
-import { playTurn } from "./turn-engine.js";
+import { basicRecoveryStatus, playTurn } from "./turn-engine.js";
 import type { BattleState, TurnAction, TurnResult } from "./types.js";
 
 /**
@@ -31,7 +31,9 @@ export function useAbility(
   const available = hasStatus(state, action.actorId, 'slow') || hasStatus(state, action.actorId, 'freeze')
     ? pool.current : Math.min(pool.max, pool.current + 1);
   const focused = !!combo && combo.damage > 0 && effect.critChanceBonus > 0 && available >= pool.max;
+  const recovery = basicRecoveryStatus(state, action);
   const feedback = [
+    ...(recovery ? [`recover_${recovery}`] : []),
     ...(sealDamagePercent === undefined ? [] : [`seal_${sealDamagePercent}`]),
     ...(focused ? ['focused'] : []),
     ...(combo && combo.damage > 0 && effect.hitCount > 1 ? ['fragmented'] : []),

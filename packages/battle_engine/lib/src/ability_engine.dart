@@ -46,7 +46,10 @@ class AbilityEngine {
         combo.damage > 0 &&
         effect.critChanceBonus > 0 &&
         TurnEngine.availableAp(state, actor) >= state.apOf(actor).max;
+    final action = TurnAction(actor: actor, elements: ability.baseElements);
+    final recovery = TurnEngine.basicRecoveryStatus(state, action);
     final feedback = <String>[
+      if (recovery != null) 'recover_${recovery.id}',
       if (sealDamagePercent != null) 'seal_$sealDamagePercent',
       if (focused) 'focused',
       if (combo != null && combo.damage > 0 && effect.hitCount > 1)
@@ -54,7 +57,7 @@ class AbilityEngine {
     ];
     final turnResult = turnEngine.playTurn(
       state,
-      TurnAction(actor: actor, elements: ability.baseElements),
+      action,
       combinationModifiers: combinationModifiers,
       hitCount: effect.hitCount,
       focusedBonus: focused ? effect.critChanceBonus : 0,

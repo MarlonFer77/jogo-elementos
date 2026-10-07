@@ -9,6 +9,7 @@ import 'active_status.dart';
 import 'field_effect.dart';
 import 'targeted_status.dart';
 import 'elements.dart';
+import 'status_effect.dart';
 
 /// Resolves one turn at a time. Pure logic: given a state and an action,
 /// produces the next state — including AP (regen, cost, rejection),
@@ -23,6 +24,23 @@ class TurnEngine {
   static const _comboApCost = {2: 3, 3: 5};
 
   const TurnEngine(this.combinationBook);
+
+  /// A basic recovery strike trades two base damage for one specific cleanse.
+  /// Combos retain their own support rules; this never bypasses action validation.
+  static StatusEffect? basicRecoveryStatus(
+    BattleState state,
+    TurnAction action,
+  ) {
+    if (action.elements.length != 1) return null;
+    final status = action.elements.single == Elements.water
+        ? StatusEffects.burn
+        : action.elements.single == Elements.nature
+        ? StatusEffects.poison
+        : null;
+    return status != null && state.hasStatus(action.actor, status)
+        ? status
+        : null;
+  }
 
   static int availableAp(BattleState state, Combatant actor) =>
       state.hasStatus(actor, StatusEffects.slow) ||
@@ -55,7 +73,7 @@ class TurnEngine {
   ///   opponent has an active Escudo, which blocks the hit entirely and
   ///   is then consumed
   /// - a single played element never resolves a combination — instead it
-  ///   always deals a flat basic damage to the opponent (same Escudo
+  ///   deals basic damage (3 when recovering, otherwise 5; same Escudo
   ///   blocking rule)
   /// - passes the turn to the opponent
   /// - ticks every active status for both combatants, applying each
@@ -152,10 +170,14 @@ class TurnEngine {
         );
       }
     } else if (elementCount == 1) {
+      final recovery = basicRecoveryStatus(state, action);
+      if (recovery != null) {
+        nextState = nextState.withStatusRemoved(action.actor, recovery);
+      }
       nextState = _applyDamage(
         nextState,
         opponent,
-        _modifiedDamage(state, action, _basicDamage),
+        _modifiedDamage(state, action, recovery == null ? _basicDamage : 3),
       );
     }
 

@@ -15,6 +15,10 @@ const combo = (id: string, elementIds: string[], damage: number, statusesToApply
 export class CombinationBook {
   constructor(private readonly combinations: readonly ElementCombination[]) {}
 
+  containsResult(id: string): boolean {
+    return this.combinations.some(combination => combination.result.id === id);
+  }
+
   resolve(elementIds: readonly string[]): FieldEffect | null {
     const query = new Set(elementIds);
     for (const combination of this.combinations) {

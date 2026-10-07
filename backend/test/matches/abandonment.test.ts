@@ -111,10 +111,10 @@ test('Firestore finalization writes profiles only once; cancellation never repla
     let snapshot = f.store.snapshot(f.id), profiles = 0, writes = 0;
     const db = {collection: (collection: string) => ({doc: () => ({collection})}),
       runTransaction: async (fn: Function) => fn({
-        get: async () => ({exists:true,data:() => snapshot}),
+        get: async (ref: {collection:string}) => ({exists:ref.collection === 'elementosMatches',data:() => ref.collection === 'elementosMatches' ? snapshot : undefined}),
         set: (ref: {collection:string}, data: typeof snapshot) => {
           if (ref.collection === 'elementosProfiles') profiles++;
-          else { snapshot = data; writes++; }
+          else if (ref.collection === 'elementosMatches') { snapshot = data; writes++; }
         },
       })} as unknown as Firestore;
     const store = new FirestoreMatchStore(db);

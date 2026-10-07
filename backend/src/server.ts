@@ -19,6 +19,7 @@ import {sendErrorResponse} from './http/respond.js';
 import {readJsonBody} from './http/json-body.js';
 import {MatchError} from './matches/errors.js';
 import type {Accounts} from './auth/accounts.js';
+import {publicRevision} from './operation.js';
 
 /**
  * Builds the HTTP server without starting it — kept separate from
@@ -64,7 +65,9 @@ export function createServer(matchStore = new MatchStore({filePath: process.env.
 
     if (req.method === "GET" && pathname === "/health") {
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "ok", protocol: 2, accounts: !!accounts, persistence: process.env.MATCH_STORE === 'firestore' ? 'firestore' : 'local' }));
+      res.end(JSON.stringify({ status: "ok", protocol: 2, accounts: !!accounts,
+        persistence: process.env.MATCH_STORE === 'firestore' ? 'firestore' : 'local',
+        revision: publicRevision(process.env) }));
       return;
     }
 

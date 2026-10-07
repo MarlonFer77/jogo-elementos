@@ -10,10 +10,17 @@ test("GET /health responds 200 with status ok", async () => {
 
   try {
     const response = await fetch(`http://localhost:${port}/health`);
-    const body = await response.json();
+    const body = await response.json() as {
+      status: string; protocol: number; accounts: boolean;
+      persistence: string; revision: string;
+    };
 
     assert.equal(response.status, 200);
-    assert.deepEqual(body, { status: "ok" });
+    assert.equal(body.status, "ok");
+    assert.equal(body.protocol, 2);
+    assert.equal(typeof body.accounts, "boolean");
+    assert.match(body.persistence, /^(local|firestore)$/);
+    assert.match(body.revision, /^(local|[a-f0-9]{12})$/i);
   } finally {
     server.close();
   }

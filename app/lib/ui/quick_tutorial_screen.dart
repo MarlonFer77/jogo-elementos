@@ -28,7 +28,7 @@ class _QuickTutorialScreenState extends State<QuickTutorialScreen> {
     (
       Icons.bolt,
       'Escolha, confira, jogue',
-      'HP é sua vida; AP é a energia das ações. No seu turno, selecione elementos ou uma habilidade. Confira a prévia e o custo; depois toque em Jogar.\n\nAtaques básicos ajudam a recuperar AP. Combos gastam AP; defender também é uma opção. Observe os status e de quem é a vez antes de confirmar.',
+      'HP é sua vida; AP é a energia das ações. Selecione uma ação, confira a prévia e toque em Jogar.\n\nBásicos recuperam AP; combos gastam AP. Defender reduz o próximo golpe.\n\nContrajogo: Água básica apaga sua Queimadura; Natureza básica remove seu Veneno. Ao limpar, o dano-base cai de 5 para 3. Congelado? É preciso quebrar o gelo primeiro.',
     ),
     (
       Icons.gesture,

@@ -2,6 +2,7 @@ import 'package:flame/game.dart';
 
 import '../game_domain/attack_event.dart';
 import '../game_domain/battle_scene_view.dart';
+import '../game_domain/combination_catalog.dart';
 import 'attack_sequence_player.dart';
 import 'battle_character_component.dart';
 import 'pixel_arena_background.dart';
@@ -22,6 +23,9 @@ bool didTakeDamage({required int? previousHp, required int currentHp}) {
 /// pura — nenhuma regra de batalha mora aqui; o estado a renderizar vem de
 /// fora via [updateView].
 class BattleSceneGame extends FlameGame {
+  bool ambientMotionEnabled = true;
+  final _background = PixelArenaBackground();
+  bool _waitingForImpact = false;
   bool? _channelingLeft;
   void setChanneling(bool? left) {
     if (_channelingLeft == left) return;
@@ -37,6 +41,7 @@ class BattleSceneGame extends FlameGame {
 
   @override
   void update(double dt) {
+    _background.motionEnabled = ambientMotionEnabled;
     super.update(dt);
     if (_channelingLeft != null) {
       (_channelingLeft! ? _left : _right)?.setActionPose(
@@ -61,7 +66,7 @@ class BattleSceneGame extends FlameGame {
   Future<void> onLoad() async {
     await super.onLoad();
 
-    final background = PixelArenaBackground()
+    final background = _background
       ..size = size
       ..priority = -1;
     add(background);
@@ -99,9 +104,7 @@ class BattleSceneGame extends FlameGame {
         targetPosition: target.restPosition - Vector2(0, 40),
       );
     }
-    for (final child in children.whereType<PixelArenaBackground>()) {
-      child.size = size;
-    }
+    _background.size = size;
   }
 
   /// Reflete [view] na cena: dispara a sequência de ataque quando
@@ -110,8 +113,8 @@ class BattleSceneGame extends FlameGame {
   /// do `onLoad` terminar (guarda a view pendente e aplica assim que os
   /// personagens existirem).
   void updateView(BattleSceneView view) {
+    _pendingView = view;
     if (_left == null || _right == null) {
-      _pendingView = view;
       return;
     }
     _applyView(view);
@@ -121,11 +124,10 @@ class BattleSceneGame extends FlameGame {
     final left = _left!;
     final right = _right!;
 
+    _background.theme = view.arena;
+
     left.appearance = view.leftAppearance;
     right.appearance = view.rightAppearance;
-
-    left.setFrozen(view.leftStatuses.any((status) => status.id == 'freeze'));
-    right.setFrozen(view.rightStatuses.any((status) => status.id == 'freeze'));
 
     final attack = view.lastAttack;
     if (attack == null) {
@@ -133,9 +135,11 @@ class BattleSceneGame extends FlameGame {
       _activeSequence?.removeFromParent();
       _activeSequence = null;
       _lastPlayedSequenceId = null;
+      _waitingForImpact = false;
     }
     if (attack != null && attack.sequenceId != _lastPlayedSequenceId) {
       _lastPlayedSequenceId = attack.sequenceId;
+      _waitingForImpact = true;
       _playAttackSequence(attack);
     } else if (didTakeDamage(
           previousHp: _lastLeftHp,
@@ -163,8 +167,20 @@ class BattleSceneGame extends FlameGame {
       }
     }
 
+    if (!_waitingForImpact) _applyStatuses(view);
     _lastLeftHp = view.leftCurrentHp;
     _lastRightHp = view.rightCurrentHp;
+  }
+
+  void _applyStatuses(BattleSceneView view) {
+    for (final (character, statuses) in [
+      (_left!, view.leftStatuses),
+      (_right!, view.rightStatuses),
+    ]) {
+      character.setFrozen(statuses.any((s) => s.id == 'freeze'));
+      character.hasShield = statuses.any((s) => s.id == 'shield');
+      character.hasGuard = statuses.any((s) => s.id == 'guard');
+    }
   }
 
   void _playAttackSequence(AttackEvent event) {
@@ -172,6 +188,16 @@ class BattleSceneGame extends FlameGame {
     final right = _right!;
     final attacker = event.attackerIsLeft ? left : right;
     final target = event.attackerIsLeft ? right : left;
+    final offensive =
+        !event.isDefend &&
+        !event.isFrozenRecovery &&
+        !event.isFizzle &&
+        (event.elementIds.length == 1 ||
+            (const CombinationCatalog()
+                        .byElements(event.elementIds)
+                        ?.directDamage ??
+                    0) >
+                0);
 
     _activeSequence?.cancelVisuals();
     _activeSequence?.removeFromParent();
@@ -179,16 +205,22 @@ class BattleSceneGame extends FlameGame {
       event: event,
       attacker: attacker,
       target: target,
+      targetShielded: offensive && target.hasShield,
+      targetGuarded: offensive && target.hasGuard,
+      impactParticles: ambientMotionEnabled,
       attackerPosition: attacker.restPosition - Vector2(0, 40),
       targetPosition: target.restPosition - Vector2(0, 40),
       onImpact: () {
         if (identical(_activeSequence?.event, event)) {
+          _waitingForImpact = false;
+          if (_pendingView != null) _applyStatuses(_pendingView!);
           onAttackImpact?.call(event);
         }
       },
       onComplete: () {
         if (!identical(_activeSequence?.event, event)) return;
         _activeSequence = null;
+        _waitingForImpact = false;
         onAttackComplete?.call(event);
       },
     );

@@ -48,6 +48,11 @@ class DungeonCampaign {
   }
 
   Future<void> prepare(List<String> ids) => _save(progress.prepare(ids));
+  Future<void> chooseBlessing(String id) {
+    if (_encounter != null) throw StateError('Escolha sua bênção no altar.');
+    return _save(progress.chooseBlessing(id));
+  }
+
   Future<void> unlock(String id) {
     if (_encounter != null) {
       throw StateError('Evolua sua árvore no acampamento.');
@@ -65,20 +70,32 @@ class DungeonCampaign {
         run: progress.run + 1,
         room: 0,
         hp: progress.maxHp,
+        blessings: const [],
       ),
     );
   }
 
   Future<void> abandon() async {
     if (_encounter != null) throw StateError('Saia da batalha primeiro.');
-    await _save(progress.copyWith(active: false, room: 0, hp: progress.maxHp));
+    await _save(
+      progress.copyWith(
+        active: false,
+        room: 0,
+        hp: progress.maxHp,
+        blessings: const [],
+      ),
+    );
   }
 
   DungeonEncounter enter() {
+    if (progress.pendingAltar != null) {
+      throw StateError('Escolha uma bênção antes da próxima sala.');
+    }
     if (!progress.active || _saving || _encounter != null) {
       throw StateError('Sala indisponível.');
     }
     final room = DungeonRoom.all[progress.room];
+    final blessings = progress.activeBlessings;
     final enemySkills = SkillProgress(
       defaultSkillTree,
       unlockedNodeIds: room.elements.map((id) => 'unlock_$id').toList(),
@@ -101,6 +118,21 @@ class DungeonCampaign {
           equippedCombinationIds: room.attacks,
         ),
         initialApB: ApPool(max: 5, current: room.initialAp),
+        initialApA: ApPool(
+          max: 5 + blessings.fold(0, (sum, b) => sum + b.extraApCapacity),
+          current: blessings.fold(0, (sum, b) => sum + b.initialAp),
+        ),
+        initialPlayerStatuses: blessings
+            .expand((b) => b.openingStatuses)
+            .toList(),
+        temporaryMutationsA: [
+          for (final b in blessings)
+            if (b.mutation != null) b.mutation!,
+        ],
+        temporaryModifiersA: [
+          for (final b in blessings)
+            if (b.modifier != null) b.modifier!,
+        ],
         initialEquippedElementsA: progress.elements,
         initialEquippedElementsB: room.elements,
         opponentBaseHp: room.hp,
@@ -135,6 +167,7 @@ class DungeonCampaign {
           ? (match.playerACurrentHp + 25).clamp(1, progress.maxHp)
           : progress.maxHp,
       clears: progress.clears + (cleared ? 1 : 0),
+      blessings: won && !cleared ? progress.blessings : const [],
       // Only the human's discoveries/attacks enter the persistent profile.
       attacks: match.unlockedAttackIdsForPlayerA,
       equippedAttacks: match.equippedAttackIdsForPlayerA,
@@ -149,6 +182,6 @@ class DungeonCampaign {
             ? 'Sala vencida!'
             : 'Expedição encerrada.'}\n'
         '+$xp XP${levels > 0 ? ' · Nível ${next.level} · +$levels ponto(s)' : ''}\n'
-        '${next.active ? 'Fogueira: recuperou até 25 HP. Próxima sala disponível.' : 'Progresso salvo. Prepare sua próxima expedição.'}';
+        '${next.active ? 'Fogueira: recuperou até 25 HP. ${next.pendingAltar != null ? 'Escolha sua bênção no altar.' : 'Próxima sala disponível.'}' : 'Progresso salvo. Prepare sua próxima expedição.'}';
   }
 }

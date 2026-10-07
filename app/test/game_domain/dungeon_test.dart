@@ -182,6 +182,9 @@ void main() {
     );
     await c.start();
     for (var room = 0; room < DungeonRoom.all.length; room++) {
+      while (c.progress.pendingAltar != null) {
+        await c.chooseBlessing(c.progress.blessingOffers.last.id);
+      }
       final encounter = c.enter();
       final m = encounter.match;
       for (var turn = 0; turn < 150 && !m.isOver; turn++) {
@@ -276,7 +279,15 @@ void main() {
         expect(room.initialAp, inInclusiveRange(ap, 5));
         final p = prepared().copyWith(active: true, run: 1, room: index);
         expect(DungeonProgress.fromJson(p.toJson()).room, index);
-        final m = DungeonCampaign(p, DungeonProgressStore()).enter().match;
+        var c = DungeonCampaign(p, DungeonProgressStore());
+        while (c.progress.pendingAltar != null) {
+          // Catalog validation doesn't need a disk write or a battle reward.
+          c = DungeonCampaign(
+            c.progress.chooseBlessing(c.progress.blessingOffers.last.id),
+            DungeonProgressStore(),
+          );
+        }
+        final m = c.enter().match;
         expect(m.playerBMaxHp, room.hp);
         expect(m.playerBAp, room.initialAp);
         m.playElementIds(['fire']);

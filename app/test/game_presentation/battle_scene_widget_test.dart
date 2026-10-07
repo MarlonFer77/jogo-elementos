@@ -1,5 +1,8 @@
 import 'package:app/game_domain/attack_event.dart';
 import 'package:app/game_domain/battle_scene_view.dart';
+import 'package:app/game_domain/effect_badge_view.dart';
+import 'package:app/game_presentation/pixel_arena_background.dart';
+import 'package:app/game_presentation/battle_scene_game.dart';
 import 'package:app/game_presentation/battle_hud_widget.dart';
 import 'package:app/game_presentation/battle_scene_widget.dart';
 import 'package:app/game_presentation/battle_character_component.dart';
@@ -40,6 +43,61 @@ Future<void> tick(WidgetTester tester, int count) async {
 }
 
 void main() {
+  testWidgets(
+    'arena loads once, defense waits for impact and reduced motion is respected',
+    (tester) async {
+      Future<void> show({bool shield = true, AttackEvent? event}) =>
+          tester.pumpWidget(
+            MaterialApp(
+              home: MediaQuery(
+                data: const MediaQueryData(disableAnimations: true),
+                child: Scaffold(
+                  body: BattleSceneWidget(
+                    view: BattleSceneView(
+                      leftCurrentHp: 100,
+                      leftMaxHp: 100,
+                      rightCurrentHp: 100,
+                      rightMaxHp: 100,
+                      isLeftTurn: true,
+                      arena: ArenaTheme.glacier,
+                      lastAttack: event,
+                      rightStatuses: shield
+                          ? const [
+                              EffectBadgeView(id: 'shield', remainingTurns: 2),
+                            ]
+                          : const [],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+      await show();
+      await tick(tester, 4);
+      final game =
+          tester
+                  .widget<GameWidget>(
+                    find.byWidgetPredicate((w) => w is GameWidget),
+                  )
+                  .game
+              as BattleSceneGame;
+      expect(
+        game.children.whereType<PixelArenaBackground>().single.theme,
+        ArenaTheme.glacier,
+      );
+      expect(game.ambientMotionEnabled, false);
+      final target = game.children.whereType<BattleCharacterComponent>().last;
+      expect(target.hasShield, true);
+      await show(shield: false, event: attack(damage: 0));
+      await tick(tester, 2);
+      expect(target.hasShield, true);
+      await tick(tester, 5);
+      expect(target.hasShield, false);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   testWidgets(
     'new battle cancels old feedback and allows a reused sequence id',
     (tester) async {

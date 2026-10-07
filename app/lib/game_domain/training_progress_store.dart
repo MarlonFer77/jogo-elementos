@@ -1,86 +1,43 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'recoverable_preferences.dart';
 
-/// Persiste o progresso do Modo Treino (Skill Tree por slot `'a'`/`'b'`,
-/// Livro de Descobertas compartilhado, turnos jogados cumulativos por
-/// slot — Bloco 2b) entre partidas e entre execuções do app —
-/// `shared_preferences`, local ao aparelho, sem rede, sem custo.
+/// Local progress only. Legacy keys and independent player slots are preserved.
 class TrainingProgressStore {
-  Future<List<String>?> loadEquippedElementIds(String slot) async {
-    final prefs = await SharedPreferences.getInstance();
-    final value = prefs.get('training_elements_equipped_$slot');
-    return value is List ? value.whereType<String>().toList() : null;
+  TrainingProgressStore() {
+    _storage = RecoverablePreferences(onRecovery: () => recovered = true);
   }
+  late final RecoverablePreferences _storage;
+  bool recovered = false;
 
-  Future<void> saveEquippedElementIds(String slot, List<String> ids) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('training_elements_equipped_$slot', ids);
-  }
+  static bool _ids(Object value) =>
+      value is List && value.every((id) => id is String);
+  static bool _turns(Object value) => value is int && value >= 0;
+  Future<List<String>?> _load(String key) async =>
+      (await _storage.read(key, _ids) as List?)?.cast<String>().toList();
+  Future<void> _save(String key, List<String> ids) =>
+      _storage.write(key, List<String>.of(ids), _ids);
 
-  static const _unlockedKeyPrefix = 'training_unlocked_';
-  static const _discoveredKey = 'training_discovered';
-  static const _turnsPlayedKeyPrefix = 'training_turns_played_';
-  static const _attacksUnlockedKeyPrefix = 'training_attacks_unlocked_';
-  static const _attacksEquippedKeyPrefix = 'training_attacks_equipped_';
-
-  Future<List<String>> loadUnlockedNodeIds(String slot) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList('$_unlockedKeyPrefix$slot') ?? const [];
-  }
-
-  Future<void> saveUnlockedNodeIds(
-    String slot,
-    List<String> unlockedNodeIds,
-  ) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('$_unlockedKeyPrefix$slot', unlockedNodeIds);
-  }
-
-  Future<List<String>> loadDiscoveredCombinationIds() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList(_discoveredKey) ?? const [];
-  }
-
-  Future<void> saveDiscoveredCombinationIds(
-    List<String> discoveredCombinationIds,
-  ) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_discoveredKey, discoveredCombinationIds);
-  }
-
-  /// Turnos cumulativos jogados por [slot] (`'a'`/`'b'`), desde sempre —
-  /// não reseta em "Nova partida" (Bloco 2b: gate de desbloqueio de
-  /// elementos). `0` se nunca salvo.
-  Future<int> loadTurnsPlayed(String slot) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt('$_turnsPlayedKeyPrefix$slot') ?? 0;
-  }
-
-  Future<void> saveTurnsPlayed(String slot, int turnsPlayed) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('$_turnsPlayedKeyPrefix$slot', turnsPlayed);
-  }
-
-  /// Ids das combinações que [slot] já desbloqueou como ataque pessoal
-  /// (Bloco 2c) — lista vazia se nunca salvo.
-  Future<List<String>> loadUnlockedAttackIds(String slot) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList('$_attacksUnlockedKeyPrefix$slot') ?? const [];
-  }
-
-  Future<void> saveUnlockedAttackIds(String slot, List<String> ids) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('$_attacksUnlockedKeyPrefix$slot', ids);
-  }
-
-  /// Ids das combinações que [slot] tem equipadas agora (até 3) — lista
-  /// vazia se nunca salvo.
-  Future<List<String>> loadEquippedAttackIds(String slot) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList('$_attacksEquippedKeyPrefix$slot') ?? const [];
-  }
-
-  Future<void> saveEquippedAttackIds(String slot, List<String> ids) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('$_attacksEquippedKeyPrefix$slot', ids);
-  }
+  Future<List<String>?> loadEquippedElementIds(String slot) =>
+      _load('training_elements_equipped_$slot');
+  Future<void> saveEquippedElementIds(String slot, List<String> ids) =>
+      _save('training_elements_equipped_$slot', ids);
+  Future<List<String>> loadUnlockedNodeIds(String slot) async =>
+      await _load('training_unlocked_$slot') ?? [];
+  Future<void> saveUnlockedNodeIds(String slot, List<String> ids) =>
+      _save('training_unlocked_$slot', ids);
+  Future<List<String>> loadDiscoveredCombinationIds() async =>
+      await _load('training_discovered') ?? [];
+  Future<void> saveDiscoveredCombinationIds(List<String> ids) =>
+      _save('training_discovered', ids);
+  Future<int> loadTurnsPlayed(String slot) async =>
+      await _storage.read('training_turns_played_$slot', _turns) as int? ?? 0;
+  Future<void> saveTurnsPlayed(String slot, int turns) =>
+      _storage.write('training_turns_played_$slot', turns, _turns);
+  Future<List<String>> loadUnlockedAttackIds(String slot) async =>
+      await _load('training_attacks_unlocked_$slot') ?? [];
+  Future<void> saveUnlockedAttackIds(String slot, List<String> ids) =>
+      _save('training_attacks_unlocked_$slot', ids);
+  Future<List<String>> loadEquippedAttackIds(String slot) async =>
+      await _load('training_attacks_equipped_$slot') ?? [];
+  Future<void> saveEquippedAttackIds(String slot, List<String> ids) =>
+      _save('training_attacks_equipped_$slot', ids);
 }

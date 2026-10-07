@@ -759,6 +759,7 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen>
       _maybePlayGameOverSound();
     },
     view: BattleSceneView(
+      arena: ArenaTheme.multiplayer,
       leftCurrentHp: _match.myCurrentHp ?? 0,
       leftMaxHp: _match.myMaxHp ?? 0,
       rightCurrentHp: _match.opponentCurrentHp ?? 0,
@@ -870,7 +871,12 @@ class _MultiplayerBattleScreenState extends State<MultiplayerBattleScreen>
               for (var i = 0; i < 4; i++)
                 BattleCommandButton(
                   title: i < elements.length ? elements[i].name : 'Vazio',
-                  detail: i < elements.length ? '0 AP' : 'Equipar',
+                  detail: i < elements.length
+                      ? basicActionDetail(
+                          elements[i].id,
+                          _match.myActiveStatuses.map((s) => s.id),
+                        )
+                      : 'Equipar',
                   selected:
                       i < elements.length &&
                       !_defending &&

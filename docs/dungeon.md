@@ -73,8 +73,10 @@ Padrões reiniciam ao reentrar na sala, como o próprio encontro.
   liberados para compra; detalhes em `skill-tree-completion.md`.
 - Os bônus existentes da árvore se aplicam normalmente. Limites de 4 elementos
   e 3 habilidades equipadas são preservados.
-- HP restante persiste entre salas; fogueira cura até 25. Seu AP reinicia em 0;
-  inimigos começam com o AP listado acima. Status reiniciam para ambos.
+- HP restante persiste entre salas; fogueira cura até 25. Seu AP reinicia em 0
+  mais bônus de abertura; inimigos começam com o AP listado acima. Status reiniciam
+  e bênçãos de abertura são reaplicadas. Após salas 3/6/9, escolha uma bênção
+  temporária; regras e opções em `dungeon-blessings.md`.
 - Derrota encerra a tentativa, não remove XP/desbloqueios já salvos.
 - Sair/fechar durante uma sala reinicia esse encontro no checkpoint, sem XP.
   Descobertas/equipamento da sala são salvos ao concluir vitória ou derrota.
@@ -87,7 +89,8 @@ revalida a ação anunciada antes da execução.
 `TrainingScreen` reutiliza combate/HUD/selos com uma sessão opcional de dungeon,
 desativa controle do inimigo e não grava nos slots do Treino neste modo.
 
-`dungeon_profile_v1` guarda um único documento JSON em SharedPreferences.
+`dungeon_profile_v1` guarda o JSON schema 2 em SharedPreferences, com migração
+do schema 1 e backup local anterior. IDs das bênçãos são temporários por tentativa.
 Recompensa e avanço de sala são gravados juntos; o estado em memória só avança
 após sucesso. Resultado duplicado/antigo é rejeitado. Save ilegível bloqueia
 a carga com aviso, sem sobrescrever dados. Não há backup em nuvem neste bloco.

@@ -12,8 +12,9 @@ class _FakeUpdateChecker implements UpdateChecker {
   final UpdateCheckResult _result;
 
   @override
-  Future<UpdateCheckResult> checkForUpdate({required String currentVersion}) async =>
-      _result;
+  Future<UpdateCheckResult> checkForUpdate({
+    required String currentVersion,
+  }) async => _result;
 }
 
 class _ThrowingUpdateChecker implements UpdateChecker {
@@ -24,57 +25,133 @@ class _ThrowingUpdateChecker implements UpdateChecker {
 }
 
 void main() {
-  testWidgets('shows the Home screen directly when not running on Android',
-      (tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: UpdateGateScreen(
-        isAndroid: false,
-        updateChecker: _ThrowingUpdateChecker(),
-      ),
-    ));
-    await tester.pump(const Duration(milliseconds: 1));
-
-    expect(find.byType(HomeScreen), findsOneWidget);
-
-    await tester.pumpWidget(const SizedBox()); // dispose the idle AnimationControllers
-  });
-
-  testWidgets('shows the Home screen after checking, when up to date',
-      (tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: UpdateGateScreen(
-        isAndroid: true,
-        currentVersion: '0.8.0',
-        updateChecker: _FakeUpdateChecker(const UpdateCheckResult.upToDate()),
-      ),
-    ));
-    await tester.pump(const Duration(milliseconds: 1));
-
-    expect(find.byType(HomeScreen), findsOneWidget);
-
-    await tester.pumpWidget(const SizedBox()); // dispose the idle AnimationControllers
-  });
-
-  testWidgets(
-      'shows a progress bar while downloading, then switches to the '
-      'installing message', (tester) async {
-    final controller = StreamController<OtaEvent>();
-    await tester.pumpWidget(MaterialApp(
-      home: UpdateGateScreen(
-        isAndroid: true,
-        currentVersion: '0.8.0',
-        updateChecker: _FakeUpdateChecker(
-          const UpdateCheckResult.updateAvailable(
-            latestVersion: '0.9.0',
-            downloadUrl: 'https://example.com/app-release.apk',
+  testWidgets('failed check offers retry and explicit offline continuation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UpdateGateScreen(
+          isAndroid: true,
+          currentVersion: '0.8.0',
+          updateChecker: _FakeUpdateChecker(
+            const UpdateCheckResult.failed('Sem conexão.'),
           ),
         ),
-        startDownload: (url) {
-          expect(url, 'https://example.com/app-release.apk');
-          return controller.stream;
-        },
       ),
-    ));
+    );
+    await tester.pump(const Duration(milliseconds: 1));
+    expect(find.text('Atualização não verificada'), findsOneWidget);
+    expect(find.text('Verificar novamente'), findsOneWidget);
+    expect(find.byType(HomeScreen), findsNothing);
+    await tester.tap(find.text('Continuar sem verificar'));
+    await tester.pump();
+    expect(find.byType(HomeScreen), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('manual check reports installed version without opening home', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UpdateGateScreen(
+          manual: true,
+          isAndroid: true,
+          currentVersion: '0.8.0',
+          updateChecker: _FakeUpdateChecker(const UpdateCheckResult.upToDate()),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 1));
+    expect(find.text('Versão instalada: 0.8.0'), findsOneWidget);
+    expect(find.byType(HomeScreen), findsNothing);
+  });
+
+  testWidgets('synchronous plugin failure is recoverable', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UpdateGateScreen(
+          isAndroid: true,
+          currentVersion: '0.8.0',
+          updateChecker: _FakeUpdateChecker(
+            const UpdateCheckResult.updateAvailable(
+              latestVersion: '0.9.0',
+              downloadUrl: 'https://example.com/app-release.apk',
+            ),
+          ),
+          startDownload: (_) => throw StateError('plugin unavailable'),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.tap(find.text('Baixar atualização'));
+    await tester.pump();
+    expect(find.text('Tentar de novo'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('shows the Home screen directly when not running on Android', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UpdateGateScreen(
+          isAndroid: false,
+          updateChecker: _ThrowingUpdateChecker(),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 1));
+
+    expect(find.byType(HomeScreen), findsOneWidget);
+
+    await tester.pumpWidget(
+      const SizedBox(),
+    ); // dispose the idle AnimationControllers
+  });
+
+  testWidgets('shows the Home screen after checking, when up to date', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UpdateGateScreen(
+          isAndroid: true,
+          currentVersion: '0.8.0',
+          updateChecker: _FakeUpdateChecker(const UpdateCheckResult.upToDate()),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 1));
+
+    expect(find.byType(HomeScreen), findsOneWidget);
+
+    await tester.pumpWidget(
+      const SizedBox(),
+    ); // dispose the idle AnimationControllers
+  });
+
+  testWidgets('shows a progress bar while downloading, then switches to the '
+      'installing message', (tester) async {
+    final controller = StreamController<OtaEvent>();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UpdateGateScreen(
+          isAndroid: true,
+          currentVersion: '0.8.0',
+          updateChecker: _FakeUpdateChecker(
+            const UpdateCheckResult.updateAvailable(
+              latestVersion: '0.9.0',
+              downloadUrl: 'https://example.com/app-release.apk',
+            ),
+          ),
+          startDownload: (url) {
+            expect(url, 'https://example.com/app-release.apk');
+            return controller.stream;
+          },
+        ),
+      ),
+    );
     await tester.pump(const Duration(milliseconds: 1));
 
     expect(find.text('Atualização necessária'), findsOneWidget);
@@ -97,27 +174,30 @@ void main() {
     await controller.close();
   });
 
-  testWidgets('shows an error and a retry button when the download fails',
-      (tester) async {
+  testWidgets('shows an error and a retry button when the download fails', (
+    tester,
+  ) async {
     var attempts = 0;
-    await tester.pumpWidget(MaterialApp(
-      home: UpdateGateScreen(
-        isAndroid: true,
-        currentVersion: '0.8.0',
-        updateChecker: _FakeUpdateChecker(
-          const UpdateCheckResult.updateAvailable(
-            latestVersion: '0.9.0',
-            downloadUrl: 'https://example.com/app-release.apk',
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UpdateGateScreen(
+          isAndroid: true,
+          currentVersion: '0.8.0',
+          updateChecker: _FakeUpdateChecker(
+            const UpdateCheckResult.updateAvailable(
+              latestVersion: '0.9.0',
+              downloadUrl: 'https://example.com/app-release.apk',
+            ),
           ),
+          startDownload: (url) {
+            attempts++;
+            return Stream<OtaEvent>.value(
+              OtaEvent(OtaStatus.DOWNLOAD_ERROR, 'sem conexão'),
+            );
+          },
         ),
-        startDownload: (url) {
-          attempts++;
-          return Stream<OtaEvent>.value(
-            OtaEvent(OtaStatus.DOWNLOAD_ERROR, 'sem conexão'),
-          );
-        },
       ),
-    ));
+    );
     await tester.pump(const Duration(milliseconds: 1));
 
     await tester.tap(find.text('Baixar atualização'));
@@ -129,8 +209,7 @@ void main() {
     expect(attempts, 1);
 
     await tester.tap(find.text('Tentar de novo'));
-    await tester.pump();
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(attempts, 2);
   });

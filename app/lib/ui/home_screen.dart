@@ -8,6 +8,7 @@ import 'training_screen.dart';
 import 'dungeon_screen.dart';
 import 'audio_settings.dart';
 import 'quick_tutorial_screen.dart';
+import 'update_gate_screen.dart';
 import '../settings/game_settings.dart';
 
 /// Menu de entrada; regras, progresso e conexão continuam nas telas de destino.
@@ -143,6 +144,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPressed: _opening
                       ? null
                       : () => _open((_) => const AudioSettingsScreen()),
+                ),
+                IconButton(
+                  tooltip: 'Verificar atualizações',
+                  color: ink,
+                  icon: const Icon(Icons.system_update),
+                  onPressed: _opening
+                      ? null
+                      : () =>
+                            _open((_) => const UpdateGateScreen(manual: true)),
                 ),
               ],
             ),

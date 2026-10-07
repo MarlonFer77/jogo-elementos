@@ -3,9 +3,17 @@ name: Build Android APK
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -63,7 +71,28 @@ jobs:
           fi
           flutter build apk --release --dart-define=FIREBASE_API_KEY="$FIREBASE_API_KEY"
 
+      - name: Verify APK and update signing compatibility
+        run: |
+          tools_dir=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)
+          apk=app/build/app/outputs/flutter-apk/app-release.apk
+          previous="$RUNNER_TEMP/elementos-v0.29.0.apk"
+          curl --fail --location --retry 3 \
+            https://github.com/MarlonFer77/jogo-elementos/releases/download/v0.29.0/app-release.apk \
+            --output "$previous"
+          "$tools_dir/apksigner" verify --print-certs "$apk" > "$RUNNER_TEMP/current-cert.txt"
+          "$tools_dir/apksigner" verify --print-certs "$previous" > "$RUNNER_TEMP/previous-cert.txt"
+          current=$(grep '^Signer #1 certificate SHA-256 digest:' "$RUNNER_TEMP/current-cert.txt")
+          baseline=$(grep '^Signer #1 certificate SHA-256 digest:' "$RUNNER_TEMP/previous-cert.txt")
+          if [ -z "$current" ] || [ "$current" != "$baseline" ]; then
+            echo "Certificado diferente da release v0.29.0. Publicação insegura para atualização."
+            exit 1
+          fi
+          echo "$current"
+          "$tools_dir/aapt" dump badging "$apk" | grep -E '^(package:|sdkVersion:)'
+          sha256sum "$apk"
+
       - uses: actions/upload-artifact@v4
         with:
           name: jogo-elementos-apk
           path: app/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error

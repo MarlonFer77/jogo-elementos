@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'conjuration_seal_dialog.dart';
 import 'discovery_book_screen.dart';
+import 'dungeon_blessing_screen.dart';
 import '../game_domain/discovery_catalog.dart';
 
 import 'package:flutter/material.dart';
@@ -60,6 +61,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
   final TrainingProgressStore _progressStore = TrainingProgressStore();
   late TrainingMatch _match;
   bool _loading = true;
+  String? _loadError;
   String? _pendingOnboardingSlot;
   List<String> _unlockedA = [];
   List<String> _unlockedB = [];
@@ -108,6 +110,43 @@ class _TrainingScreenState extends State<TrainingScreen> {
   }
 
   Future<void> _loadPersistedMatch() async {
+    try {
+      await _readPersistedMatch();
+      if (mounted && _progressStore.recovered) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Progresso recuperado da cópia local anterior.'),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadError =
+              'Não foi possível recuperar o progresso. Seus dados foram preservados.';
+        });
+      }
+    }
+  }
+
+  void _persist(Future<void> save) {
+    unawaited(
+      save.catchError((Object _) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Esta ação não foi salva. Verifique o armazenamento antes de sair.',
+              ),
+            ),
+          );
+        }
+      }),
+    );
+  }
+
+  Future<void> _readPersistedMatch() async {
     _unlockedA = await _progressStore.loadUnlockedNodeIds('a');
     _unlockedB = await _progressStore.loadUnlockedNodeIds('b');
     _discovered = await _progressStore.loadDiscoveredCombinationIds();
@@ -161,16 +200,18 @@ class _TrainingScreenState extends State<TrainingScreen> {
     final slot = _pendingOnboardingSlot!;
     final nodeIds = elementIds.map((id) => 'unlock_$id').toList();
     if (slot == 'a') {
-      _unlockedA = [..._unlockedA, ...nodeIds];
-      await _progressStore.saveUnlockedNodeIds('a', _unlockedA);
+      final next = {..._unlockedA, ...nodeIds}.toList();
+      await _progressStore.saveUnlockedNodeIds('a', next);
+      _unlockedA = next;
       if (!mounted) return;
       if (!_hasChosenStartingElements(_unlockedB)) {
         setState(() => _pendingOnboardingSlot = 'b');
         return;
       }
     } else {
-      _unlockedB = [..._unlockedB, ...nodeIds];
-      await _progressStore.saveUnlockedNodeIds('b', _unlockedB);
+      final next = {..._unlockedB, ...nodeIds}.toList();
+      await _progressStore.saveUnlockedNodeIds('b', next);
+      _unlockedB = next;
       if (!mounted) return;
     }
     _buildMatchFromLoadedProgress();
@@ -309,21 +350,21 @@ class _TrainingScreenState extends State<TrainingScreen> {
         }
         if (widget.dungeon == null) {
           if (_match.discoveredCombinationIds.length != discoveredCountBefore) {
-            unawaited(
+            _persist(
               _progressStore.saveDiscoveredCombinationIds(
                 _match.discoveredCombinationIds,
               ),
             );
           }
           if (wasPlayerATurn) {
-            unawaited(
+            _persist(
               _progressStore.saveTurnsPlayed(
                 'a',
                 _match.cumulativeTurnsPlayedA,
               ),
             );
           } else {
-            unawaited(
+            _persist(
               _progressStore.saveTurnsPlayed(
                 'b',
                 _match.cumulativeTurnsPlayedB,
@@ -338,8 +379,8 @@ class _TrainingScreenState extends State<TrainingScreen> {
             final equippedIds = wasPlayerATurn
                 ? _match.equippedAttackIdsForPlayerA
                 : _match.equippedAttackIdsForPlayerB;
-            unawaited(_progressStore.saveUnlockedAttackIds(slot, unlockedIds));
-            unawaited(_progressStore.saveEquippedAttackIds(slot, equippedIds));
+            _persist(_progressStore.saveUnlockedAttackIds(slot, unlockedIds));
+            _persist(_progressStore.saveEquippedAttackIds(slot, equippedIds));
             if (!_match.lastUnlockedAttackNeededEquipChoice) {
               _lastUnlockedAttackText =
                   'Novo ataque desbloqueado: ${_match.lastUnlockedAttackName}! '
@@ -473,9 +514,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
               final unlockedNodeIds = _match.isPlayerATurn
                   ? _match.unlockedNodeIdsForPlayerA
                   : _match.unlockedNodeIdsForPlayerB;
-              unawaited(
-                _progressStore.saveUnlockedNodeIds(slot, unlockedNodeIds),
-              );
+              await _progressStore.saveUnlockedNodeIds(slot, unlockedNodeIds);
               await _progressStore.saveEquippedElementIds(
                 slot,
                 _match.equippedElementIdsForCurrentPlayer,
@@ -523,7 +562,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
               );
               final slot = forPlayerA ? 'a' : 'b';
               if (widget.dungeon == null) {
-                unawaited(_progressStore.saveEquippedAttackIds(slot, ids));
+                _persist(_progressStore.saveEquippedAttackIds(slot, ids));
               }
               return null;
             } on ArgumentError catch (e) {
@@ -568,6 +607,33 @@ class _TrainingScreenState extends State<TrainingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loadError != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Progresso preservado')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_loadError!),
+                const SizedBox(height: 16),
+                PixelMenuButton(
+                  label: 'Tentar novamente',
+                  onPressed: () {
+                    setState(() {
+                      _loadError = null;
+                      _loading = true;
+                    });
+                    unawaited(_loadPersistedMatch());
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -581,7 +647,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                 !_hasChosenStartingElements(_unlockedB)
             ? 'Preparar Jogador B'
             : 'Entrar na batalha',
-        onConfirm: (ids) => unawaited(_confirmStartingElements(ids)),
+        onConfirm: (ids) => _persist(_confirmStartingElements(ids)),
       );
     }
     return PopScope(
@@ -619,14 +685,24 @@ class _TrainingScreenState extends State<TrainingScreen> {
                   : _openDiscoveryBook,
             ),
             IconButton(
-              icon: const Icon(Icons.account_tree_outlined),
+              icon: Icon(
+                widget.dungeon == null
+                    ? Icons.account_tree_outlined
+                    : Icons.auto_awesome,
+              ),
               tooltip: widget.dungeon == null
                   ? 'Árvore'
-                  : 'Evolua a árvore no acampamento',
-              onPressed:
-                  _controlsLocked || _match.isOver || widget.dungeon != null
+                  : 'Bênçãos da expedição',
+              onPressed: _controlsLocked || _match.isOver
                   ? null
-                  : _openSkillTree,
+                  : widget.dungeon == null
+                  ? _openSkillTree
+                  : widget.dungeon!.progress.activeBlessings.isEmpty
+                  ? null
+                  : () => showDungeonBlessings(
+                      context,
+                      widget.dungeon!.progress.activeBlessings,
+                    ),
             ),
             IconButton(
               icon: const Icon(Icons.info_outline),
@@ -668,6 +744,8 @@ class _TrainingScreenState extends State<TrainingScreen> {
                       height: horizontal ? constraints.maxHeight : arenaHeight,
                       onAttackComplete: _finishAttack,
                       view: BattleSceneView(
+                        arena:
+                            widget.encounter?.room.arena ?? ArenaTheme.training,
                         leftCurrentHp: _match.playerACurrentHp,
                         leftMaxHp: _match.playerAMaxHp,
                         rightCurrentHp: _match.playerBCurrentHp,
@@ -881,7 +959,13 @@ class _TrainingScreenState extends State<TrainingScreen> {
                       title: elements
                           .firstWhere((e) => e.id == equipped[i])
                           .name,
-                      detail: '0 AP',
+                      detail: basicActionDetail(
+                        equipped[i],
+                        (_match.isPlayerATurn
+                                ? _match.playerAActiveStatuses
+                                : _match.playerBActiveStatuses)
+                            .map((s) => s.id),
+                      ),
                       selected:
                           _selectedIds.length == 1 &&
                           _selectedIds.contains(equipped[i]),
