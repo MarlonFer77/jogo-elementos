@@ -4,10 +4,24 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Publicação v0.31.0/build 31 em andamento, reunindo os blocos locais abaixo.
-Preparar commit/branch, APK no Actions com assinatura existente, backend do mesmo
-commit no Render e release estável com app-release.apk e digest verificados.
-Não gerar chave nova nem desinstalar o app. Notas: docs/release-v0.31.0.md.
+Release v0.31.0/build 31 publicada como latest em 08/10/2026, reunindo os blocos
+abaixo. Branch codex/release-v0.31.0; tag no commit 136c908. Actions 37770438516
+concluído; APK de 57.461.942 bytes anexado, uploaded/digest SHA-256 conferidos.
+APK e versão conferidos pelo SDK; certificado idêntico ao da release v0.29.0.
+Render dep-db3nucegekts73fi3k2g live em 08/10/2026; health confirma revisão
+136c908c2515, protocol 2, accounts true e Firestore. Smoke online passou em
+3f7cad1 (código app/servidor idêntico): sessões legadas isoladas, sala/entrada,
+turno/reconexão, rejeição de duplicata, abandono e perfil persistido; salas encerradas.
+25 testes focados do app + 11 do servidor e typecheck passaram nesta publicação.
+Dois builds anteriores compilaram, mas falharam no parser do apksigner: SDK usa
+"V2 Signer"; ambos os certificados eram iguais. Parser corrigido e conferido
+localmente nos dois formatos. Guard de assinatura continua obrigatório.
+Atualizador real contra GitHub latest: detecta v0.31.0 a partir de v0.29.0 e
+v0.30.0; reconhece v0.31.0 como atualizada, com o hash correto. Sem chave nova.
+Falta playtest físico: instalar por cima, conferir saves, login/recuperação,
+partida entre celulares e balanceamento. Assinatura definitiva permanece NEXT.
+Notas/links/hash: docs/release-v0.31.0.md. Artefato local ignorado em
+build/release-check/v0.31.0/app-release.apk. Não desinstalar para atualizar.
 
 Checkpoint anterior:
 
