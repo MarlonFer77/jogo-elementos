@@ -72,6 +72,7 @@ jobs:
           flutter build apk --release --dart-define=FIREBASE_API_KEY="$FIREBASE_API_KEY"
 
       - name: Verify APK and update signing compatibility
+        shell: bash
         run: |
           tools_dir=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)
           apk=app/build/app/outputs/flutter-apk/app-release.apk
@@ -79,10 +80,12 @@ jobs:
           curl --fail --location --retry 3 \
             https://github.com/MarlonFer77/jogo-elementos/releases/download/v0.29.0/app-release.apk \
             --output "$previous"
-          "$tools_dir/apksigner" verify --print-certs "$apk" > "$RUNNER_TEMP/current-cert.txt"
-          "$tools_dir/apksigner" verify --print-certs "$previous" > "$RUNNER_TEMP/previous-cert.txt"
-          current=$(grep '^Signer #1 certificate SHA-256 digest:' "$RUNNER_TEMP/current-cert.txt")
-          baseline=$(grep '^Signer #1 certificate SHA-256 digest:' "$RUNNER_TEMP/previous-cert.txt")
+          "$tools_dir/apksigner" verify --print-certs "$apk" | tee "$RUNNER_TEMP/current-cert.txt"
+          "$tools_dir/apksigner" verify --print-certs "$previous" | tee "$RUNNER_TEMP/previous-cert.txt"
+          # SDK recentes incluem a faixa min/max SDK no nome do signer.
+          # Comparamos todos os certificados, sem depender desse rótulo.
+          current=$(sed -nE 's/^Signer.* certificate SHA-256 digest: ([[:xdigit:]]{64})$/\1/p' "$RUNNER_TEMP/current-cert.txt" | sort -u)
+          baseline=$(sed -nE 's/^Signer.* certificate SHA-256 digest: ([[:xdigit:]]{64})$/\1/p' "$RUNNER_TEMP/previous-cert.txt" | sort -u)
           if [ -z "$current" ] || [ "$current" != "$baseline" ]; then
             echo "Certificado diferente da release v0.29.0. Publicação insegura para atualização."
             exit 1
