@@ -1,6 +1,7 @@
 import 'package:battle_engine/battle_engine.dart';
 import 'dungeon_catalog.dart';
 import 'dungeon_blessings.dart';
+import 'dungeon_variations.dart';
 
 /// Offline campaign only. Never imported into the multiplayer profile.
 class DungeonProgress {
@@ -16,17 +17,25 @@ class DungeonProgress {
     this.hp = 100,
     this.clears = 0,
     List<String> blessings = const [],
+    List<String> encounters = const [],
   }) : nodes = List.unmodifiable(nodes),
        attacks = List.unmodifiable(attacks),
        equippedAttacks = List.unmodifiable(equippedAttacks),
        elements = List.unmodifiable(elements),
-       blessings = List.unmodifiable(blessings);
+       blessings = List.unmodifiable(blessings),
+       encounters = List.unmodifiable(encounters);
 
   final int xp, run, room, hp, clears;
   final bool active;
   final List<String> nodes, attacks, equippedAttacks, elements;
   final List<String> blessings;
-  static const saveVersion = 2;
+  final List<String> encounters;
+  static const saveVersion = 3;
+
+  DungeonRoom roomAt(int index) => DungeonVariations.room(
+    index,
+    active && encounters.isNotEmpty ? encounters[index] : null,
+  );
 
   List<DungeonBlessing> get activeBlessings => active
       ? blessings.map((id) => DungeonBlessings.byId(id)!).toList()
@@ -75,6 +84,7 @@ class DungeonProgress {
     int? hp,
     int? clears,
     List<String>? blessings,
+    List<String>? encounters,
   }) => DungeonProgress(
     xp: xp ?? this.xp,
     nodes: nodes ?? this.nodes,
@@ -87,6 +97,7 @@ class DungeonProgress {
     hp: hp ?? this.hp,
     clears: clears ?? this.clears,
     blessings: blessings ?? this.blessings,
+    encounters: encounters ?? this.encounters,
   );
 
   DungeonProgress prepare(List<String> ids) {
@@ -128,6 +139,7 @@ class DungeonProgress {
   Map<String, Object> toJson() => {
     'version': saveVersion,
     'blessings': blessings,
+    'encounters': encounters,
     'xp': xp,
     'nodes': nodes,
     'attacks': attacks,
@@ -141,7 +153,7 @@ class DungeonProgress {
   };
 
   factory DungeonProgress.fromJson(Map<String, dynamic> json) {
-    if (json['version'] != 1 && json['version'] != saveVersion) {
+    if (![1, 2, saveVersion].contains(json['version'])) {
       throw const FormatException('Versão de save desconhecida.');
     }
     List<String> ids(String key) => (json[key] as List).cast<String>();
@@ -157,11 +169,14 @@ class DungeonProgress {
       hp: json['hp'] as int,
       clears: json['clears'] as int,
       blessings: json['version'] == 1 ? const [] : ids('blessings'),
+      encounters: json['version'] == saveVersion ? ids('encounters') : const [],
     );
     final knownAttacks = defaultCombinationBook.combinations
         .map((c) => c.resultId)
         .toSet();
-    if (p.blessings.length > 3 ||
+    if (!DungeonVariations.validRoute(p.encounters) ||
+        (!p.active && p.encounters.isNotEmpty) ||
+        p.blessings.length > 3 ||
         (!p.active && p.blessings.isNotEmpty) ||
         p.blessings.length > p.room ~/ 3 ||
         p.blessings.indexed.any(

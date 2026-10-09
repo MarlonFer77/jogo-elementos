@@ -6,7 +6,7 @@ nunca é enviado ao servidor como recompensa confiável.
 
 ## Loop
 
-Escolher 2 elementos → acampamento → enfrentar uma sala → receber XP →
+Escolher 2 elementos → iniciar expedição → reconhecer inimigo e preparar build → enfrentar uma sala → receber XP →
 gastar pontos na árvore → próxima sala ou nova expedição.
 
 São **10 salas**, totalizando **1.000 XP**. A resistência aumenta a cada sala;
@@ -46,7 +46,12 @@ A intenção é comprometida durante sua vez: a IA não troca por um ataque mais
 forte depois de ver sua jogada. Congelamento cancela a ação; silêncio ou falta
 de AP transformam a conjuração em ataque básico, com aviso de interrupção.
 
-Padrões são dados do catálogo, separados da aparência:
+Novas expedições possuem três variantes por criatura: ofensiva, defensiva e controle.
+O acampamento mostra tática, repertório e dica antes da luta; permite equipar até
+4 elementos e 3 habilidades desbloqueadas. Rota salva antes da primeira sala,
+sem novo sorteio ao sair/reabrir. Regras em `dungeon-variations.md`.
+
+Expedições antigas em andamento conservam os padrões originais:
 
 - Goblin alterna fogo/vento e Tempestade Ígnea; elfa intercala gelo com recuperação.
 - Golem alterna proteção e lentidão; escaravelho alterna seus dois combos de fogo.
@@ -62,7 +67,8 @@ Padrões reiniciam ao reentrar na sala, como o próprio encontro.
 
 ## Regras da expedição
 
-- Salas 1–3 equipam uma habilidade; 4–6, duas; 7–10, três.
+- Variantes equipam de uma a três habilidades conforme a tática; as salas
+  continuam crescendo em HP/XP/AP inicial. Padrões antigos são preservados nos saves legados.
 - Os padrões das elites reservam ações para acumular AP e conjurar três elementos.
   Dano, custo, regeneração e status continuam seguindo as mesmas regras.
 - Nível 1 começa em 0 XP. Primeiro nível exige 40 XP (primeira sala); depois
@@ -89,8 +95,9 @@ revalida a ação anunciada antes da execução.
 `TrainingScreen` reutiliza combate/HUD/selos com uma sessão opcional de dungeon,
 desativa controle do inimigo e não grava nos slots do Treino neste modo.
 
-`dungeon_profile_v1` guarda o JSON schema 2 em SharedPreferences, com migração
-do schema 1 e backup local anterior. IDs das bênçãos são temporários por tentativa.
+`dungeon_profile_v1` guarda o JSON schema 3 em SharedPreferences, com migração
+dos schemas 1/2 e backup local anterior. IDs das bênçãos e das variantes são
+temporários por tentativa; rotas antigas vazias representam os encontros originais.
 Recompensa e avanço de sala são gravados juntos; o estado em memória só avança
 após sucesso. Resultado duplicado/antigo é rejeitado. Save ilegível bloqueia
 a carga com aviso, sem sobrescrever dados. Não há backup em nuvem neste bloco.
@@ -101,5 +108,5 @@ IA tem HP definido por sala, mas usa os mesmos custos/status/dano. Ela escolhe
 básicos, habilidade equipada ou defesa; conjurações são telegrafadas na arena.
 O jogador continua executando seus selos. Evolução da árvore ocorre fora da luta.
 
-Limites atuais: uma ruína fixa, sem geração procedural, dificuldade adaptativa
+Limites atuais: uma ruína de dez salas com variantes de combate, sem geração de mapa ou dificuldade adaptativa
 ou integração de recompensas online. Balanceamento inicial requer playtest real.

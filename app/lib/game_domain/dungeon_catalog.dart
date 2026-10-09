@@ -1,6 +1,15 @@
 import 'combatant_appearance.dart';
 import 'arena_theme.dart';
 
+enum DungeonTactic {
+  assault('Ofensiva'),
+  bulwark('Defensiva'),
+  control('Controle');
+
+  const DungeonTactic(this.label);
+  final String label;
+}
+
 /// Ordered difficulty curve; shared by checkpoints, battle setup and UI.
 class DungeonRoom {
   const DungeonRoom(
@@ -15,12 +24,14 @@ class DungeonRoom {
     this.enragedPattern = const [],
     this.initialAp = 0,
     this.arena = ArenaTheme.training,
+    this.tactic,
   });
   final String name, hint;
   final List<String> elements, attacks;
   final int hp, xp, initialAp;
   final CombatantAppearance appearance;
   final ArenaTheme arena;
+  final DungeonTactic? tactic;
 
   /// Element/attack IDs or 'guard'. A blocked spell becomes a basic attack.
   final List<String> pattern, enragedPattern;

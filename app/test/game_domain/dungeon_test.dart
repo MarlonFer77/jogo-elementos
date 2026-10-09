@@ -128,7 +128,7 @@ void main() {
       } else if (m.isPlayerATurn) {
         m.defend();
       } else if (m.availableApForAction >= 3) {
-        m.playEquippedAttack('ignited_storm');
+        m.playEquippedAttack(encounter.room.attacks.first);
       } else {
         m.playElementIds(['fire']);
       }
@@ -137,6 +137,7 @@ void main() {
     await c.complete(encounter);
     expect(c.progress.xp, 40);
     expect(c.progress.active, false);
+    expect(c.progress.encounters, isEmpty);
     expect(
       c.progress.attacks,
       isEmpty,
@@ -177,10 +178,10 @@ void main() {
           .copyWith(xp: 450)
           .unlock('ember_mastery')
           .unlock('guard_training')
-          .unlock('vitality_training'),
+          .unlock('vitality_training')
+          .copyWith(active: true, run: 1),
       DungeonProgressStore(),
     );
-    await c.start();
     for (var room = 0; room < DungeonRoom.all.length; room++) {
       while (c.progress.pendingAltar != null) {
         await c.chooseBlessing(c.progress.blessingOffers.last.id);

@@ -4,6 +4,43 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Publicação v0.32.0/build 32 em preparação: BETA TEST 3D + variações da Dungeon.
+Manter assinatura anterior, sem alteração/deploy do backend. Compilar pelo
+workflow existente, conferir certificado/versão/hash, anexar APK à release
+estável e verificar latest/atualizador. Não incluir arquivos locais de output.
+
+Checkpoint anterior:
+
+BETA TEST implementado localmente (09/10/2026): primeiro recorte solo de ação,
+geometria 3D low-poly/perspectiva, entrada local por senha solicitada pelo usuário
+(não é autenticação segura), joystick, espada elemental, quatro magias e esquiva.
+Três encontros com goblins/bruto/guardião; intenção no chão, colisões/desvio de
+colunas, XP/nível somente da sessão, vitória/derrota/reinício. Pausa no background,
+retomada explícita e controles multi-touch. Menu compacto comporta quatro modos.
+Flutter/Flame/áudio existentes, sem novas dependências. Regras puras isoladas e
+nenhuma gravação nos perfis de Treino/Dungeon/Multiplayer. 17 testes focados
+passaram; previews 320×568, 360×640 e 640×360 inspecionados. Pendente playtest e
+FPS/bateria em Android real, refinamento de câmera/controles e futuros combos 3D.
+Sem APK/release/backend/assinatura. Limites e controles: docs/beta-action-rpg.md.
+
+Checkpoint anterior:
+
+Variações da Dungeon implementadas localmente (08/10/2026): 30 repertórios,
+três estilos por sala (ofensiva/defensiva/controle), incluindo três variantes do
+dragão. Cada trecho de três salas recebe os três estilos; rota gravada antes
+da primeira batalha. Mantidos 10 salas, HP/XP/AP inicial/cura e padrões legados.
+Schema 3 migra 1/2 sem reset; sair/reabrir não sorteia outro encontro.
+Acampamento mostra próximo desafio/repertório/dicas, permite preparar elementos
+e habilidades, recolhe o mapa e usa duas colunas na horizontal. Intenção exibe
+a tática. Encerrar pede confirmação. Reutilizados IA, criaturas e combate atuais.
+39 testes focados aprovados; análise Dart limpa; capturas 360×640 e 568×320
+inspecionadas com ícones/fontes reais. Fonte ampliada e rotação também verificadas.
+Pendente playtest físico para dificuldade/duração, especialmente nas variantes
+defensivas. Sem alteração nas regras do Treino/Multiplayer, backend, assinatura,
+APK ou publicação. Detalhes: docs/dungeon-variations.md.
+
+Checkpoint anterior:
+
 Release v0.31.0/build 31 publicada como latest em 08/10/2026, reunindo os blocos
 abaixo. Branch codex/release-v0.31.0; tag no commit 136c908. Actions 37770438516
 concluído; APK de 57.461.942 bytes anexado, uploaded/digest SHA-256 conferidos.
@@ -443,10 +480,13 @@ Validação manual em aparelhos e balanceamento pendentes. Sem commit/release/de
 
 # NEXT
 
-Próximo bloco: assinatura definitiva do APK, preservando compatibilidade com os
-aparelhos instalados. Login/abandono publicados no backend e APK v0.30.0 no Actions;
-backup e operação implementados localmente. Validar conta, abandono e recuperação nos dois
-aparelhos antes da próxima publicação coordenada. Não publicar automaticamente.
+Playtest do BETA TEST: resposta dos controles/alcances, câmera e desempenho
+no Android. Só depois expandir combos, exploração e progresso permanente 3D.
+
+Playtest das variações da Dungeon nos celulares: dificuldade por sala, duração
+das variantes defensivas e decisões de build. Publicação apenas quando solicitada.
+Assinatura definitiva adiada expressamente pelo usuário; não alterar keystore
+ou workflow de assinatura neste bloco. A versão pública atual é v0.31.0.
 
 # BACKLOG
 

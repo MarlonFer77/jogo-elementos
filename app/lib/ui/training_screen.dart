@@ -790,6 +790,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                               !_controlsLocked)
                             DungeonIntentBanner(
                               intent: widget.encounter!.intent,
+                              tactic: widget.encounter!.room.tactic,
                             ),
                           Text(
                             _controlsLocked

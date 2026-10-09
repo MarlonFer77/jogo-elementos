@@ -120,7 +120,7 @@ void main() {
       expect(loaded.pendingAltar, 3);
       final chosen = chooseAll(loaded, ['first_spark', 'deep_reserve']);
       expect(chosen.pendingAltar, isNull);
-      expect(chosen.toJson()['version'], 2);
+      expect(chosen.toJson()['version'], DungeonProgress.saveVersion);
       for (final ids in [
         ['unknown'],
         ['deep_reserve'],

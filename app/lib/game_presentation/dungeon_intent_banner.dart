@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../game_domain/dungeon_opponent.dart';
+import '../game_domain/dungeon_catalog.dart';
+import 'dungeon_tactic_badge.dart';
 
 class DungeonIntentBanner extends StatelessWidget {
-  const DungeonIntentBanner({super.key, required this.intent});
+  const DungeonIntentBanner({super.key, required this.intent, this.tactic});
   final DungeonIntent intent;
+  final DungeonTactic? tactic;
 
   @override
   Widget build(BuildContext context) {
@@ -11,9 +14,10 @@ class DungeonIntentBanner extends StatelessWidget {
         '${intent.enraged ? 'FÚRIA · ' : ''}Próxima: ${intent.name}'
         '${intent.apCost > 0 ? ' · ${intent.apCost} AP' : ''}';
     return Tooltip(
-      message: '$label\n${intent.hint}',
+      message:
+          '${tactic == null ? '' : '${tactic!.label} · '}$label\n${intent.hint}',
       child: Semantics(
-        label: '$label. ${intent.hint}',
+        label: '${tactic?.label ?? ''} $label. ${intent.hint}',
         excludeSemantics: true,
         child: Container(
           margin: const EdgeInsets.only(bottom: 3),
@@ -57,6 +61,10 @@ class DungeonIntentBanner extends StatelessWidget {
                   ),
                 ),
               ),
+              if (tactic != null) ...[
+                const SizedBox(width: 4),
+                DungeonTacticBadge(tactic: tactic!, compact: true),
+              ],
             ],
           ),
         ),

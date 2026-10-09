@@ -1,19 +1,21 @@
+import 'dart:math';
 import 'package:battle_engine/battle_engine.dart';
 import 'dungeon_progress.dart';
 import 'dungeon_progress_store.dart';
 import 'training_match.dart';
 import 'dungeon_catalog.dart';
 import 'dungeon_opponent.dart';
+import 'dungeon_variations.dart';
 export 'dungeon_catalog.dart';
 export 'dungeon_opponent.dart';
 
 class DungeonEncounter {
-  DungeonEncounter._(this.run, this.index, this.match) {
+  DungeonEncounter._(this.run, this.index, this.room, this.match) {
     _intent = DungeonOpponent.plan(match, room);
   }
   final int run, index;
   final TrainingMatch match;
-  DungeonRoom get room => DungeonRoom.all[index];
+  final DungeonRoom room;
   late DungeonIntent _intent;
   int _plannedTurn = 0;
 
@@ -29,7 +31,9 @@ class DungeonEncounter {
 }
 
 class DungeonCampaign {
-  DungeonCampaign(this._progress, this.store);
+  DungeonCampaign(this._progress, this.store, {Random? random})
+    : _random = random ?? Random();
+  final Random _random;
   final DungeonProgressStore store;
   DungeonProgress _progress;
   DungeonProgress get progress => _progress;
@@ -48,6 +52,28 @@ class DungeonCampaign {
   }
 
   Future<void> prepare(List<String> ids) => _save(progress.prepare(ids));
+  Future<void> equip({List<String>? elements, List<String>? attacks}) {
+    if (_encounter != null || !progress.prepared) {
+      throw StateError('Prepare sua build no acampamento.');
+    }
+    final selected = elements ?? progress.elements;
+    final equipped = attacks ?? progress.equippedAttacks;
+    if (selected.isEmpty ||
+        selected.length > 4 ||
+        selected.toSet().length != selected.length ||
+        selected.any((id) => !progress.skills.grantedElementIds.contains(id))) {
+      throw StateError('Equipe de 1 a 4 elementos desbloqueados, sem repetir.');
+    }
+    if (equipped.length > 3 ||
+        equipped.toSet().length != equipped.length ||
+        equipped.any((id) => !progress.attacks.contains(id))) {
+      throw StateError('Equipe até 3 habilidades descobertas, sem repetir.');
+    }
+    return _save(
+      progress.copyWith(elements: selected, equippedAttacks: equipped),
+    );
+  }
+
   Future<void> chooseBlessing(String id) {
     if (_encounter != null) throw StateError('Escolha sua bênção no altar.');
     return _save(progress.chooseBlessing(id));
@@ -71,6 +97,7 @@ class DungeonCampaign {
         room: 0,
         hp: progress.maxHp,
         blessings: const [],
+        encounters: DungeonVariations.roll(_random),
       ),
     );
   }
@@ -83,6 +110,7 @@ class DungeonCampaign {
         room: 0,
         hp: progress.maxHp,
         blessings: const [],
+        encounters: const [],
       ),
     );
   }
@@ -94,7 +122,7 @@ class DungeonCampaign {
     if (!progress.active || _saving || _encounter != null) {
       throw StateError('Sala indisponível.');
     }
-    final room = DungeonRoom.all[progress.room];
+    final room = progress.roomAt(progress.room);
     final blessings = progress.activeBlessings;
     final enemySkills = SkillProgress(
       defaultSkillTree,
@@ -103,6 +131,7 @@ class DungeonCampaign {
     return _encounter = DungeonEncounter._(
       progress.run,
       progress.room,
+      room,
       TrainingMatch(
         initialProgressA: progress.skills,
         initialProgressB: enemySkills,
@@ -168,6 +197,7 @@ class DungeonCampaign {
           : progress.maxHp,
       clears: progress.clears + (cleared ? 1 : 0),
       blessings: won && !cleared ? progress.blessings : const [],
+      encounters: won && !cleared ? progress.encounters : const [],
       // Only the human's discoveries/attacks enter the persistent profile.
       attacks: match.unlockedAttackIdsForPlayerA,
       equippedAttacks: match.equippedAttackIdsForPlayerA,

@@ -9,6 +9,7 @@ import 'dungeon_screen.dart';
 import 'audio_settings.dart';
 import 'quick_tutorial_screen.dart';
 import 'update_gate_screen.dart';
+import 'beta_access_screen.dart';
 import '../settings/game_settings.dart';
 
 /// Menu de entrada; regras, progresso e conexão continuam nas telas de destino.
@@ -52,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const HomeTitleScene(),
               ),
             );
-            final menu = _menu(compact: constraints.maxHeight < 740);
+            final menu = _menu(compact: constraints.maxHeight < 900);
             return Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(10),
@@ -158,60 +159,103 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           SizedBox(height: compact ? 12 : 18),
-          PixelMenuButton(
-            label: 'DUNGEON · SOLO',
-            primary: true,
-            onPressed: _opening
-                ? null
-                : () => _open((_) => const DungeonScreen()),
-          ),
-          if (!compact)
-            const Padding(
-              padding: EdgeInsets.only(top: 6, bottom: 8),
-              child: Text(
-                'Explore ruínas · Ganhe XP e habilidades',
-                style: text,
+          if (compact) ...[
+            for (final pair in [
+              [
+                ('DUNGEON · SOLO', () => _open((_) => const DungeonScreen())),
+                ('MODO TREINO', () => _open((_) => const TrainingScreen())),
+              ],
+              [
+                (
+                  'MULTIPLAYER',
+                  () => _open((_) => const MultiplayerLoginScreen()),
+                ),
+                ('BETA TEST', () => _open((_) => const BetaAccessScreen())),
+              ],
+            ])
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final (index, item) in pair.indexed) ...[
+                        if (index > 0) const SizedBox(width: 6),
+                        Expanded(
+                          child: PixelMenuButton(
+                            label: item.$1,
+                            primary: item.$1.startsWith('DUNGEON'),
+                            onPressed: _opening ? null : item.$2,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
-            ),
-          const SizedBox(height: 8),
-          Semantics(
-            button: true,
-            enabled: !_opening,
-            child: PixelMenuButton(
-              label: 'MODO TREINO',
-              primary: false,
+          ] else ...[
+            PixelMenuButton(
+              label: 'DUNGEON · SOLO',
+              primary: true,
               onPressed: _opening
                   ? null
-                  : () => _open((_) => const TrainingScreen()),
+                  : () => _open((_) => const DungeonScreen()),
             ),
-          ),
-          if (!compact)
-            Padding(
-              padding: EdgeInsets.only(top: 8, bottom: compact ? 12 : 16),
-              child: const Text(
-                '2 jogadores neste aparelho · Offline',
-                style: text,
+            if (!compact)
+              const Padding(
+                padding: EdgeInsets.only(top: 6, bottom: 8),
+                child: Text(
+                  'Explore ruínas · Ganhe XP e habilidades',
+                  style: text,
+                ),
+              ),
+            const SizedBox(height: 8),
+            Semantics(
+              button: true,
+              enabled: !_opening,
+              child: PixelMenuButton(
+                label: 'MODO TREINO',
+                primary: false,
+                onPressed: _opening
+                    ? null
+                    : () => _open((_) => const TrainingScreen()),
               ),
             ),
-          if (compact) const SizedBox(height: 8),
-          Semantics(
-            button: true,
-            enabled: !_opening,
-            child: PixelMenuButton(
-              label: 'MULTIPLAYER',
+            if (!compact)
+              Padding(
+                padding: EdgeInsets.only(top: 8, bottom: compact ? 12 : 16),
+                child: const Text(
+                  '2 jogadores neste aparelho · Offline',
+                  style: text,
+                ),
+              ),
+            if (compact) const SizedBox(height: 8),
+            Semantics(
+              button: true,
+              enabled: !_opening,
+              child: PixelMenuButton(
+                label: 'MULTIPLAYER',
+                onPressed: _opening
+                    ? null
+                    : () => _open((_) => const MultiplayerLoginScreen()),
+              ),
+            ),
+            if (!compact)
+              Padding(
+                padding: EdgeInsets.only(top: 8, bottom: compact ? 0 : 14),
+                child: const Text(
+                  'Desafie um amigo · Requer internet',
+                  style: text,
+                ),
+              ),
+            PixelMenuButton(
+              label: 'BETA TEST',
               onPressed: _opening
                   ? null
-                  : () => _open((_) => const MultiplayerLoginScreen()),
+                  : () => _open((_) => const BetaAccessScreen()),
             ),
-          ),
-          if (!compact)
-            Padding(
-              padding: EdgeInsets.only(top: 8, bottom: compact ? 0 : 14),
-              child: const Text(
-                'Desafie um amigo · Requer internet',
-                style: text,
-              ),
-            ),
+            const SizedBox(height: 10),
+          ],
           if (!compact) ...[
             const Divider(color: Color(0xFFB6A16D), height: 1),
             const SizedBox(height: 12),
