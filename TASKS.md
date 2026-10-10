@@ -4,10 +4,78 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Publicação v0.32.0/build 32 em preparação: BETA TEST 3D + variações da Dungeon.
-Manter assinatura anterior, sem alteração/deploy do backend. Compilar pelo
-workflow existente, conferir certificado/versão/hash, anexar APK à release
-estável e verificar latest/atualizador. Não incluir arquivos locais de output.
+Polimento de resposta/leitura do combate beta concluído localmente: intenção
+antecipada consumida depois dos timers de animação (não se perde no limite de
+180ms); botões explicam conjuração/ataque/esquiva/mana/fila e têm contraste melhor
+quando indisponíveis. Impactos de cada magia usam sons distintos existentes.
+Intervalo de 2s entre encontros mostra contagem/recuperação; aviso acompanha a
+altura real do HUD, sem posição fixa sobrepondo texto. Dano/custos/recompensas
+preservados. 28 verificações focadas passaram (23 regras + 5 telas), análise limpa;
+capturas 320/360/640 revisadas. Sem APK, backend ou novos sistemas. Medição física
+e avaliação de áudio/fluidez no celular seguem pendentes.
+
+Checkpoint anterior:
+
+Ordem aprovada: estabilidade/desempenho → acabamento/balanceamento → versão de
+teste validada → combos 3D → save/progressão → exploração → experiência final.
+Primeiro bloco implementado localmente: rotação pausa e descarta o toque antigo;
+loop parado nos menus/resultados após animação final; cache limitado a 64 textos
+com descarte ao reiniciar/sair; trigonometria reutilizada por malha/ator.
+Diagnóstico opt-in na pausa: últimas 240 amostras de loop/UI/raster, cópia manual,
+sem persistência/rede/identificadores. Não confundir FPS do loop com FPS exibido.
+8 verificações focadas aprovadas (telas, render/cache e métricas); análise limpa.
+Prévia: app/build/gameplay-preview/beta-diagnostics.png. Nenhum Android conectado
+via ADB: FPS/aquecimento físicos e suavidade percebida ainda pendentes. Não marcar
+estabilidade/desempenho como concluídos sem playtest no aparelho.
+Sem novos mapas, combos, APK/release ou backend nesta etapa.
+
+Checkpoint anterior:
+
+Polimento dos inimigos BETA TEST concluído localmente: goblin com estocada,
+bruto com machado/varredura frontal e guardião de pedra com marreta/impacto no
+chão. BetaAttackArea imutável compartilha a área entre dano e aviso; posição
+travada durante preparação. Vento/morte cancelam ameaça, esquiva protege mesmo
+dentro da área, pausa congela o golpe. Contorno progressivo, áudio existente,
+resíduo visual e janela verde “Recuperando”. Recuperação 0,36/0,55/0,75s;
+preparação 0,7/0,85/1,05s. HP/dano/recompensas/regras do jogador preservados;
+geometria e tempos inimigos alterados exigem novo playtest de balanceamento.
+25 verificações focadas passaram (20 regras, 4 telas/acesso, 1 renderização);
+análise Dart limpa e capturas de poses/magias/inimigos e layouts inspecionadas.
+Prévia: app/build/gameplay-preview/beta-enemy-polish.png. Sem APK/release,
+backend, dependências ou mudanças nos demais modos. Pendente teste físico/FPS
+e reprodução dos bugs específicos do usuário. Docs: docs/beta-action-rpg.md.
+
+Checkpoint anterior:
+
+Continuação do polimento BETA TEST implementada localmente: mira direcional
+respeita joystick/cone frontal e colunas, com alvo comprometido durante a ação.
+Marca de alcance, nome/status/vida e orientação no botão da espada. Projétil
+atinge o primeiro corpo/obstáculo do segmento, não a ordem da lista. Fogo/brasa,
+água facetada, vento espiral e terra rochosa na conjuração/disparo/impacto.
+Cura efetiva, proteção com duração, área do vento no contato e textos evitando
+sobreposição. Dano/mana/recargas/status/progressão preservados. 22 testes focados
+passaram (17 regras + 4 telas/acesso + 1 renderização); análise Dart limpa.
+Capturas 320×568, 360×640, 640×360 e poses/magias inspecionadas. Sem APK/release,
+backend, dependências ou mudanças nos outros modos/perfis. Pendente playtest
+físico/desempenho e reprodução dos bugs específicos vistos pelo usuário.
+
+Checkpoint anterior:
+
+Polimento do BETA TEST implementado localmente após playtest (09/10/2026):
+membros articulados, arma ligada à mão, cortes alternados/preparação/recuperação,
+canalização, reação e queda. Contato/dano da espada sincronizados; mesmo dano e
+recarga, cone frontal ajustado. Inimigos recuperam antes de perseguir. Câmera
+suave, chão/marcações em camadas para não cortar malhas, HUD horizontal menor.
+Colisão entre corpos com saída de sobreposição, vento contínuo e passos por
+deslocamento real. Toque imediato, fila de uma ação por até 180ms, recarga
+visível e zona morta no joystick. Pausa limpa intenção; background durante o
+resultado não bloqueia os controles. Esquiva não reduz invulnerabilidade ativa.
+17 testes focados passaram (12 regras, 4 tela/acesso, 1 renderização), análise
+Dart limpa. Previews 320×568, 360×640, 640×360 e poses de combate inspecionados.
+Sem APK, publicação, backend, assinatura, dependências ou mudanças nos outros
+modos/perfis. Pendente novo playtest no celular e medição de FPS; pedir vídeo
+dos bugs restantes antes de ampliar o beta. Detalhes: docs/beta-action-rpg.md.
+Release v0.32.0 publicada e testada conforme informado pelo usuário.
 
 Checkpoint anterior:
 

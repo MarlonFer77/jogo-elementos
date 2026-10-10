@@ -1,6 +1,10 @@
+import 'dart:ui' show FramePhase, FrameTiming;
 import 'package:flame/game.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../game_domain/beta_session.dart';
 import '../game_presentation/beta_game.dart';
 import '../game_presentation/pixel_content_panel.dart';
@@ -17,10 +21,93 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
   final _game = BetaGame();
   final _focus = FocusNode();
   final _keys = <LogicalKeyboardKey>{};
+  Size? _viewport;
+  bool _collecting = false;
+  int _timingStart = 0;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _game.hud.addListener(_syncTimings);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final size = MediaQuery.sizeOf(context);
+    if (_viewport != null && _viewport != size) {
+      // Resize replaces the controls; don't inherit a finger from the old layout.
+      _keys.clear();
+      _game.session.pause();
+      _game.pauseEngine();
+      _syncTimings();
+    }
+    _viewport = size;
+  }
+
+  void _syncTimings() {
+    final collect =
+        _game.performance.enabled && _game.session.playing && !_game.paused;
+    if (collect == _collecting) return;
+    _collecting = collect;
+    if (collect) {
+      _timingStart =
+          SchedulerBinding.instance.currentSystemFrameTimeStamp.inMicroseconds;
+      SchedulerBinding.instance.addTimingsCallback(_recordTimings);
+    } else {
+      SchedulerBinding.instance.removeTimingsCallback(_recordTimings);
+    }
+  }
+
+  void _recordTimings(List<FrameTiming> timings) {
+    if (!mounted || !_collecting || !_game.session.playing || _game.paused) {
+      return;
+    }
+    for (final frame in timings) {
+      if (frame.timestampInMicroseconds(FramePhase.vsyncStart) <=
+          _timingStart) {
+        continue;
+      }
+      _game.performance.recordFrame(
+        frame.buildDuration.inMicroseconds / 1000,
+        frame.rasterDuration.inMicroseconds / 1000,
+      );
+    }
+  }
+
+  Future<void> _copyDiagnostics() async {
+    final run = _game.session;
+    final size = _viewport!;
+    final metrics = _game.performance.report;
+    final encounter = run.wave;
+    final density = MediaQuery.devicePixelRatioOf(context);
+    var version = 'versão indisponível';
+    try {
+      final info = await PackageInfo.fromPlatform();
+      version = '${info.version}+${info.buildNumber}';
+    } catch (_) {
+      // Diagnostics still work if the platform plugin is unavailable.
+    }
+    if (!mounted) return;
+    final mode = kReleaseMode
+        ? 'release'
+        : kProfileMode
+        ? 'profile'
+        : 'debug';
+    await Clipboard.setData(
+      ClipboardData(
+        text:
+            'Elementos BETA TEST · $version · $mode · ${defaultTargetPlatform.name}\n'
+            '${size.width.round()}×${size.height.round()} lógicos · DPR $density · encontro $encounter/3\n'
+            '$metrics\nInforme também modelo do celular, tempo jogado e problema percebido.',
+      ),
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Diagnóstico copiado. Nenhum dado foi enviado.'),
+      ),
+    );
   }
 
   void _pause() {
@@ -31,6 +118,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
   }
 
   void _play() {
+    _keys.clear();
     if (_game.session.phase == BetaPhase.ready) {
       _game.session.start();
     } else {
@@ -50,9 +138,11 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _game.session.pause();
-    _game.pauseEngine();
-    _game.hud.dispose();
+    if (_collecting) {
+      SchedulerBinding.instance.removeTimingsCallback(_recordTimings);
+    }
+    _game.hud.removeListener(_syncTimings);
+    _game.close();
     _focus.dispose();
     super.dispose();
   }
@@ -92,9 +182,9 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
       _pause();
       return;
     }
-    if (key == LogicalKeyboardKey.keyJ) run.sword();
-    if (key == LogicalKeyboardKey.keyK) run.cast();
-    if (key == LogicalKeyboardKey.space) run.dodge();
+    if (key == LogicalKeyboardKey.keyJ) run.request(BetaAction.sword);
+    if (key == LogicalKeyboardKey.keyK) run.request(BetaAction.cast);
+    if (key == LogicalKeyboardKey.space) run.request(BetaAction.dodge);
     final index = [
       LogicalKeyboardKey.digit1,
       LogicalKeyboardKey.digit2,
@@ -128,34 +218,22 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                 SafeArea(
                   child: Stack(
                     children: [
-                      Positioned(top: 8, left: 8, right: 8, child: _hud(run)),
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        right: 8,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _hud(run),
+                            if (run.playing &&
+                                (run.messageTime > 0 ||
+                                    run.nextEncounterIn > 0))
+                              _notice(run),
+                          ],
+                        ),
+                      ),
                       if (run.playing) ...[
-                        if (run.messageTime > 0)
-                          Positioned(
-                            top: 89,
-                            left: 20,
-                            right: 20,
-                            child: IgnorePointer(
-                              child: Center(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  color: const Color(0xCE263E35),
-                                  child: Text(
-                                    run.message,
-                                    textAlign: TextAlign.center,
-                                    maxLines: 2,
-                                    style: const TextStyle(
-                                      color: Color(0xFFFFE2A3),
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
                         Positioned(
                           left: 12,
                           bottom: 20,
@@ -174,7 +252,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                             refresh: _game.refresh,
                           ),
                         ),
-                      ] else
+                      ] else if (!run.settling)
                         Positioned.fill(child: _overlay(run)),
                     ],
                   ),
@@ -187,10 +265,34 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
     ),
   );
 
+  Widget _notice(BetaSession run) => IgnorePointer(
+    child: Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        color: const Color(0xE6263E35),
+        child: Text(
+          run.nextEncounterIn > 0
+              ? 'ENCONTRO ${run.wave} CONCLUÍDO · próximo em ${run.nextEncounterIn.ceil()}s\n'
+                    'Ao iniciar: recupera até 20 HP e 25 MP'
+              : run.message,
+          textAlign: TextAlign.center,
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: Color(0xFFFFE2A3), fontSize: 11),
+        ),
+      ),
+    ),
+  );
+
   Widget _hud(BetaSession run) => Align(
     alignment: Alignment.topLeft,
     child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 360),
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.orientationOf(context) == Orientation.landscape
+            ? 285
+            : 360,
+      ),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
@@ -295,7 +397,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                   const SizedBox(height: 8),
                   Text(
                     ready
-                        ? 'Mova com o joystick. Espada atinge de perto; Magia mira no inimigo próximo. Esquive dos círculos antes do impacto.\n\nTroque entre 4 elementos. Derrote três encontros e evolua durante esta sessão.'
+                        ? 'Mova e aponte com o joystick. Alvo dourado: espada no alcance. Azul: aproxime-se ou use magia. Colunas bloqueiam os disparos.\n\nGoblin: desvie de lado. Bruto: contorne a varredura. Guardião: saia do círculo. Contra-ataque quando aparecer Recuperando. Troque entre 4 elementos e vença três encontros.'
                         : paused
                         ? 'O tempo está parado. Seu progresso neste beta dura somente até sair.'
                         : '${run.kills} inimigos · ${run.xp} XP · nível ${run.level}\nEste teste não altera sua Dungeon, Treino ou Multiplayer.',
@@ -316,11 +418,60 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                   ),
                   const SizedBox(height: 8),
                   TextButton(
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF314C40),
+                    ),
                     onPressed: () {
                       _pause();
                       Navigator.pop(context);
                     },
                     child: const Text('Voltar ao menu'),
+                  ),
+                  ExpansionTile(
+                    iconColor: const Color(0xFF314C40),
+                    collapsedIconColor: const Color(0xFF314C40),
+                    title: const Text(
+                      'Diagnóstico local',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    tilePadding: EdgeInsets.zero,
+                    children: [
+                      SwitchListTile.adaptive(
+                        activeThumbColor: const Color(0xFFE5D6AF),
+                        activeTrackColor: const Color(0xFF3B685D),
+                        inactiveThumbColor: const Color(0xFFE5D6AF),
+                        inactiveTrackColor: const Color(0xFFABB193),
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text(
+                          'Medir desempenho',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                        value: _game.performance.enabled,
+                        onChanged: (value) {
+                          _game.performance.enabled = value;
+                          if (value) _game.performance.reset();
+                          _game.refresh();
+                        },
+                      ),
+                      const Text(
+                        'Ative, jogue e pause para consultar as últimas amostras. '
+                        'Para comparar fluidez, use APK release no celular. Coleta apenas local e temporária.',
+                        style: TextStyle(fontSize: 11),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _game.performance.report,
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF314C40),
+                        ),
+                        onPressed: _copyDiagnostics,
+                        icon: const Icon(Icons.copy, size: 16),
+                        label: const Text('Copiar diagnóstico'),
+                      ),
+                    ],
                   ),
                 ],
               ),

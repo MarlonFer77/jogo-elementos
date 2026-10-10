@@ -14,6 +14,12 @@ class _BetaJoystickState extends State<BetaJoystick> {
   int? _pointer;
   Offset _offset = Offset.zero;
   @override
+  void dispose() {
+    _pointer = null;
+    super.dispose();
+  }
+
+  @override
   void didUpdateWidget(covariant BetaJoystick oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.size != widget.size) {
@@ -24,7 +30,7 @@ class _BetaJoystickState extends State<BetaJoystick> {
   }
 
   void _move(PointerEvent event) {
-    if (_pointer != event.pointer) return;
+    if (!mounted || _pointer != event.pointer) return;
     final radius = widget.size / 2 - 20;
     final delta =
         event.localPosition - Offset(widget.size / 2, widget.size / 2);
@@ -32,11 +38,17 @@ class _BetaJoystickState extends State<BetaJoystick> {
         ? delta / delta.distance * radius
         : delta;
     setState(() => _offset = offset);
-    widget.onChanged(offset.dx / radius, offset.dy / radius);
+    // Ignore thumb jitter around the center; reaching the rim still means 100%.
+    final magnitude = offset.distance / radius;
+    final strength = ((magnitude - .12) / .88).clamp(0.0, 1.0);
+    widget.onChanged(
+      magnitude > 0 ? offset.dx / radius / magnitude * strength : 0,
+      magnitude > 0 ? offset.dy / radius / magnitude * strength : 0,
+    );
   }
 
   void _release(PointerEvent event) {
-    if (_pointer != event.pointer) return;
+    if (!mounted || _pointer != event.pointer) return;
     _pointer = null;
     setState(() => _offset = Offset.zero);
     widget.onChanged(0, 0);
@@ -92,9 +104,33 @@ class BetaActionPad extends StatelessWidget {
   const BetaActionPad({super.key, required this.run, required this.refresh});
   final BetaSession run;
   final VoidCallback refresh;
-  void _action(bool Function() action) {
-    action();
+  void _action(BetaAction action) {
+    run.request(action);
     refresh();
+  }
+
+  String _detail(BetaAction action) {
+    if (run.queuedAction == action) return 'Na fila';
+    if (run.castTime > 0) return 'Conjurando';
+    if (action == BetaAction.cast && run.swordTime > 0) return 'Em ataque';
+    if (action != BetaAction.dodge && run.dodgeTime > 0) return 'Esquivando';
+    if (action == BetaAction.cast && run.mana < 25) return 'Sem mana';
+    final cooldown = switch (action) {
+      BetaAction.sword => run.swordCooldown,
+      BetaAction.cast => run.spellCooldown,
+      BetaAction.dodge => run.dodgeCooldown,
+    };
+    if (cooldown > 0) return '${cooldown.toStringAsFixed(1)}s';
+    return switch (action) {
+      BetaAction.sword =>
+        run.aimTarget == null
+            ? 'Mire à frente'
+            : run.inSwordRange(run.aimTarget!)
+            ? 'No alcance'
+            : 'Aproxime-se',
+      BetaAction.cast => '25 MP',
+      BetaAction.dodge => 'Desviar',
+    };
   }
 
   @override
@@ -114,10 +150,12 @@ class BetaActionPad extends StatelessWidget {
                     button: true,
                     child: InkWell(
                       key: ValueKey('beta-element-${e.name}'),
-                      onTap: () {
-                        run.select(e);
-                        refresh();
-                      },
+                      onTap: run.canSelectElement
+                          ? () {
+                              run.select(e);
+                              refresh();
+                            }
+                          : null,
                       child: Container(
                         height: 44,
                         alignment: Alignment.center,
@@ -157,10 +195,11 @@ class BetaActionPad extends StatelessWidget {
               child: _button(
                 'Espada',
                 Icons.flash_on,
-                run.canSword ? () => _action(run.sword) : null,
-                run.swordCooldown > 0
-                    ? '${run.swordCooldown.toStringAsFixed(1)}s'
-                    : 'Perto',
+                run.canRequest(BetaAction.sword)
+                    ? () => _action(BetaAction.sword)
+                    : null,
+                _detail(BetaAction.sword),
+                progress: 1 - run.swordCooldown / .52,
               ),
             ),
             const SizedBox(width: 6),
@@ -168,12 +207,11 @@ class BetaActionPad extends StatelessWidget {
               child: _button(
                 'Magia',
                 Icons.auto_fix_high,
-                run.canCast ? () => _action(run.cast) : null,
-                run.spellCooldown > 0
-                    ? '${run.spellCooldown.toStringAsFixed(1)}s'
-                    : run.mana < 25
-                    ? 'Sem mana'
-                    : '25 MP',
+                run.canRequest(BetaAction.cast)
+                    ? () => _action(BetaAction.cast)
+                    : null,
+                _detail(BetaAction.cast),
+                progress: 1 - run.spellCooldown / 1.25,
               ),
             ),
           ],
@@ -184,11 +222,12 @@ class BetaActionPad extends StatelessWidget {
           child: _button(
             'Esquiva',
             Icons.air,
-            run.canDodge ? () => _action(run.dodge) : null,
-            run.dodgeCooldown > 0
-                ? '${run.dodgeCooldown.toStringAsFixed(1)}s'
-                : 'Desviar',
+            run.canRequest(BetaAction.dodge)
+                ? () => _action(BetaAction.dodge)
+                : null,
+            _detail(BetaAction.dodge),
             compact: true,
+            progress: 1 - run.dodgeCooldown / 1.6,
           ),
         ),
       ],
@@ -200,19 +239,21 @@ class BetaActionPad extends StatelessWidget {
     VoidCallback? action,
     String detail, {
     bool compact = false,
+    double progress = 1,
   }) => Semantics(
     button: true,
     enabled: action != null,
     label: '$label. $detail',
+    onTap: action,
     excludeSemantics: true,
     child: Material(
-      color: action == null ? const Color(0xFF6D7969) : const Color(0xFFEBDFBC),
+      color: action == null ? const Color(0xFFB4B69F) : const Color(0xFFEBDFBC),
       borderRadius: BorderRadius.circular(8),
-      child: InkWell(
+      child: Listener(
         key: ValueKey('beta-$label'),
-        splashFactory: NoSplash.splashFactory,
-        onTap: action,
-        borderRadius: BorderRadius.circular(8),
+        behavior: HitTestBehavior.opaque,
+        // Fire on contact, without waiting for the player's thumb to lift.
+        onPointerDown: action == null ? null : (_) => action(),
         child: Container(
           constraints: BoxConstraints(minHeight: compact ? 44 : 64),
           padding: const EdgeInsets.all(4),
@@ -220,44 +261,69 @@ class BetaActionPad extends StatelessWidget {
             border: Border.all(color: const Color(0xFF716747), width: 2),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: compact
-              ? Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(icon, size: 18),
-                    const SizedBox(width: 5),
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              compact
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(icon, size: 18),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 7),
+                        Flexible(
+                          child: Text(
+                            detail,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 10),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(icon, size: 20, color: const Color(0xFF2E453B)),
+                        Text(
+                          label,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF263B32),
+                          ),
+                        ),
+                        Text(
+                          detail,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFF263B32),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 7),
-                    Text(detail, style: const TextStyle(fontSize: 10)),
-                  ],
-                )
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(icon, size: 20, color: const Color(0xFF2E453B)),
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF263B32),
-                      ),
-                    ),
-                    Text(
-                      detail,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Color(0xFF263B32),
-                      ),
-                    ),
-                  ],
-                ),
+              const SizedBox(height: 2),
+              LinearProgressIndicator(
+                value: progress.clamp(0, 1),
+                minHeight: 2,
+                color: const Color(0xFF3B685D),
+                backgroundColor: const Color(0xFFABB193),
+              ),
+            ],
+          ),
         ),
       ),
     ),
