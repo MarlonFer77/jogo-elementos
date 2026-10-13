@@ -44,6 +44,205 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
   }
 
+  testWidgets('back protects a session; guide is available while paused', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final previewKey = GlobalKey();
+    Future<void> capture(String name) async {
+      if (Platform.environment['ELEMENTOS_ART_PREVIEW'] != '1') return;
+      await tester.runAsync(() async {
+        final image =
+            await (previewKey.currentContext!.findRenderObject()
+                    as RenderRepaintBoundary)
+                .toImage();
+        final data = await image.toByteData(format: ui.ImageByteFormat.png);
+        final file = File('build/gameplay-preview/$name.png');
+        await file.parent.create(recursive: true);
+        await file.writeAsBytes(data!.buffer.asUint8List());
+        image.dispose();
+      });
+    }
+
+    await tester.pumpWidget(
+      RepaintBoundary(
+        key: previewKey,
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(disableAnimations: true),
+            child: child!,
+          ),
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const BetaScreen()),
+                ),
+                child: const Text('Abrir beta'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Abrir beta'));
+    await frame(tester);
+    await tester.tap(find.text('Entrar na ruína'));
+    await frame(tester);
+    final game = tester
+        .widget<GameWidget<BetaGame>>(find.byType(GameWidget<BetaGame>))
+        .game!;
+    expect(game.reduceMotion, true);
+    game.session
+      ..hp = 77
+      ..mana = 43;
+    final attack = await tester.startGesture(
+      tester.getCenter(find.text('Espada')),
+    );
+    await tester.pump();
+    expect(
+      tester
+          .widgetList<AnimatedScale>(find.byType(AnimatedScale))
+          .every((widget) => widget.scale == 1),
+      true,
+    );
+    await attack.up();
+    final finger = await tester.startGesture(
+      tester.getCenter(find.byType(BetaJoystick)) + const Offset(30, 0),
+      pointer: 4,
+    );
+    await tester.binding.handlePopRoute();
+    await frame(tester);
+    expect(game.session.phase, BetaPhase.paused);
+    expect(game.session.moveX, 0);
+    expect(find.text('SAIR DA RUÍNA?'), findsNothing);
+    await finger.up();
+    final hp = game.session.hp,
+        mana = game.session.mana,
+        time = game.session.time;
+    await tester.binding.handlePopRoute();
+    await frame(tester);
+    expect(find.text('SAIR DA RUÍNA?'), findsOneWidget);
+    await capture('beta-exit-polish');
+    await tester.pump(const Duration(seconds: 2));
+    expect(game.session.time, time);
+    await tester.tap(find.text('Continuar na pausa'));
+    await frame(tester);
+    expect(game.session.phase, BetaPhase.paused);
+    expect(game.session.hp, hp);
+    expect(game.session.mana, mana);
+    await tester.ensureVisible(find.text('Guia de combate'));
+    await tester.tap(find.text('Guia de combate'));
+    await frame(tester);
+    for (final element in BetaElement.values) {
+      expect(
+        find.text('${element.label} · ${element.description}'),
+        findsOneWidget,
+      );
+    }
+    await tester.ensureVisible(find.text('Guia de combate'));
+    await frame(tester);
+    await capture('beta-guide-polish');
+    await tester.ensureVisible(find.text('Retomar'));
+    await tester.tap(find.text('Retomar'));
+    await frame(tester);
+    expect(game.session.playing, true);
+    expect(game.session.moveX, 0);
+    game.session
+      ..phase = BetaPhase.won
+      ..resultTime = .01;
+    await frame(tester);
+    await tester.ensureVisible(find.text('Testar novamente'));
+    await tester.tap(find.text('Testar novamente'));
+    await frame(tester);
+    expect(game.reduceMotion, true);
+    expect(game.session.playing, true);
+    await tester.tap(find.byTooltip('Pausar beta'));
+    await frame(tester);
+    await tester.ensureVisible(find.text('Voltar ao menu'));
+    await tester.tap(find.text('Voltar ao menu'));
+    await frame(tester);
+    await tester.tap(find.text('Sair e descartar sessão'));
+    // The dialog and page each have a reverse transition; the arena is paused.
+    await tester.pumpAndSettle(
+      const Duration(milliseconds: 100),
+      EnginePhase.sendSemanticsUpdate,
+      const Duration(seconds: 5),
+    );
+    expect(find.byType(BetaScreen), findsNothing);
+    expect(game.paused, true);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+    'action feedback keeps one request per contact and rearms on cancel',
+    (tester) async {
+      final run = BetaSession()..start();
+      final refresh = ValueNotifier(0);
+      addTearDown(refresh.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: ValueListenableBuilder<int>(
+                valueListenable: refresh,
+                builder: (context, _, _) =>
+                    BetaActionPad(run: run, refresh: () => refresh.value++),
+              ),
+            ),
+          ),
+        ),
+      );
+      final button = find.byKey(const ValueKey('beta-Magia'));
+      double scale() => tester
+          .widget<AnimatedScale>(
+            find.descendant(of: button, matching: find.byType(AnimatedScale)),
+          )
+          .scale;
+      final finger = await tester.startGesture(
+        tester.getCenter(button),
+        pointer: 1,
+      );
+      await tester.pump();
+      expect(run.mana, 75);
+      expect(scale(), .96);
+      for (var i = 0; i < 14; i++) {
+        run.update(.1);
+      }
+      refresh.value++;
+      await tester.pump();
+      expect(run.canCast, true);
+      expect(run.castTime, 0); // Holding is not autofire.
+      final mana = run.mana;
+      final extra = await tester.startGesture(
+        tester.getCenter(button),
+        pointer: 2,
+      );
+      await extra.up();
+      await tester.pump();
+      expect(run.mana, mana);
+      expect(scale(), .96); // Another finger cannot release the first.
+      await finger.cancel();
+      await tester.pump();
+      expect(scale(), 1);
+      await tester.tap(button);
+      await tester.pump();
+      expect(run.mana, closeTo(mana - 25, .001));
+      expect(scale(), 1);
+      await tester.tap(button); // Unavailable: no request or stuck press state.
+      await tester.pump();
+      expect(run.mana, closeTo(mana - 25, .001));
+      expect(scale(), 1);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   testWidgets(
     'rotation cancels held input; diagnostics and idle loop are local',
     (tester) async {
@@ -139,6 +338,7 @@ void main() {
       await tester.tap(find.text('Testar novamente'));
       await frame(tester);
       expect(game.session.playing, true);
+      expect(game.reduceMotion, false);
       await tester.pumpWidget(const SizedBox());
       expect(game.paused, true);
       expect(game.performance.loopSamples, 0);
@@ -199,6 +399,22 @@ void main() {
         ),
       );
       await frame(tester);
+      expect(find.text('Entrar na ruína').hitTestable(), findsOneWidget);
+      if (Platform.environment['ELEMENTOS_ART_PREVIEW'] == '1') {
+        await tester.runAsync(() async {
+          final image =
+              await (key.currentContext!.findRenderObject()
+                      as RenderRepaintBoundary)
+                  .toImage();
+          final data = await image.toByteData(format: ui.ImageByteFormat.png);
+          final file = File(
+            'build/gameplay-preview/beta-menu-${size.width.toInt()}.png',
+          );
+          await file.parent.create(recursive: true);
+          await file.writeAsBytes(data!.buffer.asUint8List());
+          image.dispose();
+        });
+      }
       await tester.ensureVisible(find.text('Entrar na ruína'));
       await tester.tap(find.text('Entrar na ruína'));
       await frame(tester);
@@ -267,6 +483,26 @@ void main() {
         ..swordCooldown = 0
         ..spellCooldown = 0
         ..mana = 100;
+      if (Platform.environment['ELEMENTOS_ART_PREVIEW'] == '1') {
+        final attacker = game.session.enemies.first
+          ..x = game.session.x
+          ..z = game.session.z - 1.5;
+        attacker.beginAttack(game.session.x, game.session.z);
+        game.refresh();
+        await tester.pump(const Duration(milliseconds: 16));
+        await tester.runAsync(() async {
+          final image =
+              await (key.currentContext!.findRenderObject()
+                      as RenderRepaintBoundary)
+                  .toImage();
+          final data = await image.toByteData(format: ui.ImageByteFormat.png);
+          await File(
+            'build/gameplay-preview/beta-danger-${size.width.toInt()}.png',
+          ).writeAsBytes(data!.buffer.asUint8List());
+          image.dispose();
+        });
+        attacker.cancelAttack();
+      }
       game.refresh();
       await tester.pump();
       await tester.tap(find.text('Magia'));
@@ -289,6 +525,41 @@ void main() {
       game.refresh();
       await tester.pump();
       expect(find.text('Sem mana'), findsOneWidget);
+      final hudHeight = tester
+          .getBottomLeft(find.textContaining('progresso temporário'))
+          .dy;
+      game.session
+        ..hp = 20
+        ..invulnerable = 1;
+      game.update(.01);
+      game.refresh();
+      await tester.pump();
+      expect(find.text('HP 20/100'), findsOneWidget);
+      expect(find.text('VIDA BAIXA · Água cura ao acertar'), findsOneWidget);
+      expect(game.healthTrail, greaterThan(.2));
+      expect(
+        tester.getBottomLeft(find.textContaining('VIDA BAIXA')).dy,
+        closeTo(hudHeight, 1),
+      );
+      if (Platform.environment['ELEMENTOS_ART_PREVIEW'] == '1') {
+        await tester.runAsync(() async {
+          final image =
+              await (key.currentContext!.findRenderObject()
+                      as RenderRepaintBoundary)
+                  .toImage();
+          final data = await image.toByteData(format: ui.ImageByteFormat.png);
+          await File(
+            'build/gameplay-preview/beta-vitals-${size.width.toInt()}.png',
+          ).writeAsBytes(data!.buffer.asUint8List());
+          image.dispose();
+        });
+      }
+      game.session.hp = 28;
+      game.update(.01);
+      game.refresh();
+      await tester.pump();
+      expect(find.textContaining('VIDA BAIXA'), findsNothing);
+      expect(game.healthTrail, .28);
       game.session.enemies.clear();
       game.refresh();
       await tester.pump();

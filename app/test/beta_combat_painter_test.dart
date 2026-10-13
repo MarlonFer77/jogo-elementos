@@ -13,6 +13,34 @@ void main() {
     return painter;
   }
 
+  testWidgets('reduced motion removes camera shake, not the arena', (
+    tester,
+  ) async {
+    final run = BetaSession()..start();
+    final painter = painterFor(run)..reduceMotion = true;
+    painter.advance(.06);
+    Future<List<int>> pixels() async {
+      final recorder = ui.PictureRecorder();
+      painter.paint(Canvas(recorder), const Size(360, 640));
+      final picture = recorder.endRecording();
+      final image = await picture.toImage(360, 640);
+      final data = await image.toByteData();
+      final result = data!.buffer.asUint8List().toList();
+      image.dispose();
+      picture.dispose();
+      return result;
+    }
+
+    await tester.runAsync(() async {
+      final resting = await pixels();
+      run.impactTime = .18;
+      expect(await pixels(), orderedEquals(resting));
+      painter.reduceMotion = false;
+      expect(await pixels(), isNot(orderedEquals(resting)));
+    });
+    expect(run.impactTime, .18); // Accessibility must not mutate the rules.
+  });
+
   testWidgets('label cache is bounded, reused and released', (tester) async {
     final run = BetaSession()..start();
     final painter = painterFor(run);
@@ -30,6 +58,11 @@ void main() {
     }
     expect(painter.cachedLabelCount, BetaArenaPainter.labelCacheLimit);
     paint();
+    expect(painter.cachedLabelCount, BetaArenaPainter.labelCacheLimit);
+    for (final life in [.5, .15, .08, .01]) {
+      run.effects.single.life = life;
+      paint();
+    }
     expect(painter.cachedLabelCount, BetaArenaPainter.labelCacheLimit);
     painter.dispose();
     expect(painter.cachedLabelCount, 0);
@@ -181,6 +214,104 @@ void main() {
       expect(enemy.recovery, greaterThan(0));
     }
     await save('beta-enemy-polish');
+    if (preview) {
+      recorder = ui.PictureRecorder();
+      canvas = Canvas(recorder);
+      index = 0;
+      for (final kind in BetaEnemyKind.values) {
+        final run = duel();
+        final enemy = BetaEnemy(kind, 0, 3.4)..beginAttack(run.x, run.z);
+        run.enemies
+          ..clear()
+          ..add(enemy);
+        final painter = painterFor(run);
+        advance(run, painter, .3);
+        frame(painter, '${enemy.label}: dentro da área');
+        run.x = kind == BetaEnemyKind.goblin ? .8 : 2.4;
+        frame(painter, '${enemy.label}: fora da área');
+      }
+      final blocked = duel()
+        ..x = 2.9
+        ..z = 2;
+      final attacker = blocked.enemies.single
+        ..x = 5.1
+        ..z = 2;
+      attacker.beginAttack(blocked.x, blocked.z);
+      final painter = painterFor(blocked);
+      frame(painter, 'Coluna bloqueia o golpe');
+      attacker.cancelAttack();
+      frame(painter, 'Ameaça cancelada');
+      await save('beta-danger-polish');
+      recorder = ui.PictureRecorder();
+      canvas = Canvas(recorder);
+      index = 0;
+      for (final direction in [
+        ('Frente', 0.0, -1.0),
+        ('Lateral', 1.0, 0.0),
+        ('Recuo', 0.0, 1.0),
+      ]) {
+        final run = duel()
+          ..setMovement(direction.$2, direction.$3)
+          ..dodge();
+        final painter = painterFor(run);
+        advance(run, painter, .12);
+        frame(painter, '${direction.$1}: esquiva');
+        advance(run, painter, .1);
+        frame(painter, '${direction.$1}: assentando');
+      }
+      final released = duel()
+        ..select(BetaElement.water)
+        ..cast();
+      final releasePainter = painterFor(released);
+      advance(released, releasePainter, .38);
+      frame(releasePainter, 'Magia: retorno do braço');
+      advance(released, releasePainter, .15);
+      frame(releasePainter, 'Magia: repouso');
+      await save('beta-motion-polish');
+      recorder = ui.PictureRecorder();
+      canvas = Canvas(recorder);
+      index = 0;
+      for (final hurt in [false, true]) {
+        final run = duel();
+        final target = run.enemies.single;
+        final effect = BetaEffect(
+          hurt ? run.x : target.x,
+          hurt ? run.z : target.z,
+          BetaElement.water,
+          text: hurt ? '-12' : '13',
+          hurt: hurt,
+        );
+        run.effects.add(effect);
+        final painter = painterFor(run);
+        for (final life in [.62, .52, .14, .03]) {
+          effect.life = life;
+          frame(
+            painter,
+            '${hurt ? 'Dano recebido' : 'Acerto'}: ${((.65 - life) * 1000).round()}ms',
+          );
+        }
+      }
+      await save('beta-contact-polish');
+      recorder = ui.PictureRecorder();
+      canvas = Canvas(recorder);
+      index = 0;
+      for (final kind in [BetaEnemyKind.goblin, BetaEnemyKind.guardian]) {
+        final run = duel();
+        final enemy = BetaEnemy(kind, .2, 3.3)..cooldown = 10;
+        run.enemies
+          ..clear()
+          ..add(enemy);
+        final painter = painterFor(run);
+        enemy.hp = enemy.maxHp * .45;
+        painter.advance(.01);
+        frame(painter, '${enemy.label}: perda recente');
+        for (var i = 0; i < 7; i++) {
+          painter.advance(.1);
+        }
+        frame(painter, '${enemy.label}: HP consolidado');
+      }
+      await save('beta-health-polish');
+    }
     expect(tester.takeException(), isNull);
   });
 }

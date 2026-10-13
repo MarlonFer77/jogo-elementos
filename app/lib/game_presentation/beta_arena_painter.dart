@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../game_domain/beta_session.dart';
+import 'beta_health_feedback.dart';
 
 Color betaElementColor(BetaElement element) => switch (element) {
   BetaElement.fire => const Color(0xFFEAAF52),
@@ -45,14 +46,26 @@ class _Projected {
 /// shading and face sorting. Deliberately no new native renderer or GPU plugin.
 /// Not a general 3D engine: no depth buffer, skeletal assets or vertical physics.
 class BetaArenaPainter extends CustomPainter {
-  BetaArenaPainter(this.run)
-    : _cameraX = run.x * .65,
+  BetaArenaPainter(this.run, {this.reduceMotion = false})
+    : _cameraX = run.x * .8,
       _cameraZ = run.z,
-      _heroAngle = run.angle;
+      _heroAngle = run.angle,
+      _heroHealth = BetaHealthFeedback(run.hp, run.maxHp) {
+    for (final enemy in run.enemies) {
+      _enemyHealth[enemy] = BetaHealthFeedback(enemy.hp, enemy.maxHp);
+    }
+  }
   final BetaSession run;
+  bool reduceMotion;
   double _cameraX, _cameraZ, _heroAngle;
   double _clock = 0;
+  double _castRelease = 0;
+  bool _wasCasting = false;
+  static const _releaseDuration = .14;
   final _enemyAngles = <BetaEnemy, double>{};
+  final BetaHealthFeedback _heroHealth;
+  final _enemyHealth = <BetaEnemy, BetaHealthFeedback>{};
+  double get heroHealthTrail => _heroHealth.trail;
   final _labelBounds = <Rect>[];
   final _labels = <(String, double, Color), TextPainter>{};
   static const labelCacheLimit = 64;
@@ -66,6 +79,7 @@ class BetaArenaPainter extends CustomPainter {
     _labels.clear();
     _labelBounds.clear();
     _enemyAngles.clear();
+    _enemyHealth.clear();
   }
 
   static final _scenery = _buildScenery();
@@ -79,10 +93,42 @@ class BetaArenaPainter extends CustomPainter {
       return;
     }
     final dt = elapsed.clamp(0.0, .1);
+    _heroHealth.advance(run.hp, run.maxHp, dt);
+    _enemyHealth.removeWhere((enemy, _) => !run.enemies.contains(enemy));
+    for (final enemy in run.enemies) {
+      (_enemyHealth[enemy] ??= BetaHealthFeedback(
+        enemy.hp,
+        enemy.maxHp,
+      )).advance(enemy.hp, enemy.maxHp, dt);
+    }
     _clock += dt;
+    _castRelease = math.max(0, _castRelease - dt);
+    if (_wasCasting && run.castTime <= 0 && run.playing) {
+      _castRelease = _releaseDuration;
+    }
+    // Follow-through is visual only and yields immediately to another action.
+    if (run.castTime > 0 ||
+        run.swordTime > 0 ||
+        run.dodgeTime > 0 ||
+        !run.playing) {
+      _castRelease = 0;
+    }
+    _wasCasting = run.castTime > 0;
     final follow = 1 - math.exp(-6 * dt);
-    _cameraX += (run.x * .65 - _cameraX) * follow;
-    _cameraZ += (run.z - _cameraZ) * follow;
+    final target = run.aimTarget;
+    var lookX = run.moveX * .7, lookZ = run.moveZ;
+    if (run.dodgeTime > 0) {
+      lookX = math.sin(run.dodgeDirection) * .7;
+      lookZ = math.cos(run.dodgeDirection);
+    } else if (target != null &&
+        BetaSession.distance(run.x, run.z, target.x, target.z) <= 6) {
+      lookX = ((target.x - run.x) * .25).clamp(-1.2, 1.2);
+      lookZ = ((target.z - run.z) * .25).clamp(-1.2, 1.2);
+    }
+    // Small world-space look-ahead: keep the hero visible, with no camera turns.
+    if (reduceMotion) lookX = lookZ = 0;
+    _cameraX += (run.x * .8 + lookX - _cameraX) * follow;
+    _cameraZ += (run.z + lookZ - _cameraZ) * follow;
     double turn(double from, double to) =>
         from +
         math.atan2(math.sin(to - from), math.cos(to - from)) *
@@ -326,15 +372,27 @@ class BetaArenaPainter extends CustomPainter {
     double progress, {
     double opacity = 1,
     bool impact = false,
+    bool danger = false,
   }) {
     progress = progress.clamp(0.0, 1.0);
     final points = area.outline.map((p) => _V(p.x, .035, p.z)).toList();
     faces.add(
       _Face(
         points,
-        (impact ? const Color(0xFFA88D60) : const Color(0xFFA94832)).withValues(
-          alpha: (impact ? .12 : .16 + progress * .15) * opacity,
-        ),
+        (impact
+                ? const Color(0xFFA88D60)
+                : danger
+                ? const Color(0xFFB64B36)
+                : const Color(0xFFB48E51))
+            .withValues(
+              alpha:
+                  (impact
+                      ? .12
+                      : danger
+                      ? .25 + progress * .2
+                      : .12 + progress * .1) *
+                  opacity,
+            ),
         ground: true,
         unlit: true,
       ),
@@ -351,7 +409,7 @@ class BetaArenaPainter extends CustomPainter {
     void line(_V a, _V b, Color color) {
       final delta = b - a;
       if (delta.dot(delta) < .000001) return;
-      final side = _V(-delta.z, 0, delta.x).unit * .035;
+      final side = _V(-delta.z, 0, delta.x).unit * (danger ? .06 : .035);
       faces.add(
         _Face(
           [a - side, b - side, b + side, a + side],
@@ -364,12 +422,20 @@ class BetaArenaPainter extends CustomPainter {
 
     for (var i = 0; i < points.length; i++) {
       final a = points[i], b = points[(i + 1) % points.length];
-      line(a, b, impact ? const Color(0xFFB69B6D) : const Color(0xFFB66142));
+      line(
+        a,
+        b,
+        impact
+            ? const Color(0xFFB69B6D)
+            : danger
+            ? const Color(0xFFE29572)
+            : const Color(0xFFB69B6D),
+      );
       if (!impact && remaining > 0 && lengths[i] > .00001) {
         line(
           a,
           a + (b - a) * (remaining / lengths[i]).clamp(0.0, 1.0),
-          const Color(0xFFFFD79A),
+          danger ? const Color(0xFFFFE1BE) : const Color(0xFFE9C982),
         );
       }
       remaining -= lengths[i];
@@ -394,6 +460,12 @@ class BetaArenaPainter extends CustomPainter {
         : 1.0;
     final casting = hero && run.castTime > 0;
     final dodging = hero && run.dodgeTime > 0;
+    final dodgeProgress = dodging
+        ? (1 - run.dodgeTime / BetaSession.dodgeDuration).clamp(0.0, 1.0)
+        : 0.0;
+    final dodgeWeight = math.sin(dodgeProgress * math.pi);
+    final dodgeSide = math.sin(run.dodgeDirection - angle) * dodgeWeight;
+    final dodgeForward = math.cos(run.dodgeDirection - angle) * dodgeWeight;
     final dead = hero ? run.phase == BetaPhase.lost : !enemy.alive;
     final fall = dead
         ? (1 -
@@ -451,8 +523,11 @@ class BetaArenaPainter extends CustomPainter {
       if (brute) swing = 1.35 * recover;
       if (enemy.attackShape == BetaAttackShape.thrust) thrust = .63 * recover;
     }
+    final releasing = hero && run.swordTime <= 0 && !dodging && !dead;
     final castLift = casting
         ? ease((BetaSession.castDuration - run.castTime) / .12)
+        : releasing
+        ? ease(_castRelease / _releaseDuration)
         : 0.0;
     var body = hero
         ? const Color(0xFF356D79)
@@ -467,17 +542,18 @@ class BetaArenaPainter extends CustomPainter {
     body = Color.lerp(body, const Color(0xFFFFEBC3), recoil * .8)!;
     skin = Color.lerp(skin, const Color(0xFFFFEBC3), recoil * .8)!;
     final yaw = angle + swing * .16;
-    final tilt =
-        -fall * math.pi / 2 - recoil * .12 + (dodging ? .55 : lunge * .5);
+    final tilt = -fall * math.pi / 2 - recoil * .12 + lunge * .5;
     final ct = math.cos(tilt), st = math.sin(tilt);
     final cy = math.cos(yaw), sy = math.sin(yaw);
     _V world(_V p) {
-      final py = p.y * ct - p.z * st;
-      final pz = p.y * st + p.z * ct + lunge;
+      // Lean into the committed dodge, keeping the feet near the ground.
+      final px = p.x + p.y * dodgeSide * .4;
+      final py = p.y * ct - p.z * st - p.y.clamp(0.0, .85) * dodgeWeight * .18;
+      final pz = p.y * st + p.z * ct + lunge + p.y * dodgeForward * .45;
       return _V(
-        x + (p.x * cy + pz * sy) * scale,
-        (py + bob - (dodging ? .12 : 0) + fall * .22) * scale,
-        z + (-p.x * sy + pz * cy) * scale,
+        x + (px * cy + pz * sy) * scale,
+        (py + bob + fall * .22) * scale,
+        z + (-px * sy + pz * cy) * scale,
       );
     }
 
@@ -504,9 +580,9 @@ class BetaArenaPainter extends CustomPainter {
     final walk = moving && !dodging ? math.sin(stride) * .3 : 0.0;
     for (final side in [-1.0, 1.0]) {
       final foot = _V(
-        side * .18,
+        side * (.18 + dodgeSide.abs() * .07),
         .1 + math.max(0, walk * side) * .22,
-        -walk * side + (dodging ? side * .18 : 0),
+        -walk * side + side * dodgeForward * .15,
       );
       final knee = _V(side * .18, .32, -walk * side * .5 + .08);
       _beam(faces, _V(side * .18, .57, 0), knee, .22, body, world);
@@ -832,6 +908,47 @@ class BetaArenaPainter extends CustomPainter {
     );
   }
 
+  bool _threatensHero(BetaEnemy enemy) =>
+      run.playing &&
+      enemy.alive &&
+      enemy.windup > 0 &&
+      enemy.attackArea.contains(run.x, run.z) &&
+      BetaSession.clearLine(enemy.x, enemy.z, run.x, run.z);
+
+  void _contactImpact(Canvas canvas, BetaEffect fx) {
+    final age = .65 - fx.life;
+    if (age < 0 || age >= .22) return;
+    final progress = age / .22;
+    final center = _V(fx.x, 1, fx.z);
+    final point = _project(center), edge = _project(center + _up * .55);
+    if (point == null || edge == null) return;
+    final radius = (point - edge).distance.clamp(4.0, 12.0);
+    final color = fx.hurt
+        ? const Color(0xFFFFBA9B)
+        : betaElementColor(fx.element);
+    final paint = Paint()
+      ..color = Color.lerp(
+        const Color(0xFFFFEAC4),
+        color,
+        .45 + progress * .55,
+      )!.withValues(alpha: 1 - progress);
+    // Composite above bodies so the short contact cue cannot hide inside a mesh.
+    // It still uses only confirmed hits, never a missed swing or blocked attack.
+    for (var i = 0; i < 5; i++) {
+      final angle = i * math.pi * 2 / 5 + .35;
+      final direction = Offset(math.cos(angle), math.sin(angle));
+      final side = Offset(-direction.dy, direction.dx);
+      final inner = point + direction * radius * (.15 + progress * .7);
+      final tip = point + direction * radius * (1 + progress * .7);
+      final width = radius * .18 * (1 - progress);
+      canvas.drawPath(
+        Path()
+          ..addPolygon([inner - side * width, tip, inner + side * width], true),
+        paint,
+      );
+    }
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     if (size.isEmpty) return;
@@ -851,7 +968,7 @@ class BetaArenaPainter extends CustomPainter {
       Offset.zero & size,
       Paint()..color = const Color(0xFF243F3D),
     );
-    final shake = run.impactTime / .18;
+    final shake = reduceMotion ? 0.0 : run.impactTime / .18;
     canvas.translate(
       math.sin(_clock * 85) * shake * 1.8,
       math.cos(_clock * 73) * shake * 1.2,
@@ -868,6 +985,7 @@ class BetaArenaPainter extends CustomPainter {
       );
     }
     final aim = run.aimTarget;
+    final inDanger = run.enemies.any(_threatensHero);
     if (aim != null) {
       final melee = run.inSwordRange(aim);
       _ring(
@@ -909,7 +1027,12 @@ class BetaArenaPainter extends CustomPainter {
         );
       }
       if (e.windup > 0) {
-        _attackArea(faces, e.attackArea, 1 - e.windup / e.preparation);
+        _attackArea(
+          faces,
+          e.attackArea,
+          1 - e.windup / e.preparation,
+          danger: _threatensHero(e),
+        );
       } else if (e.alive && e.recovery > 0) {
         _ring(
           faces,
@@ -930,7 +1053,13 @@ class BetaArenaPainter extends CustomPainter {
         enemy: e,
       );
     }
-    _ring(faces, run.x, run.z, .65, const Color(0xFFC9CE9C));
+    _ring(
+      faces,
+      run.x,
+      run.z,
+      .65,
+      inDanger ? const Color(0xFFFFC497) : const Color(0xFFC9CE9C),
+    );
     _actor(
       faces,
       x: run.x,
@@ -999,19 +1128,6 @@ class BetaArenaPainter extends CustomPainter {
           const Color(0xFFCBAF79),
         );
       }
-      for (var i = 0; i < 4; i++) {
-        final a = i * math.pi / 2, spread = (.65 - fx.life) * 1.6;
-        _box(
-          faces,
-          _V(
-            fx.x + math.sin(a) * spread,
-            .6 + fx.life,
-            fx.z + math.cos(a) * spread,
-          ),
-          const _V(.09, .09, .09),
-          betaElementColor(fx.element),
-        );
-      }
     }
     final projected = <_Projected>[];
     final light = const _V(-.5, 1, .6).unit;
@@ -1062,6 +1178,13 @@ class BetaArenaPainter extends CustomPainter {
     for (final face in projected) {
       canvas.drawPath(face.path, paint..color = face.color);
     }
+    for (final fx in run.effects) {
+      if (fx.kind == BetaEffectKind.impact &&
+          fx.area == null &&
+          fx.text != null) {
+        _contactImpact(canvas, fx);
+      }
+    }
     for (final e in run.enemies.where(
       (e) =>
           e.alive &&
@@ -1072,12 +1195,20 @@ class BetaArenaPainter extends CustomPainter {
     )) {
       final p = _project(_V(e.x, e.boss ? 3.3 : 2.1, e.z));
       if (p == null) continue;
+      final width = e.boss ? 62.0 : 34.0;
+      final current = (e.hp / e.maxHp).clamp(0.0, 1.0);
+      final trail = math.max(current, _enemyHealth[e]?.trail ?? current);
+      final left = p.dx - width / 2;
       canvas.drawRect(
-        Rect.fromLTWH(p.dx - 17, p.dy, 34, 4),
+        Rect.fromLTWH(left, p.dy, width, 5),
         Paint()..color = const Color(0xFF213A36),
       );
       canvas.drawRect(
-        Rect.fromLTWH(p.dx - 16, p.dy + 1, 32 * e.hp / e.maxHp, 2),
+        Rect.fromLTWH(left + 1, p.dy + 1, (width - 2) * trail, 3),
+        Paint()..color = const Color(0xFFF2DFC0),
+      );
+      canvas.drawRect(
+        Rect.fromLTWH(left + 1, p.dy + 1, (width - 2) * current, 3),
         Paint()..color = const Color(0xFFE8AD68),
       );
       if (identical(e, aim) || e.windup > 0 || e.recovery > 0) {
@@ -1095,20 +1226,23 @@ class BetaArenaPainter extends CustomPainter {
         );
       }
     }
-    if (run.protection > 0 && run.playing) {
-      final p = _project(_V(run.x, 2.15, run.z));
+    if (run.playing && (inDanger || run.protection > 0)) {
+      final p = _project(_V(run.x, inDanger ? .02 : 2.15, run.z));
       if (p != null) {
         _label(
           canvas,
-          p,
-          'Proteção ${run.protection.ceil()}s',
-          const Color(0xFFE7CE94),
+          inDanger ? p + const Offset(0, 26) : p,
+          inDanger ? 'SAIA DA ÁREA' : 'Proteção ${run.protection.ceil()}s',
+          inDanger ? const Color(0xFFFFD7B3) : const Color(0xFFE7CE94),
           size: 10,
+          badge: inDanger,
         );
       }
     }
     for (final fx in run.effects.where((e) => e.text != null)) {
-      final p = _project(_V(fx.x, 2.0 + (.65 - fx.life), fx.z));
+      final age = (.65 - fx.life).clamp(0.0, .65);
+      final pop = (1 - age / .12).clamp(0.0, 1.0);
+      final p = _project(_V(fx.x, 2.0 + age * .8, fx.z));
       if (p == null) continue;
       _label(
         canvas,
@@ -1119,6 +1253,8 @@ class BetaArenaPainter extends CustomPainter {
             : fx.hurt
             ? const Color(0xFFFFBA9B)
             : const Color(0xFFFFE7A3),
+        scale: reduceMotion ? 1 : 1 + pop * .2,
+        opacity: (fx.life / .18).clamp(0.0, 1.0),
       );
     }
     canvas.restore();
@@ -1130,7 +1266,11 @@ class BetaArenaPainter extends CustomPainter {
     String value,
     Color color, {
     double size = 15,
+    bool badge = false,
+    double scale = 1,
+    double opacity = 1,
   }) {
+    if (opacity <= 0) return;
     final key = (value, size, color);
     final text =
         _labels.remove(key) ??
@@ -1153,17 +1293,42 @@ class BetaArenaPainter extends CustomPainter {
     if (_labels.length > labelCacheLimit) {
       _labels.remove(_labels.keys.first)!.dispose();
     }
-    var origin = p - Offset(text.width / 2, text.height);
+    // Animate the cached layout, not its style: no new cache entry per frame.
+    final layout = text.size * scale;
+    var origin = p - Offset(layout.width / 2, layout.height);
+    final padding = badge ? 4.0 : 0.0;
     for (var attempt = 0; attempt < _labelBounds.length; attempt++) {
       final overlaps = _labelBounds.where(
-        (rect) => rect.inflate(2).overlaps(origin & text.size),
+        (rect) => rect.inflate(2).overlaps((origin & layout).inflate(padding)),
       );
       if (overlaps.isEmpty) break;
       final top = overlaps.map((rect) => rect.top).reduce(math.min);
-      origin = Offset(origin.dx, top - text.height - 3);
+      origin = Offset(origin.dx, top - layout.height - padding - 3);
     }
-    _labelBounds.add(origin & text.size);
-    text.paint(canvas, origin);
+    final bounds = (origin & layout).inflate(padding);
+    _labelBounds.add(bounds);
+    if (opacity < 1) {
+      canvas.saveLayer(
+        bounds.inflate(2),
+        Paint()..color = Colors.white.withValues(alpha: opacity),
+      );
+    }
+    if (badge) {
+      canvas.drawRect(bounds, Paint()..color = const Color(0xF22C3932));
+      canvas.drawRect(
+        bounds,
+        Paint()
+          ..color = const Color(0xFFE29572)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1,
+      );
+    }
+    canvas.save();
+    canvas.translate(origin.dx, origin.dy);
+    canvas.scale(scale);
+    text.paint(canvas, Offset.zero);
+    canvas.restore();
+    if (opacity < 1) canvas.restore();
   }
 
   @override

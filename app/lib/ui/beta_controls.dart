@@ -128,7 +128,7 @@ class BetaActionPad extends StatelessWidget {
             : run.inSwordRange(run.aimTarget!)
             ? 'No alcance'
             : 'Aproxime-se',
-      BetaAction.cast => '25 MP',
+      BetaAction.cast => '25 MP · ${run.element.label}',
       BetaAction.dodge => 'Desviar',
     };
   }
@@ -148,6 +148,7 @@ class BetaActionPad extends StatelessWidget {
                   child: Semantics(
                     selected: run.element == e,
                     button: true,
+                    enabled: run.canSelectElement,
                     child: InkWell(
                       key: ValueKey('beta-element-${e.name}'),
                       onTap: run.canSelectElement
@@ -200,18 +201,26 @@ class BetaActionPad extends StatelessWidget {
                     : null,
                 _detail(BetaAction.sword),
                 progress: 1 - run.swordCooldown / .52,
+                queued: run.queuedAction == BetaAction.sword,
               ),
             ),
             const SizedBox(width: 6),
             Expanded(
               child: _button(
                 'Magia',
-                Icons.auto_fix_high,
+                switch (run.element) {
+                  BetaElement.fire => Icons.local_fire_department,
+                  BetaElement.water => Icons.water_drop,
+                  BetaElement.wind => Icons.air,
+                  BetaElement.earth => Icons.landscape,
+                },
                 run.canRequest(BetaAction.cast)
                     ? () => _action(BetaAction.cast)
                     : null,
                 _detail(BetaAction.cast),
                 progress: 1 - run.spellCooldown / 1.25,
+                accent: betaElementColor(run.element),
+                queued: run.queuedAction == BetaAction.cast,
               ),
             ),
           ],
@@ -228,6 +237,7 @@ class BetaActionPad extends StatelessWidget {
             _detail(BetaAction.dodge),
             compact: true,
             progress: 1 - run.dodgeCooldown / 1.6,
+            queued: run.queuedAction == BetaAction.dodge,
           ),
         ),
       ],
@@ -240,91 +250,152 @@ class BetaActionPad extends StatelessWidget {
     String detail, {
     bool compact = false,
     double progress = 1,
-  }) => Semantics(
-    button: true,
-    enabled: action != null,
+    Color? accent,
+    bool queued = false,
+  }) => _ContactFeedback(
+    key: ValueKey('beta-$label'),
     label: '$label. $detail',
-    onTap: action,
-    excludeSemantics: true,
+    onPressed: action,
     child: Material(
-      color: action == null ? const Color(0xFFB4B69F) : const Color(0xFFEBDFBC),
+      color: action == null
+          ? const Color(0xFFB4B69F)
+          : Color.lerp(
+              const Color(0xFFEBDFBC),
+              accent ?? const Color(0xFFEBDFBC),
+              .24,
+            ),
       borderRadius: BorderRadius.circular(8),
-      child: Listener(
-        key: ValueKey('beta-$label'),
-        behavior: HitTestBehavior.opaque,
-        // Fire on contact, without waiting for the player's thumb to lift.
-        onPointerDown: action == null ? null : (_) => action(),
-        child: Container(
-          constraints: BoxConstraints(minHeight: compact ? 44 : 64),
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFF716747), width: 2),
-            borderRadius: BorderRadius.circular(8),
+      child: Container(
+        constraints: BoxConstraints(minHeight: compact ? 44 : 64),
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: queued ? const Color(0xFFD99A43) : const Color(0xFF716747),
+            width: 2,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              compact
-                  ? Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(icon, size: 18),
-                        const SizedBox(width: 5),
-                        Flexible(
-                          child: Text(
-                            label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 7),
-                        Flexible(
-                          child: Text(
-                            detail,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 10),
-                          ),
-                        ),
-                      ],
-                    )
-                  : Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(icon, size: 20, color: const Color(0xFF2E453B)),
-                        Text(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            compact
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(icon, size: 18),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
                           label,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF263B32),
-                          ),
-                        ),
-                        Text(
-                          detail,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 10,
-                            color: Color(0xFF263B32),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ],
-                    ),
-              const SizedBox(height: 2),
-              LinearProgressIndicator(
-                value: progress.clamp(0, 1),
-                minHeight: 2,
-                color: const Color(0xFF3B685D),
-                backgroundColor: const Color(0xFFABB193),
+                      ),
+                      const SizedBox(width: 7),
+                      Flexible(
+                        child: Text(
+                          detail,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 10),
+                        ),
+                      ),
+                    ],
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(icon, size: 20, color: const Color(0xFF2E453B)),
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF263B32),
+                        ),
+                      ),
+                      Text(
+                        detail,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Color(0xFF263B32),
+                        ),
+                      ),
+                    ],
+                  ),
+            const SizedBox(height: 2),
+            LinearProgressIndicator(
+              value: progress.clamp(0, 1),
+              minHeight: 2,
+              color: Color.lerp(
+                const Color(0xFF3B685D),
+                accent ?? const Color(0xFF3B685D),
+                .25,
               ),
-            ],
-          ),
+              backgroundColor: const Color(0xFFABB193),
+            ),
+          ],
         ),
+      ),
+    ),
+  );
+}
+
+/// Keeps the touch target fixed while its surface gives immediate feedback.
+/// One contact means one request; releasing/cancelling never fires again.
+class _ContactFeedback extends StatefulWidget {
+  const _ContactFeedback({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    required this.child,
+  });
+  final String label;
+  final VoidCallback? onPressed;
+  final Widget child;
+
+  @override
+  State<_ContactFeedback> createState() => _ContactFeedbackState();
+}
+
+class _ContactFeedbackState extends State<_ContactFeedback> {
+  int? _pointer;
+
+  void _release(PointerEvent event) {
+    if (!mounted || _pointer != event.pointer) return;
+    setState(() => _pointer = null);
+  }
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    enabled: widget.onPressed != null,
+    label: widget.label,
+    onTap: widget.onPressed,
+    excludeSemantics: true,
+    child: Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (event) {
+        if (!mounted || _pointer != null || widget.onPressed == null) return;
+        setState(() => _pointer = event.pointer);
+        widget.onPressed!();
+      },
+      onPointerUp: _release,
+      onPointerCancel: _release,
+      child: AnimatedScale(
+        scale: _pointer == null || MediaQuery.disableAnimationsOf(context)
+            ? 1
+            : .96,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 70),
+        child: widget.child,
       ),
     ),
   );

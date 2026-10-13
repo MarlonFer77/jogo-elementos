@@ -1,7 +1,8 @@
 # BETA TEST — Ruína dos Ecos
 
 Primeiro protótipo solo de ação 3D dentro do app, implementado em 09/10/2026.
-Não substitui o combate por turnos. Sem APK, release, deploy ou assinatura nova.
+Não substitui o combate por turnos. Base publicada v0.33.0; os polimentos
+posteriores estão locais, ainda sem novo APK, release, deploy ou assinatura.
 
 ## Acesso
 
@@ -55,6 +56,114 @@ mais robusto no futuro. Desempenho de produção ainda não está demonstrado.
 
 ## Verificação e próximo trabalho
 
+### Critérios de liberação do beta atual
+
+Status: rodada de acabamento local fechada para playtest, **não aprovado para
+produção**. Este aceite cobre o modo solo de três encontros com progresso de
+sessão; não significa um RPG completo com save, combos 3D ou exploração.
+
+- [x] Controles, alvo/colisões, dano, pausa, vitória/derrota e reinício verificados
+  localmente; HP, efeitos, áreas inimigas e animações têm apresentação revisada.
+- [x] Entrada curta, guia consultável, saída com confirmação e movimento reduzido.
+- [x] 37 testes beta aprovados no conjunto; análise Dart limpa; previews revistos.
+- [ ] APK candidato com assinatura compatível; instalar por atualização e conferir
+  que perfis de Treino/Dungeon/Multiplayer continuam disponíveis.
+- [ ] Android real: concluir três encontros, perder/reiniciar, cancelar/confirmar
+  saída, girar o aparelho segurando o joystick e alternar aplicativos. Nenhum
+  comando preso, repetição de ação ou avanço enquanto pausado.
+- [ ] Sessão prolongada nos aparelhos de teste: conferir fluidez, áudio/mudo,
+  legibilidade e aquecimento percebido. Coletar diagnóstico local para investigar
+  travadas; suas métricas não provam FPS apresentado nem temperatura física.
+- [ ] Corrigir e repetir os casos com falha; só então aprovar a publicação.
+
+Não gerar APK/publicar automaticamente. Combos 3D, save e exploração continuam
+no roadmap posterior, não são preenchidos por polimento visual. A senha local
+continua sendo conveniência para testadores, não proteção de acesso em produção.
+
+### Entrada, pausa e saída — fechamento do fluxo
+
+- Entrada apresenta objetivo e controles essenciais sem o texto longo inicial;
+  HUD de combate fica oculto até iniciar. Guia expansível disponível na entrada,
+  pausa e resultado: elementos, custo de mana, mira e como evitar cada inimigo.
+- Voltar durante a ação pausa. Na pausa, voltar ou sair abre confirmação explícita
+  sobre perda da sessão; cancelar permanece pausado e preserva recursos. Resultado
+  informa o encontro da derrota ou a conclusão dos três encontros. Outros saves
+  não são modificados. Pintor da tela de acesso tem ciclo de vida controlado.
+- Opção de movimento reduzido do sistema remove tremor e antecipação da câmera,
+  destaque de escala dos números e pressão animada dos botões. Mantém movimento
+  de acompanhamento e animações de combate necessárias; não altera regras.
+- Preferência preservada ao reiniciar. Verificados navegação/cancelamento, comandos
+  simultâneos, transparência do efeito de câmera e retorno aos menus.
+  Previews `beta-menu-{320,360,640}.png`, `beta-guide-polish.png` e
+  `beta-exit-polish.png`. Avaliação física continua pendente para o final.
+
+### Vida, dano e recuperação — continuação do polimento
+
+- HP numérico e preenchimento sólido permanecem reais. Rastro do dano segura
+  por 180ms e recolhe a 1,8 barras/s, sem atraso no acerto. Usa o relógio visual
+  existente: pausa congela; reiniciar/sair descarta; nenhum timer independente.
+- Cura ou mudança de HP máximo limpa o rastro imediatamente. Dano contínuo não
+  reinicia indefinidamente a espera. Memória dos inimigos descartada ao trocar
+  encontros; barra do guardião maior para facilitar leitura.
+- HUD atualiza no mesmo frame lógico de dano/cura, além da atualização habitual
+  de 10Hz. Com HP positivo <=25%, cor coral e dica “Água cura ao acertar” ocupam
+  a linha já existente; sem piscar a tela, aumentar o painel ou bloquear controles.
+- Feedback compartilhado apenas na apresentação em `beta_health_feedback.dart`;
+  não muda HP, cura, dano, mana, progressão ou saves. Treino/Multiplayer intactos.
+- 11 testes focados aprovados, análise limpa e previews revisados em vertical e
+  horizontal: `beta-vitals-{320,360,640}.png` e `beta-health-polish.png`.
+  Sem APK/release/backend; avaliação física continua reservada para o final.
+
+### Contato e controles — continuação do polimento
+
+- Marca física de cinco traços por 220ms no ponto do acerto confirmado. Cor
+  elemental ao atingir, coral ao receber dano; composta acima dos corpos para
+  não desaparecer dentro da malha. Golpes perdidos/bloqueados não geram acerto.
+- Números têm destaque inicial de 120ms e desaparecem nos últimos 180ms,
+  mantendo a duração existente de 650ms. Escala/alpha não criam entradas novas
+  no cache de texto; a composição de transparência fica restrita ao rótulo.
+- Botões encolhem levemente ao toque, mantendo área de contato fixa. Um pedido
+  por contato: segurar não repete, outro dedo não solta o primeiro e cancelar
+  libera o estado visual. Magia mostra ícone/cor/nome do elemento ativo;
+  comandos na fila têm borda âmbar, sem ampliar o painel.
+- 8 testes focados aprovados (6 telas/controles, 2 renderização/cache), análise
+  limpa e capturas 320/640 revisadas. Sequência em `beta-contact-polish.png`.
+  Sem regras novas, APK/release, backend ou alteração dos outros modos.
+- Conforme solicitado, playtest no celular fica para o final dos polimentos;
+  continuar acabamento local sem tratar essa validação pendente como bloqueio.
+
+### Esquiva e transição de magia — 13/10/2026
+
+- Esquiva inclina o corpo para frente, lateralmente ou para trás, conforme a
+  direção comprometida pela regra. Entrada/saída suaves durante os mesmos 240ms;
+  câmera acompanha a esquiva mesmo se o joystick mudar durante o deslocamento.
+- Braço retorna gradualmente ao repouso durante 140ms após a conjuração. Somente
+  apresentação: não bloqueia comandos, congela na pausa e cede imediatamente
+  à espada, esquiva ou nova magia. Dano, mana, recargas e invulnerabilidade iguais.
+- 31 testes beta aprovados antes da alteração; 25 verificações afetadas passaram
+  depois, incluindo direção da esquiva preservada ao inverter o joystick.
+  Análise Dart limpa; poses conferidas em `beta-motion-polish.png`.
+- Sem Android conectado: suavidade percebida/FPS físicos ainda pendentes.
+  Alterações locais após v0.33.0, sem APK, publicação ou mudanças no backend.
+
+### Câmera e leitura de perigo — 13/10/2026
+
+- Câmera antecipa suavemente a direção de movimento ou o alvo a até 6 unidades;
+  deslocamento de foco limitado a 1,2 por eixo, mantendo perspectiva fixa.
+- Avisos no chão ficam mais fortes quando o jogador está na área de um golpe
+  em preparação com linha livre. Reutilizados `attackArea.contains` e `clearLine`;
+  não há regra de acerto paralela. Fora da área, o contorno permanece âmbar.
+- “SAIA DA ÁREA” aparece abaixo do personagem, sem encobrir a arma ou o inimigo.
+  Colunas, cancelamento e morte removem o alerta; não há alerta após o golpe.
+  Invulnerabilidade temporária não oculta a área, pois pode terminar antes do
+  impacto. O aviso de perigo tem prioridade sobre o texto de proteção, cujas
+  pedras orbitais continuam visíveis.
+- Somente apresentação alterada; dano, alcance, recarga e persistência mantidos.
+  7 verificações existentes aprovadas (5 telas, 2 renderização/cache), análise
+  limpa e capturas vertical/horizontal revisadas. Prévias em `beta-danger-polish.png`
+  e `beta-danger-{320,360,640}.png`. Sensação de câmera pendente no celular.
+  Este bloco está local, posterior à release v0.33.0.
+
 ### Resposta dos comandos e leitura do combate
 
 - Corrigido comando antecipado que expirava antes de atualizar o último frame
@@ -98,7 +207,8 @@ Pendente: APK release em Android real; informar modelo, duração da sessão e
 problema observado. Experimentar encontros, rotação segurando joystick, alternar
 aplicativos, derrota/reinício e sessão prolongada. Observar fluidez/aquecimento
 separadamente — diagnóstico não mede temperatura nem bateria. Sem aparelho ADB
-conectado nesta etapa. Só então fechar este bloco e seguir acabamento/balanceamento.
+conectado nesta etapa. Playtest adiado pelo usuário para o fim dos polimentos;
+acabamento local pode continuar, sem considerar desempenho físico validado.
 
 ### Leitura dos inimigos — polimento atual
 

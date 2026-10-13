@@ -17,6 +17,7 @@ class BetaAccessScreen extends StatefulWidget {
 class _BetaAccessScreenState extends State<BetaAccessScreen> {
   final _password = TextEditingController();
   final _backdrop = BetaSession();
+  late final _backdropPainter = BetaArenaPainter(_backdrop);
   bool _opening = false;
   String? _error;
   Future<void> _enter() async {
@@ -40,6 +41,7 @@ class _BetaAccessScreenState extends State<BetaAccessScreen> {
   @override
   void dispose() {
     _password.dispose();
+    _backdropPainter.dispose();
     super.dispose();
   }
 
@@ -54,7 +56,7 @@ class _BetaAccessScreenState extends State<BetaAccessScreen> {
     body: Stack(
       fit: StackFit.expand,
       children: [
-        CustomPaint(painter: BetaArenaPainter(_backdrop)),
+        CustomPaint(painter: _backdropPainter),
         const ColoredBox(color: Color(0x55213A36)),
         SafeArea(
           child: Center(

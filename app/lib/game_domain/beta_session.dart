@@ -205,6 +205,7 @@ class BetaSession {
   static const arenaX = 8.5, arenaZ = 10.5;
   // Shared with the renderer: the blade crosses its target at swordContact.
   static const swordDuration = .44, swordContact = .16, castDuration = .35;
+  static const dodgeDuration = .24;
   static const deathDuration = .65, inputBuffer = .18;
   static const swordReach = 1.9, spellAimRange = 9.0, projectileRadius = .12;
   static const obstacles = [
@@ -263,6 +264,7 @@ class BetaSession {
       dodgeTime <= 0;
   bool get canDodge => playing && dodgeCooldown <= 0 && castTime <= 0;
   double get aimDirection => swordTime > 0 || castTime > 0 ? angle : _aimAngle;
+  double get dodgeDirection => math.atan2(_dodgeX, _dodgeZ);
   BetaEnemy? get aimTarget {
     if (!playing) return null;
     if (swordTime > 0 || castTime > 0) {
@@ -389,7 +391,7 @@ class BetaSession {
     final length = math.sqrt(moveX * moveX + moveZ * moveZ);
     _dodgeX = length > .05 ? moveX / length : math.sin(angle);
     _dodgeZ = length > .05 ? moveZ / length : math.cos(angle);
-    dodgeTime = .24;
+    dodgeTime = dodgeDuration;
     invulnerable = math.max(invulnerable, .3);
     dodgeCooldown = 1.6;
     swordTime = 0;

@@ -11,8 +11,16 @@ class BetaGame extends FlameGame {
   late BetaArenaPainter _painter = BetaArenaPainter(session);
   final hud = ValueNotifier<int>(0);
   final performance = BetaPerformance();
+  bool _reduceMotion = false;
+  bool get reduceMotion => _reduceMotion;
+  set reduceMotion(bool value) {
+    _reduceMotion = value;
+    _painter.reduceMotion = value;
+  }
+
   bool _closed = false;
   double _hudTime = 0;
+  double get healthTrail => _painter.heroHealthTrail;
   void refresh() {
     if (!_closed) hud.value++;
   }
@@ -21,7 +29,7 @@ class BetaGame extends FlameGame {
     _painter.dispose();
     performance.reset();
     session = BetaSession();
-    _painter = BetaArenaPainter(session);
+    _painter = BetaArenaPainter(session, reduceMotion: _reduceMotion);
     refresh();
   }
 
@@ -30,6 +38,7 @@ class BetaGame extends FlameGame {
     if (_closed) return;
     super.update(dt);
     if (session.playing) performance.recordLoop(dt);
+    final previousHp = session.hp;
     session.update(dt);
     _painter.advance(dt);
     for (final event in session.sounds) {
@@ -58,7 +67,7 @@ class BetaGame extends FlameGame {
       return;
     }
     _hudTime += dt;
-    if (_hudTime >= .1) {
+    if (_hudTime >= .1 || session.hp != previousHp) {
       _hudTime = 0;
       refresh();
     }

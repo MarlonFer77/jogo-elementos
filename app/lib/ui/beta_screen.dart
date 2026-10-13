@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../game_domain/beta_session.dart';
 import '../game_presentation/beta_game.dart';
+import '../game_presentation/beta_arena_painter.dart' show betaElementColor;
 import '../game_presentation/pixel_content_panel.dart';
 import '../game_presentation/pixel_menu_button.dart';
 import 'beta_controls.dart';
@@ -23,6 +24,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
   final _keys = <LogicalKeyboardKey>{};
   Size? _viewport;
   bool _collecting = false;
+  bool _exitPromptOpen = false, _exitApproved = false;
   int _timingStart = 0;
   @override
   void initState() {
@@ -34,6 +36,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _game.reduceMotion = MediaQuery.disableAnimationsOf(context);
     final size = MediaQuery.sizeOf(context);
     if (_viewport != null && _viewport != size) {
       // Resize replaces the controls; don't inherit a finger from the old layout.
@@ -118,6 +121,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
   }
 
   void _play() {
+    if (_exitPromptOpen || _exitApproved) return;
     _keys.clear();
     if (_game.session.phase == BetaPhase.ready) {
       _game.session.start();
@@ -127,6 +131,65 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
     _game.resumeEngine();
     _game.refresh();
     _focus.requestFocus();
+  }
+
+  Future<void> _requestExit() async {
+    if (_exitPromptOpen || _exitApproved) return;
+    _pause();
+    if (_game.session.phase == BetaPhase.paused) {
+      _exitPromptOpen = true;
+      final discard = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: SingleChildScrollView(
+            child: PixelContentPanel(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'SAIR DA RUÍNA?',
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Esta sessão não tem salvamento. Ao sair, você perde '
+                    'o nível e os encontros atuais. Os outros modos não serão alterados.',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  const SizedBox(height: 14),
+                  PixelMenuButton(
+                    label: 'Continuar na pausa',
+                    primary: true,
+                    onPressed: () => Navigator.pop(dialogContext, false),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext, true),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF7C3429),
+                    ),
+                    child: const Text('Sair e descartar sessão'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      if (!mounted) return;
+      _exitPromptOpen = false;
+      if (discard != true) return; // Cancel remains paused, with no held input.
+    }
+    if (!mounted) return;
+    setState(() => _exitApproved = true);
+    // Rebuild PopScope before leaving, including Android's predictive back.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).pop();
+    });
   }
 
   @override
@@ -205,9 +268,18 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
       builder: (context, _, _) {
         final run = _game.session;
         return PopScope(
-          canPop: !run.playing,
+          canPop:
+              _exitApproved ||
+              run.phase == BetaPhase.ready ||
+              ((run.phase == BetaPhase.won || run.phase == BetaPhase.lost) &&
+                  !run.settling),
           onPopInvokedWithResult: (didPop, _) {
-            if (!didPop) _pause();
+            if (didPop) return;
+            if (run.playing || run.settling) {
+              _pause();
+            } else {
+              _requestExit();
+            }
           },
           child: Scaffold(
             backgroundColor: const Color(0xFF243F3D),
@@ -218,21 +290,22 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                 SafeArea(
                   child: Stack(
                     children: [
-                      Positioned(
-                        top: 8,
-                        left: 8,
-                        right: 8,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _hud(run),
-                            if (run.playing &&
-                                (run.messageTime > 0 ||
-                                    run.nextEncounterIn > 0))
-                              _notice(run),
-                          ],
+                      if (run.phase != BetaPhase.ready)
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          right: 8,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _hud(run),
+                              if (run.playing &&
+                                  (run.messageTime > 0 ||
+                                      run.nextEncounterIn > 0))
+                                _notice(run),
+                            ],
+                          ),
                         ),
-                      ),
                       if (run.playing) ...[
                         Positioned(
                           left: 12,
@@ -285,85 +358,122 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
     ),
   );
 
-  Widget _hud(BetaSession run) => Align(
-    alignment: Alignment.topLeft,
-    child: ConstrainedBox(
-      constraints: BoxConstraints(
-        maxWidth: MediaQuery.orientationOf(context) == Orientation.landscape
-            ? 285
-            : 360,
-      ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xED263E35),
-          border: Border.all(color: const Color(0xFFABAE86)),
+  Widget _hud(BetaSession run) {
+    final critical = run.hp > 0 && run.hp <= run.maxHp * .25;
+    return Align(
+      alignment: Alignment.topLeft,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.orientationOf(context) == Orientation.landscape
+              ? 285
+              : 360,
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'BETA TEST · Nível ${run.level} · Encontro ${run.wave}/3',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFFF3DFB5),
-                      fontWeight: FontWeight.bold,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xED263E35),
+            border: Border.all(
+              color: critical
+                  ? const Color(0xFFE8A17E)
+                  : const Color(0xFFABAE86),
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'BETA TEST · Nível ${run.level} · Encontro ${run.wave}/3',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFFF3DFB5),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 5),
-                  _bar(
-                    'HP ${run.hp.ceil()}/${run.maxHp.round()}',
-                    run.hp / run.maxHp,
-                    const Color(0xFFB7CA86),
-                  ),
-                  const SizedBox(height: 3),
-                  _bar(
-                    'MP ${run.mana.floor()}/100',
-                    run.mana / 100,
-                    const Color(0xFF83BCC7),
-                  ),
-                  Text(
-                    '${run.xp}/${run.nextLevelXp} XP · ${run.remaining} inimigos · progresso temporário',
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: Color(0xFFD0D5B7),
+                    const SizedBox(height: 5),
+                    _bar(
+                      'HP ${run.hp.ceil()}/${run.maxHp.round()}',
+                      run.hp / run.maxHp,
+                      critical
+                          ? const Color(0xFFE8A17E)
+                          : const Color(0xFFB7CA86),
+                      trail: _game.healthTrail,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 3),
+                    _bar(
+                      'MP ${run.mana.floor()}/100',
+                      run.mana / 100,
+                      const Color(0xFF83BCC7),
+                    ),
+                    Text(
+                      critical
+                          ? 'VIDA BAIXA · Água cura ao acertar'
+                          : '${run.xp}/${run.nextLevelXp} XP · ${run.remaining} inimigos · progresso temporário',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: critical
+                            ? const Color(0xFFFFC4A1)
+                            : const Color(0xFFD0D5B7),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            IconButton(
-              tooltip: 'Pausar beta',
-              onPressed: run.playing ? _pause : null,
-              icon: const Icon(Icons.pause, color: Color(0xFFF3DFB5)),
-            ),
-          ],
+              IconButton(
+                tooltip: 'Pausar beta',
+                onPressed: run.playing ? _pause : null,
+                icon: const Icon(Icons.pause, color: Color(0xFFF3DFB5)),
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-  Widget _bar(String label, double value, Color color) => Row(
-    children: [
-      SizedBox(
-        width: 78,
-        child: Text(
-          label,
-          style: const TextStyle(fontSize: 10, color: Color(0xFFF2E9CC)),
+    );
+  }
+
+  Widget _bar(String label, double value, Color color, {double? trail}) =>
+      Semantics(
+        label: label,
+        child: ExcludeSemantics(
+          child: Row(
+            children: [
+              SizedBox(
+                width: 78,
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Color(0xFFF2E9CC),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Stack(
+                  children: [
+                    if (trail != null)
+                      LinearProgressIndicator(
+                        value: trail.clamp(value.clamp(0, 1), 1),
+                        color: const Color(0xFF8B7857),
+                        backgroundColor: const Color(0xFF51624D),
+                        minHeight: 5,
+                      ),
+                    LinearProgressIndicator(
+                      value: value.clamp(0, 1),
+                      color: color,
+                      backgroundColor: trail == null
+                          ? const Color(0xFF51624D)
+                          : Colors.transparent,
+                      minHeight: 5,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-      Expanded(
-        child: LinearProgressIndicator(
-          value: value.clamp(0, 1),
-          color: color,
-          backgroundColor: const Color(0xFF51624D),
-          minHeight: 5,
-        ),
-      ),
-    ],
-  );
+      );
 
   Widget _overlay(BetaSession run) {
     final ready = run.phase == BetaPhase.ready,
@@ -397,10 +507,14 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                   const SizedBox(height: 8),
                   Text(
                     ready
-                        ? 'Mova e aponte com o joystick. Alvo dourado: espada no alcance. Azul: aproxime-se ou use magia. Colunas bloqueiam os disparos.\n\nGoblin: desvie de lado. Bruto: contorne a varredura. Guardião: saia do círculo. Contra-ataque quando aparecer Recuperando. Troque entre 4 elementos e vença três encontros.'
+                        ? 'Vença três encontros e derrote o guardião.\n'
+                              'Mova e mire com o joystick; ataque, conjure e desvie.\n'
+                              'Progresso temporário: sair encerra esta sessão.'
                         : paused
                         ? 'O tempo está parado. Seu progresso neste beta dura somente até sair.'
-                        : '${run.kills} inimigos · ${run.xp} XP · nível ${run.level}\nEste teste não altera sua Dungeon, Treino ou Multiplayer.',
+                        : '${run.phase == BetaPhase.won ? 'Três encontros concluídos.' : 'Você caiu no encontro ${run.wave}/3.'}\n'
+                              '${run.kills} inimigos · ${run.xp} XP · nível ${run.level}\n'
+                              'Progresso desta sessão; seus outros modos não são alterados.',
                     style: const TextStyle(fontSize: 13),
                   ),
                   const SizedBox(height: 12),
@@ -421,12 +535,10 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF314C40),
                     ),
-                    onPressed: () {
-                      _pause();
-                      Navigator.pop(context);
-                    },
+                    onPressed: _requestExit,
                     child: const Text('Voltar ao menu'),
                   ),
+                  _combatGuide(),
                   ExpansionTile(
                     iconColor: const Color(0xFF314C40),
                     collapsedIconColor: const Color(0xFF314C40),
@@ -481,4 +593,49 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
       ),
     );
   }
+
+  Widget _combatGuide() => ExpansionTile(
+    key: const PageStorageKey('beta-combat-guide'),
+    iconColor: const Color(0xFF314C40),
+    collapsedIconColor: const Color(0xFF314C40),
+    tilePadding: EdgeInsets.zero,
+    title: const Text('Guia de combate', style: TextStyle(fontSize: 13)),
+    children: [
+      const Text(
+        'Alvo dourado: espada no alcance. Azul: aproxime-se ou use magia. '
+        'Colunas bloqueiam golpes e disparos. Magia custa 25 MP; mana retorna sozinha.',
+        style: TextStyle(fontSize: 12),
+      ),
+      const SizedBox(height: 8),
+      for (final element in BetaElement.values)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                margin: const EdgeInsets.only(top: 3, right: 8),
+                color: betaElementColor(element),
+              ),
+              Expanded(
+                child: Text(
+                  '${element.label} · ${element.description}',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+      const SizedBox(height: 8),
+      const Text(
+        'Goblin: desvie de lado. Bruto: contorne a varredura. '
+        'Guardião: saia do círculo. Ataque quando aparecer “Recuperando”.\n\n'
+        'Teclado: WASD/setas · J espada · K magia · Espaço esquiva · 1–4 elementos.',
+        style: TextStyle(fontSize: 12),
+      ),
+      const SizedBox(height: 8),
+    ],
+  );
 }

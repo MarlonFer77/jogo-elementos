@@ -314,7 +314,15 @@ void main() {
     e.windup = .04;
     expect(run.dodge(), true);
     expect(run.dodge(), false);
+    expect(run.dodgeDirection, closeTo(pi / 2, .00001));
+    final beforeDodgeX = run.x;
+    run.setMovement(
+      -1,
+      0,
+    ); // Moving the thumb must not redirect an active dodge.
+    expect(run.dodgeDirection, closeTo(pi / 2, .00001));
     run.update(.05);
+    expect(run.x, greaterThan(beforeDodgeX));
     expect(run.hp, 100);
     run.pause();
     expect(run.sword(), false);

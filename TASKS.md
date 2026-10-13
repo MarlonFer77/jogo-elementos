@@ -4,6 +4,85 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Preparação autorizada do APK candidato 0.34.0+34 em andamento. Usar workflow
+existente e a mesma assinatura da v0.33.0; não criar release/tag nem alterar
+backend. Conferir certificado, package ID, versionCode, assets e hash localmente.
+ADB inicialmente sem dispositivos; SDK sem emulador. Solicitada conexão USB ao
+usuário enquanto o build prossegue. Testes físicos e atualização real continuam
+pendentes até existir aparelho disponível; não substituir por simulação.
+
+Checkpoint anterior:
+
+Rodada local de polimento do beta atual fechada para playtest: entrada curta,
+guia na pausa, confirmação antes de abandonar e resultado explica o encontro.
+Cancelar saída mantém pausa/HP/mana, sem movimento preso. Movimento reduzido do
+sistema desliga tremor, antecipação da câmera, pop dos números e escala de botões;
+animações necessárias ao combate permanecem. Preferência preservada ao reiniciar.
+Pintor da tela de acesso reutilizado/descartado corretamente.
+37 verificações beta aprovadas no conjunto: 23 regras, 7 telas, 3 renderização,
+3 feedback de HP e 1 métricas. Ajustada espera de transição no teste de saída;
+as 7 telas passaram novamente após acabamento final. Análise limpa e capturas
+de entrada 320/360/640, guia e confirmação revisadas. Checklist em
+docs/beta-action-rpg.md (Critérios de liberação do beta atual).
+NÃO liberado para produção: faltam APK candidato, playtest/performance/áudio reais,
+instalação por atualização e correções que esses testes apontarem. Validação física
+ficou para o final por pedido do usuário. Não declarar “100%” por testes locais.
+Sem APK/release/deploy, combos 3D, save permanente ou novos mapas neste bloco.
+
+Checkpoint anterior:
+
+Polimento local concluído: HP do jogador/inimigos com rastro curto da perda,
+barra maior para o guardião e HUD atualizado no mesmo frame lógico de dano/cura.
+Vida <=25% mostra orientação sobre Água sem ampliar o HUD ou piscar a tela.
+Cura/nível limpam o rastro, pausa congela e reinício descarta o feedback.
+11 testes focados aprovados; análise limpa; contraste ajustado após revisão
+visual e três layouts revalidados. Capturas beta-vitals-{320,360,640}.png e
+beta-health-polish.png em app/build/gameplay-preview/.
+Apenas apresentação, sem mudar dano/cura/progressão, outros modos ou backend.
+Sem APK/release. Playtest físico continua para o final, conforme solicitado.
+
+Checkpoint anterior:
+
+Polimento local concluído: acertos físicos com marca de contato curta (220ms),
+números com destaque inicial e saída suave, sem efeito falso em golpe perdido.
+Botões respondem visualmente ao toque mantendo área fixa; um pedido por contato,
+cancelamento e múltiplos dedos tratados. Magia identifica elemento por ícone,
+cor e nome; fila destacada. Sem alteração de dano, custos ou recargas.
+8 testes focados aprovados (6 telas/controles + 2 render/cache); render revalidado
+após ajuste de composição. Análise limpa; capturas 320/640 e sequência de impacto
+conferidas. Prévia: app/build/gameplay-preview/beta-contact-polish.png.
+Playtest no celular adiado pelo usuário para o fim dos polimentos; não é bloqueio
+para continuar acabamento local. Sem APK/release/backend; tudo posterior à v0.33.0
+permanece local. Não declarar fluidez/desempenho físicos validados.
+
+Checkpoint anterior:
+
+Teste e polimento local concluídos (13/10): esquiva inclina o corpo na direção
+comprometida, com entrada/saída suaves; câmera acompanha essa direção mesmo
+mudando o joystick. Braço retorna da conjuração em 140ms, só visualmente, sem
+atrasar outro comando. Tempos, dano, mana e recargas preservados.
+31 testes beta aprovados antes das mudanças; 25 verificações afetadas aprovadas
+depois, análise Dart limpa. Capturas direcionais/conjuração conferidas em
+app/build/gameplay-preview/beta-motion-polish.png. Sem Android conectado ao ADB:
+fluidez percebida e desempenho físicos pendentes. Sem APK/release/backend;
+este polimento e o checkpoint abaixo continuam locais, posteriores à v0.33.0.
+
+Checkpoint anterior:
+
+Polimento local concluído (13/10): câmera antecipa suavemente movimento/alvo
+até 6 unidades, com deslocamento de foco limitado. Áreas de ataque destacam
+exposição ao golpe na posição do jogador (geometria + linha livre), com aviso
+“SAIA DA ÁREA” abaixo do avatar. Fora da área, marcação âmbar discreta; coluna,
+cancelamento ou morte removem o alerta. Regras de dano/alcance/recargas preservadas.
+7 verificações focadas aprovadas; análise Dart limpa. Prévias dentro/fora da área
+para três inimigos, bloqueio/cancelamento e telas 320/360/640 conferidas.
+Capturas: app/build/gameplay-preview/beta-danger-polish.png e beta-danger-*.png.
+Base publicada: v0.33.0, commit 2ba80b5, APK aprovado no workflow 38011058736.
+Validação física de câmera/fluidez/áudio continua pendente. Alterações deste bloco
+ainda não publicadas; a release disponível continua v0.33.0.
+
+Checkpoint anterior:
+
 Polimento de resposta/leitura do combate beta concluído localmente: intenção
 antecipada consumida depois dos timers de animação (não se perde no limite de
 180ms); botões explicam conjuração/ataque/esquiva/mana/fila e têm contraste melhor
@@ -548,13 +627,15 @@ Validação manual em aparelhos e balanceamento pendentes. Sem commit/release/de
 
 # NEXT
 
-Playtest do BETA TEST: resposta dos controles/alcances, câmera e desempenho
-no Android. Só depois expandir combos, exploração e progresso permanente 3D.
+Preparar APK candidato quando solicitado e executar checklist final do BETA TEST:
+resposta dos controles/alcances, câmera, áudio, ciclo de vida, atualização e
+desempenho no Android. Corrigir problemas reproduzidos antes de liberar produção.
+Só depois expandir combos, exploração e progresso permanente 3D.
 
 Playtest das variações da Dungeon nos celulares: dificuldade por sala, duração
 das variantes defensivas e decisões de build. Publicação apenas quando solicitada.
 Assinatura definitiva adiada expressamente pelo usuário; não alterar keystore
-ou workflow de assinatura neste bloco. A versão pública atual é v0.31.0.
+ou workflow de assinatura neste bloco. Última publicação registrada: v0.33.0.
 
 # BACKLOG
 
