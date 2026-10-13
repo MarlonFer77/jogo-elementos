@@ -4,12 +4,18 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Preparação autorizada do APK candidato 0.34.0+34 em andamento. Usar workflow
-existente e a mesma assinatura da v0.33.0; não criar release/tag nem alterar
-backend. Conferir certificado, package ID, versionCode, assets e hash localmente.
-ADB inicialmente sem dispositivos; SDK sem emulador. Solicitada conexão USB ao
-usuário enquanto o build prossegue. Testes físicos e atualização real continuam
-pendentes até existir aparelho disponível; não substituir por simulação.
+APK candidato 0.34.0+34 gerado e conferido em 13/10/2026. Branch
+codex/beta-candidate-v0.34.0; fonte 88c5f45; workflow 38441944182 aprovado.
+Arquivo: app/build/candidate-v0.34.0/app-release.apk. Assinatura e package ID
+iguais à v0.33.0, versionCode 34, hash igual ao CI, 24/24 sons incluídos e mesmas
+permissões Android. Mais 19 testes de áudio/atualizador/configurações aprovados.
+Sem release/tag/deploy ou nova chave. Certificado atual continua Android Debug;
+assinatura definitiva não faz parte desta validação. Evidências completas em
+docs/beta-candidate-v0.34.0.md.
+Pendente: instalação por atualização, preservação dos dados e playtest real de
+fluidez/áudio/estabilidade. ADB sem dispositivos após o build; SDK sem emulador.
+Solicitada conexão USB ao usuário. Não desinstalar/limpar dados para testar.
+Não declarar produção aprovada nem substituir teste físico por simulação.
 
 Checkpoint anterior:
 
