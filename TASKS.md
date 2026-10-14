@@ -4,6 +4,16 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Pré-release v0.34.0 publicada em 14/10/2026 por autorização do usuário:
+https://github.com/MarlonFer77/jogo-elementos/releases/tag/v0.34.0
+Tag aponta para o commit compilado 88c5f45. APK remoto confirmado por SHA-256 e
+tamanho; draft=false, prerelease=true; latest continua v0.33.0. Distribuição
+manual para testes, sem atualização automática, build novo ou deploy no Render.
+Próximo passo: playtest e instalação por atualização nos aparelhos reais.
+Não aprovada para produção; não há resultado físico novo nesta publicação.
+
+Checkpoint anterior:
+
 APK candidato 0.34.0+34 gerado e conferido em 13/10/2026. Branch
 codex/beta-candidate-v0.34.0; fonte 88c5f45; workflow 38441944182 aprovado.
 Arquivo: app/build/candidate-v0.34.0/app-release.apk. Assinatura e package ID

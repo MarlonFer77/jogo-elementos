@@ -1,6 +1,8 @@
 # Candidato Android 0.34.0+34
 
-APK de validação do polimento do BETA TEST, ainda não publicado como release.
+APK de validação do polimento do BETA TEST, publicado como
+[pré-release v0.34.0](https://github.com/MarlonFer77/jogo-elementos/releases/tag/v0.34.0)
+em 14/10/2026. Não aprovado para produção; instalação manual pelos testadores.
 Base anterior: v0.33.0+33. O nome de versão segue o formato numérico exigido pelo
 atualizador existente; “candidato” identifica a etapa, não um sufixo de versão.
 
@@ -17,6 +19,8 @@ atualizador existente; “candidato” identifica a etapa, não um sufixo de ver
 - 37 verificações beta aprovadas no conjunto; análise Dart limpa.
 - Mais 19 testes focados aprovados: áudio/atualizador (16) e configurações (3).
 - Build de release concluído em 13/10/2026; workflow e verificação local aprovados.
+- Pré-release publicada: draft=false, prerelease=true; latest permanece v0.33.0.
+- APK publicado tem o mesmo tamanho e SHA-256 do candidato; tag no commit compilado.
 - Certificado e package ID iguais à v0.33.0; versionCode aumentou de 33 para 34.
 - 24/24 sons presentes e não vazios no APK; nenhuma permissão Android adicionada.
 - APK não depurável; assinatura de compatibilidade existente preservada. Ainda é
@@ -31,7 +35,8 @@ atualizador existente; “candidato” identifica a etapa, não um sufixo de ver
 - Branch: `codex/beta-candidate-v0.34.0`.
 - Commit compilado: `88c5f45dbebd5c323ab71da86c600c7bb3a6395c`.
 - [Build GitHub Actions](https://github.com/MarlonFer77/jogo-elementos/actions/runs/38441944182).
-- Artefato: `jogo-elementos-apk`, ID `11837775672` (não é uma release publicada).
+- Artefato de origem no Actions: `jogo-elementos-apk`, ID `11837775672`.
+- [APK publicado para testes](https://github.com/MarlonFer77/jogo-elementos/releases/download/v0.34.0/app-release.apk).
 - Arquivo local: `app/build/candidate-v0.34.0/app-release.apk`.
 - Tamanho: 58.183.518 bytes.
 - SHA-256: `cb662c01a5dd8d6982c9c300b4f937fbc1c2239b42e75ea8548dd36c40ab24ab`.
