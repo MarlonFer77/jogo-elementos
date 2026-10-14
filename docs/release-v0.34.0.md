@@ -1,6 +1,8 @@
 # Elementos v0.34.0 — Testes finais do BETA TEST
 
-Pré-release para testes em Android. Ainda não aprovada para produção.
+Release disponibilizada como Latest a pedido do responsável, para permitir a
+atualização pelo app. Os testes reais em Android continuam pendentes; essa
+mudança de distribuição não significa aprovação para produção.
 
 ## Melhorias
 
@@ -11,9 +13,9 @@ Pré-release para testes em Android. Ainda não aprovada para produção.
 
 ## Instalação e testes
 
-Baixe **app-release.apk** em Assets e instale sobre a versão atual, sem
-desinstalar o jogo nem limpar dados. Esta pré-release não aparece no atualizador
-automático. Confirme a versão 0.34.0 e a preservação de perfis e progresso.
+Atualize pelo aviso do app ou baixe **app-release.apk** em Assets e instale sobre
+a versão atual, sem desinstalar o jogo nem limpar dados. Confirme a versão
+0.34.0 e a preservação de perfis e progresso.
 
 No BETA TEST, conclua os três encontros; teste derrota/reinício, rotação da tela,
 pausa e retorno de outro aplicativo. Jogue por 15–20 minutos e confira fluidez,

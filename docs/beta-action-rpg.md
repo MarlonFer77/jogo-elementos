@@ -1,9 +1,10 @@
 # BETA TEST — Ruína dos Ecos
 
 Primeiro protótipo solo de ação 3D dentro do app, implementado em 09/10/2026.
-Não substitui o combate por turnos. Base estável v0.33.0; polimentos incluídos
-na pré-release de testes v0.34.0, publicada em 14/10/2026 com autorização.
-Sem deploy ou troca de assinatura; instalação manual, não atualização automática.
+Não substitui o combate por turnos. Polimentos incluídos na v0.34.0, publicada
+em 14/10/2026 e promovida de pré-release a Latest por pedido do usuário para
+disponibilizar o aviso de atualização no app. Sem deploy ou troca de assinatura.
+Validação física ainda pendente, independentemente do canal de distribuição.
 Evidências e checklist em [Candidato Android](beta-candidate-v0.34.0.md).
 
 ## Acesso
@@ -80,8 +81,8 @@ sessão; não significa um RPG completo com save, combos 3D ou exploração.
   travadas; suas métricas não provam FPS apresentado nem temperatura física.
 - [ ] Corrigir e repetir os casos com falha; só então aprovar a publicação.
 
-APK candidato publicado como pré-release por autorização explícita; não promover
-automaticamente a estável nem tratar a publicação como aprovação de produção.
+APK publicado e promovido a Latest por autorização explícita; não tratar a
+mudança de distribuição como aprovação de produção.
 Combos 3D, save e exploração continuam
 no roadmap posterior, não são preenchidos por polimento visual. A senha local
 continua sendo conveniência para testadores, não proteção de acesso em produção.

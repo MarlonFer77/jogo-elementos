@@ -4,6 +4,15 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+v0.34.0 promovida a Latest em 14/10/2026 por pedido explícito do usuário para
+atualizar pelo celular. Removido prerelease; endpoint público releases/latest
+confirma v0.34.0, draft=false, prerelease=false e APK/hash inalterados. Notas da
+release atualizadas. Sem build, nova assinatura, gameplay ou deploy no Render.
+Playtest real, preservação dos dados e instalação por atualização continuam
+pendentes: promoção do canal não equivale a aprovação para produção.
+
+Checkpoint anterior:
+
 Pré-release v0.34.0 publicada em 14/10/2026 por autorização do usuário:
 https://github.com/MarlonFer77/jogo-elementos/releases/tag/v0.34.0
 Tag aponta para o commit compilado 88c5f45. APK remoto confirmado por SHA-256 e

@@ -1,8 +1,9 @@
 # Candidato Android 0.34.0+34
 
-APK de validação do polimento do BETA TEST, publicado como
-[pré-release v0.34.0](https://github.com/MarlonFer77/jogo-elementos/releases/tag/v0.34.0)
-em 14/10/2026. Não aprovado para produção; instalação manual pelos testadores.
+APK de validação do polimento do BETA TEST, publicado inicialmente como
+pré-release e promovido a [Latest v0.34.0](https://github.com/MarlonFer77/jogo-elementos/releases/tag/v0.34.0)
+em 14/10/2026 por pedido explícito para atualizar pelo app. Ainda não aprovado
+para produção: a mudança do canal não substitui os testes físicos pendentes.
 Base anterior: v0.33.0+33. O nome de versão segue o formato numérico exigido pelo
 atualizador existente; “candidato” identifica a etapa, não um sufixo de versão.
 
@@ -19,7 +20,8 @@ atualizador existente; “candidato” identifica a etapa, não um sufixo de ver
 - 37 verificações beta aprovadas no conjunto; análise Dart limpa.
 - Mais 19 testes focados aprovados: áudio/atualizador (16) e configurações (3).
 - Build de release concluído em 13/10/2026; workflow e verificação local aprovados.
-- Pré-release publicada: draft=false, prerelease=true; latest permanece v0.33.0.
+- Endpoint público confirmado após promoção: latest v0.34.0, draft=false,
+  prerelease=false; mesmo APK, tamanho e hash.
 - APK publicado tem o mesmo tamanho e SHA-256 do candidato; tag no commit compilado.
 - Certificado e package ID iguais à v0.33.0; versionCode aumentou de 33 para 34.
 - 24/24 sons presentes e não vazios no APK; nenhuma permissão Android adicionada.
