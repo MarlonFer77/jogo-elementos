@@ -4,11 +4,21 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Publicar v0.35.0+35 por autorização do usuário: incluir expansão de três
-regiões, combos e árvore do beta já verificados. Build no workflow existente,
-sem alterar chave; verificar certificado/package/versionCode e hash do APK.
-Publicar como Latest para o atualizador. Sem mudanças/deploy no backend.
-Validação física continua pendente; distribuição não significa produção aprovada.
+v0.35.0+35 publicada como Latest em 14/10/2026 por autorização do usuário:
+https://github.com/MarlonFer77/jogo-elementos/releases/tag/v0.35.0
+Inclui três regiões, seis combos e árvore do beta 3D. Branch codex/release-v0.35.0;
+tag no commit compilado e585cd7ef189ff98ba009a641e3278dd081408f9. Workflow
+38601025638 aprovado (7m34s), artefato 11913827364. APK local em
+app/build/release-v0.35.0/app-release.apk: 58.757.138 bytes, hash igual ao CI
+e ao asset remoto. Versão/package/certificado conferidos contra v0.34.0;
+APK não depurável, mesmas permissões e conteúdo de áudio preservado.
+Endpoint público latest confirma v0.35.0, draft=false/prerelease=false,
+asset uploaded/digest válido; download HTTP 200. UpdateChecker real contra
+GitHub: 0.34.0+34 recebe atualização, 0.35.0+35 não; ambos sem erro.
+50 testes beta e mais 19 do atualizador aprovados. Metadados/hash nas notas
+docs/release-v0.35.0.md. Sem deploy no Render ou troca de assinatura.
+Certificado ainda Android Debug; assinatura definitiva e validação física
+continuam pendentes. Não declarar produção aprovada pela publicação.
 
 Checkpoint anterior:
 
