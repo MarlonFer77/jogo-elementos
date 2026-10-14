@@ -526,7 +526,7 @@ void main() {
       await tester.pump();
       expect(find.text('Sem mana'), findsOneWidget);
       final hudHeight = tester
-          .getBottomLeft(find.textContaining('progresso temporário'))
+          .getBottomLeft(find.byKey(const ValueKey('beta-status')))
           .dy;
       game.session
         ..hp = 20
@@ -563,11 +563,11 @@ void main() {
       game.session.enemies.clear();
       game.refresh();
       await tester.pump();
-      expect(find.textContaining('ENCONTRO 1 CONCLUÍDO'), findsOneWidget);
+      expect(find.textContaining('ÁREA LIVRE'), findsOneWidget);
       expect(
-        tester.getTopLeft(find.textContaining('ENCONTRO 1 CONCLUÍDO')).dy,
+        tester.getTopLeft(find.textContaining('ÁREA LIVRE')).dy,
         greaterThan(
-          tester.getBottomLeft(find.textContaining('progresso temporário')).dy,
+          tester.getBottomLeft(find.byKey(const ValueKey('beta-status'))).dy,
         ),
       );
       if (Platform.environment['ELEMENTOS_ART_PREVIEW'] == '1') {
@@ -583,6 +583,21 @@ void main() {
           image.dispose();
         });
       }
+      for (var i = 0; i < 22; i++) {
+        game.update(.1);
+      }
+      game.refresh();
+      await tester.pump();
+      expect(find.textContaining('PASSAGEM ABERTA'), findsOneWidget);
+      game.session.x = BetaRegion.gateX;
+      game.session.z = BetaRegion.gateZ;
+      for (var i = 0; i < 6; i++) {
+        game.update(.1);
+      }
+      await tester.pump();
+      expect(find.textContaining('Aqueduto Velado · 2/3'), findsOneWidget);
+      expect(find.byKey(const ValueKey('beta-movement-2')), findsOneWidget);
+      expect(find.byKey(const ValueKey('beta-actions-1')), findsNothing);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
       await tester.pump();
       expect(game.session.phase, BetaPhase.paused);

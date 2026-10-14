@@ -52,30 +52,138 @@ void main() {
     },
   );
 
-  test('encounter countdown pauses and preserves existing capped recovery', () {
-    final run = BetaSession()..start();
-    expect(run.nextEncounterIn, 0);
-    run.enemies.clear();
-    run.hp = 89;
-    expect(run.nextEncounterIn, 2);
-    advance(run, 1);
-    expect(run.nextEncounterIn, closeTo(1, .001));
-    run.pause();
-    final countdown = run.nextEncounterIn;
-    run.update(.1);
-    expect(run.nextEncounterIn, countdown);
-    run.resume();
-    advance(run, 1.05);
-    expect(run.wave, 2);
-    expect(run.nextEncounterIn, 0);
-    expect(run.hp, 100);
-    expect(run.mana, 100);
-    run.wave = 3;
-    run.enemies.clear();
-    run.update(.01);
-    expect(run.phase, BetaPhase.won);
-    expect(run.nextEncounterIn, 0);
-  });
+  test(
+    'passage waits for the player, pauses and preserves capped recovery',
+    () {
+      final run = BetaSession()..start();
+      expect(run.nextEncounterIn, 0);
+      run.enemies.clear();
+      run.hp = 89;
+      expect(run.nextEncounterIn, 2);
+      advance(run, 1);
+      expect(run.nextEncounterIn, closeTo(1, .001));
+      run.pause();
+      final countdown = run.nextEncounterIn;
+      run.update(.1);
+      expect(run.nextEncounterIn, countdown);
+      run.resume();
+      advance(run, 1.05);
+      expect(run.wave, 1);
+      expect(run.passageOpen, true);
+      expect(run.hp, 89);
+      advance(run, 4);
+      expect(run.wave, 1); // No automatic teleport after winning the encounter.
+      run.x = BetaRegion.gateX;
+      run.z = BetaRegion.gateZ;
+      advance(run, .6);
+      expect(run.wave, 2);
+      expect(run.region, BetaRegion.aqueduct);
+      expect(run.arrivalTime, greaterThan(0));
+      expect(run.nextEncounterIn, 0);
+      expect(run.hp, 100);
+      expect(run.mana, 100);
+      advance(run, .4);
+      run.wave = 3;
+      run.enemies.clear();
+      run.update(.01);
+      expect(run.phase, BetaPhase.won);
+      expect(run.nextEncounterIn, 0);
+    },
+  );
+
+  test(
+    'region travel rejects combat and cancels held actions across frame rates',
+    () {
+      for (final fps in [30, 60, 120]) {
+        final run = BetaSession()..start();
+        run.x = BetaRegion.gateX;
+        run.z = BetaRegion.gateZ;
+        advance(run, .6);
+        expect(run.wave, 1); // Enemies still alive: passage remains locked.
+        run.enemies.clear();
+        run.x = 0;
+        run.z = 0;
+        advance(run, 2.1);
+        expect(run.sounds.where((s) => s == BetaSound.passage), hasLength(1));
+        run.z = BetaRegion.gateZ;
+        advance(run, .3);
+        expect(run.passageProgress, greaterThan(0));
+        run.pause();
+        advance(run, 1);
+        expect(run.passageProgress, 0);
+        expect(run.wave, 1);
+        run.resume();
+        run.hp = 60;
+        run.mana = 30;
+        run.level = 2;
+        run.xp = 65;
+        run.select(BetaElement.water);
+        final kills = run.kills;
+        for (var t = 0.0; t < .6; t += 1 / fps) {
+          run.update(1 / fps);
+        }
+        expect(run.wave, 2);
+        expect(run.x, BetaRegion.entryX);
+        expect(run.z, BetaRegion.entryZ);
+        expect(run.hp, 80);
+        expect(run.mana, inInclusiveRange(55, 61));
+        expect(run.level, 2);
+        expect(run.xp, 65);
+        expect(run.kills, kills);
+        expect(run.element, BetaElement.water);
+        expect(run.queuedAction, isNull);
+        expect(run.projectiles, isEmpty);
+        expect(run.effects, isEmpty);
+        expect(run.passageOpen, false);
+        expect(run.canRequest(BetaAction.cast), false);
+        run.setMovement(1, 1);
+        expect(run.moveX, 0);
+        expect(run.moveZ, 0);
+        run.pause();
+        final arrival = run.arrivalTime;
+        advance(run, 1);
+        expect(run.arrivalTime, arrival);
+        run.resume();
+        advance(run, .4);
+        expect(run.canRequest(BetaAction.sword), true);
+      }
+    },
+  );
+
+  test(
+    'all regions share visible collision, clear entry and accessible passage',
+    () {
+      for (final region in BetaRegion.values) {
+        final run = BetaSession()..wave = region.index + 1;
+        expect(run.obstacles, same(region.obstacles));
+        expect(run.walkable(BetaRegion.entryX, BetaRegion.entryZ, .35), true);
+        for (var z = BetaRegion.entryZ; z >= BetaRegion.gateZ; z -= .25) {
+          expect(run.walkable(0, z, .35), true, reason: region.title);
+        }
+        for (final o in run.obstacles) {
+          expect(run.walkable(o.x, o.z, .35), false);
+          expect(run.clearLine(o.x - 1, o.z, o.x + 1, o.z), false);
+        }
+        run.start();
+        for (final enemy in run.enemies) {
+          expect(run.walkable(enemy.x, enemy.z, enemy.radius), true);
+          expect(
+            BetaSession.distance(run.x, run.z, enemy.x, enemy.z),
+            greaterThan(5),
+          );
+        }
+        if (region != BetaRegion.sanctum) {
+          run.enemies.clear();
+          run.setMovement(0, -1);
+          for (var i = 0; i < 300 && run.region == region; i++) {
+            run.update(1 / 60);
+          }
+          expect(run.wave, region.index + 2, reason: 'Walk to the next region');
+          expect(run.moveZ, 0);
+        }
+      }
+    },
+  );
 
   test('each spell impact emits its own sound, misses do not', () {
     final sounds = [
@@ -222,7 +330,7 @@ void main() {
     run.setMovement(1, 0);
     advance(run, .4);
     expect(run.x, lessThanOrEqualTo(3));
-    expect(BetaSession.walkable(run.x, run.z, .35), true);
+    expect(run.walkable(run.x, run.z, .35), true);
     run.x = 8;
     run.z = 5;
     advance(run, .5);
@@ -340,7 +448,12 @@ void main() {
       }
       run.sword();
       advance(run, .4);
-      if (wave < 3) advance(run, 2);
+      if (wave < 3) {
+        advance(run, 2);
+        run.x = BetaRegion.gateX;
+        run.z = BetaRegion.gateZ;
+        advance(run, 1);
+      }
     }
     expect(run.phase, BetaPhase.won);
     expect(run.kills, 9);
@@ -460,7 +573,7 @@ void main() {
     run.update(.01);
     expect(enemy.x, closeTo(2.86, .0001));
     advance(run, .21);
-    expect(BetaSession.walkable(enemy.x, enemy.z, enemy.radius), true);
+    expect(run.walkable(enemy.x, enemy.z, enemy.radius), true);
     expect(enemy.x, lessThan(3));
     expect(enemy.pushTime, 0);
   });

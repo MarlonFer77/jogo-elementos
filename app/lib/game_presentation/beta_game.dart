@@ -39,6 +39,7 @@ class BetaGame extends FlameGame {
     super.update(dt);
     if (session.playing) performance.recordLoop(dt);
     final previousHp = session.hp;
+    final previousRegion = session.region;
     session.update(dt);
     _painter.advance(dt);
     for (final event in session.sounds) {
@@ -57,6 +58,8 @@ class BetaGame extends FlameGame {
         BetaSound.waterImpact => SfxId.water,
         BetaSound.windImpact => SfxId.wind,
         BetaSound.earthImpact => SfxId.stone,
+        BetaSound.passage => SfxId.purify,
+        BetaSound.discovery => SfxId.unlock,
       });
     }
     session.sounds.clear();
@@ -67,7 +70,9 @@ class BetaGame extends FlameGame {
       return;
     }
     _hudTime += dt;
-    if (_hudTime >= .1 || session.hp != previousHp) {
+    if (_hudTime >= .1 ||
+        session.hp != previousHp ||
+        session.region != previousRegion) {
       _hudTime = 0;
       refresh();
     }

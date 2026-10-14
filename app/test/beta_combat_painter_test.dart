@@ -13,6 +13,81 @@ void main() {
     return painter;
   }
 
+  testWidgets('three regions render distinct scenery in both orientations', (
+    tester,
+  ) async {
+    final preview = Platform.environment['ELEMENTOS_ART_PREVIEW'] == '1';
+    if (preview && Platform.isWindows) {
+      await tester.runAsync(() async {
+        final bytes = await File('C:/Windows/Fonts/segoeui.ttf').readAsBytes();
+        await (FontLoader(
+          'Roboto',
+        )..addFont(Future.value(ByteData.sublistView(bytes)))).load();
+      });
+    }
+    for (final size in [const Size(360, 640), const Size(640, 360)]) {
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      final signatures = <int>{};
+      for (final region in BetaRegion.values) {
+        final run = BetaSession()..wave = region.index + 1;
+        run.z = 1.5;
+        run.start();
+        final painter = painterFor(run);
+        final localRecorder = ui.PictureRecorder();
+        painter.paint(Canvas(localRecorder), size);
+        final scene = localRecorder.endRecording();
+        canvas.save();
+        canvas.translate(region.index * size.width, 0);
+        canvas.drawPicture(scene);
+        final label = TextPainter(
+          text: TextSpan(
+            text: region.title,
+            style: const TextStyle(
+              fontSize: 15,
+              color: Color(0xFFFFE2A3),
+              fontFamily: 'Roboto',
+              backgroundColor: Color(0xEE243F3D),
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        label.paint(canvas, const Offset(10, 12));
+        label.dispose();
+        canvas.restore();
+        await tester.runAsync(() async {
+          final image = await scene.toImage(
+            size.width.toInt(),
+            size.height.toInt(),
+          );
+          final bytes = await image.toByteData();
+          signatures.add(Object.hashAll(bytes!.buffer.asUint8List()));
+          image.dispose();
+        });
+        scene.dispose();
+      }
+      final picture = recorder.endRecording();
+      if (preview) {
+        await tester.runAsync(() async {
+          final image = await picture.toImage(
+            size.width.toInt() * 3,
+            size.height.toInt(),
+          );
+          final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+          final file = File(
+            'build/gameplay-preview/beta-world-${size.width.toInt()}.png',
+          );
+          await file.parent.create(recursive: true);
+          await file.writeAsBytes(bytes!.buffer.asUint8List());
+          image.dispose();
+        });
+      }
+      picture.dispose();
+      expect(signatures, hasLength(3));
+    }
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('reduced motion removes camera shake, not the arena', (
     tester,
   ) async {
@@ -39,6 +114,90 @@ void main() {
       expect(await pixels(), isNot(orderedEquals(resting)));
     });
     expect(run.impactTime, .18); // Accessibility must not mutate the rules.
+  });
+
+  testWidgets('six combo channels and impacts render with bounded effects', (
+    tester,
+  ) async {
+    if (Platform.environment['ELEMENTOS_ART_PREVIEW'] == '1' &&
+        Platform.isWindows) {
+      await tester.runAsync(() async {
+        final bytes = await File('C:/Windows/Fonts/segoeui.ttf').readAsBytes();
+        await (FontLoader(
+          'Roboto',
+        )..addFont(Future.value(ByteData.sublistView(bytes)))).load();
+      });
+    }
+    const size = Size(360, 300);
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    for (final combo in BetaCombo.values) {
+      final run = BetaSession()..start();
+      run.enemies
+        ..clear()
+        ..add(BetaEnemy(BetaEnemyKind.guardian, 0, 3.4)..cooldown = 100);
+      run.select(combo.first);
+      run.mix(combo.second);
+      run.cast();
+      run.update(.1);
+      final painter = painterFor(run);
+      final channel = ui.PictureRecorder();
+      painter.paint(Canvas(channel), size);
+      channel.endRecording().dispose();
+      for (var i = 0; i < 70 && run.discoveredCombos.isEmpty; i++) {
+        run.update(.01);
+        painter.advance(.01);
+      }
+      expect(run.discoveredCombos, contains(combo));
+      expect(run.effects.any((e) => e.combo == combo), true);
+      for (var i = 0; i < 24; i++) {
+        run.update(.01);
+        painter.advance(.01);
+      }
+      canvas.save();
+      canvas.translate(
+        (combo.index % 3) * size.width,
+        (combo.index ~/ 3) * size.height,
+      );
+      canvas.clipRect(Offset.zero & size);
+      canvas.save();
+      canvas.translate(-size.width / 2, -size.height / 2);
+      canvas.scale(2);
+      painter.paint(canvas, size);
+      canvas.restore();
+      final label = TextPainter(
+        text: TextSpan(
+          text: '${combo.label} · ${combo.recipe}',
+          style: const TextStyle(
+            fontFamily: 'Roboto',
+            fontSize: 13,
+            color: Colors.white,
+            backgroundColor: Color(0xFF243F38),
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: size.width - 16);
+      label.paint(canvas, const Offset(8, 8));
+      label.dispose();
+      canvas.restore();
+      expect(
+        painter.cachedLabelCount,
+        lessThanOrEqualTo(BetaArenaPainter.labelCacheLimit),
+      );
+    }
+    final picture = recorder.endRecording();
+    if (Platform.environment['ELEMENTOS_ART_PREVIEW'] == '1') {
+      await tester.runAsync(() async {
+        final image = await picture.toImage(1080, 600);
+        final data = await image.toByteData(format: ui.ImageByteFormat.png);
+        final file = File('build/gameplay-preview/beta-combo-effects.png');
+        await file.parent.create(recursive: true);
+        await file.writeAsBytes(data!.buffer.asUint8List());
+        image.dispose();
+      });
+    }
+    picture.dispose();
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('label cache is bounded, reused and released', (tester) async {

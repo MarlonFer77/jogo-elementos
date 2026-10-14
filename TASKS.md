@@ -4,6 +4,50 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Publicar v0.35.0+35 por autorização do usuário: incluir expansão de três
+regiões, combos e árvore do beta já verificados. Build no workflow existente,
+sem alterar chave; verificar certificado/package/versionCode e hash do APK.
+Publicar como Latest para o atualizador. Sem mudanças/deploy no backend.
+Validação física continua pendente; distribuição não significa produção aprovada.
+
+Checkpoint anterior:
+
+Combos e árvore do beta 3D concluídos localmente em 14/10/2026: seis receitas
+sem ordem (Vapor, Tornado Ígneo, Erupção, Névoa, Lama, Estilhaços), custo de
+35–45 MP e efeitos próprios. Descoberta exige acerto; três primeiros equipados
+automaticamente, quarta descoberta requer substituir slot para reutilizar.
+HUD Solo/Mistura/3 slots, grimório responsivo e três ramos com dois nós cada:
+Vanguarda (combo→espada→esquiva), Guardião (proteção→esquiva) e Sintonia (mana).
+1 PH inicial, +1 por nível; nó avançado exige nível 3 e pré-requisito. Aprender
+e equipar só antes da expedição ou em pausa após limpar a área. Viagem mantém
+build/descobertas; reinício/saída descarta tudo. Sem gravar nos outros perfis.
+50 testes focados passaram (35 domínio, 10 UI, 5 render), análise sem problemas
+e diff sem erros. Prévia de grimório/árvore/HUD revisada em 320×568, 360×640 e
+640×360; seis impactos também revisados em app/build/gameplay-preview/.
+Sem alterações no Treino/Multiplayer/backend/saves e sem APK/release/deploy.
+v0.34.0 publicada não contém esta árvore, combos ou expansão local do mundo.
+Próximo: playtest de balanceamento/fluidez em Android quando gerar candidato;
+não declarar desempenho físico nem prontidão de produção por testes locais.
+
+Checkpoint anterior:
+
+Expansão local do mundo beta concluída em 14/10/2026: Átrio das Raízes →
+Aqueduto Velado → Santuário dos Ecos. Três áreas delimitadas com geometria,
+paleta, marcos e colisões próprios; não é mundo aberto contínuo. Passagem abre
+2s após vencer; caminhar e permanecer 550ms no selo leva à próxima área.
+HP/MP/nível/XP/elemento continuam; recuperação anterior de até 20 HP/25 MP só
+na viagem. Chegada de 350ms suspende ações/IA; limpa comandos, projéteis e efeitos.
+HUD informa área/objetivo; rota e história curta na entrada/pausa. Cenários em
+cache por região, poucos efeitos ambientais, movimento reduzido preservado.
+36 testes focados passaram (25 domínio, 7 UI, 4 render); análise limpa. Prévias
+beta-world-360.png e beta-world-640.png revisadas em app/build/gameplay-preview/.
+Sem mudanças em Treino, Multiplayer, backend, saves ou balanceamento do combate.
+Sem APK/release/deploy novo: v0.34.0 publicada NÃO inclui esta expansão.
+Próximo: validar a expansão em aparelho quando solicitado novo candidato.
+Validação física anterior também pendente; não declarar produção aprovada.
+
+Checkpoint anterior:
+
 v0.34.0 promovida a Latest em 14/10/2026 por pedido explícito do usuário para
 atualizar pelo celular. Removido prerelease; endpoint público releases/latest
 confirma v0.34.0, draft=false, prerelease=false e APK/hash inalterados. Notas da
@@ -652,15 +696,16 @@ Validação manual em aparelhos e balanceamento pendentes. Sem commit/release/de
 
 # NEXT
 
-Preparar APK candidato quando solicitado e executar checklist final do BETA TEST:
-resposta dos controles/alcances, câmera, áudio, ciclo de vida, atualização e
-desempenho no Android. Corrigir problemas reproduzidos antes de liberar produção.
-Só depois expandir combos, exploração e progresso permanente 3D.
+Preparar novo APK candidato quando solicitado e validar a expansão do BETA TEST:
+travessia das três regiões, colisões/alcances, câmera, áudio, ciclo de vida,
+atualização e desempenho no Android. Corrigir problemas reproduzidos antes de
+liberar produção. Combos, exploração não linear e progresso permanente ficam
+para blocos futuros; a primeira rota foi autorizada e implementada localmente.
 
 Playtest das variações da Dungeon nos celulares: dificuldade por sala, duração
 das variantes defensivas e decisões de build. Publicação apenas quando solicitada.
 Assinatura definitiva adiada expressamente pelo usuário; não alterar keystore
-ou workflow de assinatura neste bloco. Última publicação registrada: v0.33.0.
+ou workflow de assinatura neste bloco. Última publicação registrada: v0.34.0.
 
 # BACKLOG
 

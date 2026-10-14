@@ -100,10 +100,27 @@ class _BetaJoystickState extends State<BetaJoystick> {
   );
 }
 
-class BetaActionPad extends StatelessWidget {
+class BetaActionPad extends StatefulWidget {
   const BetaActionPad({super.key, required this.run, required this.refresh});
   final BetaSession run;
   final VoidCallback refresh;
+  @override
+  State<BetaActionPad> createState() => _BetaActionPadState();
+}
+
+enum _SpellMode { single, mix, equipped }
+
+class _BetaActionPadState extends State<BetaActionPad> {
+  BetaSession get run => widget.run;
+  void refresh() => widget.refresh();
+  _SpellMode _mode = _SpellMode.single;
+
+  @override
+  void initState() {
+    super.initState();
+    if (run.selectedCombo != null) _mode = _SpellMode.mix;
+  }
+
   void _action(BetaAction action) {
     run.request(action);
     refresh();
@@ -114,7 +131,11 @@ class BetaActionPad extends StatelessWidget {
     if (run.castTime > 0) return 'Conjurando';
     if (action == BetaAction.cast && run.swordTime > 0) return 'Em ataque';
     if (action != BetaAction.dodge && run.dodgeTime > 0) return 'Esquivando';
-    if (action == BetaAction.cast && run.mana < 25) return 'Sem mana';
+    if (action == BetaAction.cast && !run.spellEquipped) return 'Não equipado';
+    if (action == BetaAction.cast && run.mana < run.spellManaCost) {
+      return 'Sem mana';
+    }
+    if (run.arrivalTime > 0) return 'Chegando';
     final cooldown = switch (action) {
       BetaAction.sword => run.swordCooldown,
       BetaAction.cast => run.spellCooldown,
@@ -128,7 +149,8 @@ class BetaActionPad extends StatelessWidget {
             : run.inSwordRange(run.aimTarget!)
             ? 'No alcance'
             : 'Aproxime-se',
-      BetaAction.cast => '25 MP · ${run.element.label}',
+      BetaAction.cast =>
+        '${run.spellManaCost.round()} MP · ${run.selectedCombo?.label ?? run.element.label}',
       BetaAction.dodge => 'Desviar',
     };
   }
@@ -141,54 +163,149 @@ class BetaActionPad extends StatelessWidget {
       children: [
         Row(
           children: [
-            for (final e in BetaElement.values)
+            for (final mode in _SpellMode.values)
               Expanded(
-                child: Tooltip(
-                  message: '${e.label}: ${e.description}',
-                  child: Semantics(
-                    selected: run.element == e,
-                    button: true,
-                    enabled: run.canSelectElement,
-                    child: InkWell(
-                      key: ValueKey('beta-element-${e.name}'),
-                      onTap: run.canSelectElement
+                child: Semantics(
+                  selected: _mode == mode,
+                  child: TextButton(
+                    key: ValueKey('beta-mode-${mode.name}'),
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(0, 36),
+                      padding: EdgeInsets.zero,
+                      foregroundColor: const Color(0xFFF4E7C8),
+                      backgroundColor: _mode == mode
+                          ? const Color(0xFF4A6552)
+                          : const Color(0xDD243F38),
+                      shape: const RoundedRectangleBorder(),
+                    ),
+                    onPressed: run.canSelectElement
+                        ? () {
+                            if (mode == _SpellMode.single) {
+                              run.select(run.element);
+                            }
+                            setState(() => _mode = mode);
+                            refresh();
+                          }
+                        : null,
+                    child: Text(switch (mode) {
+                      _SpellMode.single => 'Solo',
+                      _SpellMode.mix => 'Mistura',
+                      _SpellMode.equipped => '3 slots',
+                    }, style: const TextStyle(fontSize: 11)),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        if (_mode == _SpellMode.equipped)
+          Row(
+            children: [
+              for (var slot = 0; slot < 3; slot++)
+                Expanded(
+                  child: SizedBox(
+                    height: 44,
+                    child: TextButton(
+                      key: ValueKey('beta-combo-slot-$slot'),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.all(2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        foregroundColor: const Color(0xFFF4E7C8),
+                        backgroundColor:
+                            slot < run.equippedCombos.length &&
+                                run.selectedCombo == run.equippedCombos[slot]
+                            ? const Color(0xFF4A6552)
+                            : const Color(0xDD243F38),
+                        side: BorderSide(
+                          color: slot < run.equippedCombos.length
+                              ? betaComboColor(run.equippedCombos[slot])
+                              : const Color(0xFF51624D),
+                        ),
+                      ),
+                      onPressed:
+                          run.canSelectElement &&
+                              slot < run.equippedCombos.length
                           ? () {
-                              run.select(e);
+                              run.selectCombo(run.equippedCombos[slot]);
                               refresh();
                             }
                           : null,
-                      child: Container(
-                        height: 44,
-                        alignment: Alignment.center,
-                        margin: const EdgeInsets.all(1),
-                        decoration: BoxDecoration(
-                          color: run.element == e
-                              ? betaElementColor(e)
-                              : const Color(0xDD243F38),
-                          border: Border.all(
-                            color: betaElementColor(e),
-                            width: run.element == e ? 2 : 1,
+                      child: Text(
+                        slot < run.equippedCombos.length
+                            ? run.equippedCombos[slot].label
+                            : 'Vazio',
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 10),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          )
+        else
+          Row(
+            children: [
+              for (final e in BetaElement.values)
+                Expanded(
+                  child: Tooltip(
+                    message: _mode == _SpellMode.mix
+                        ? 'Misture ${run.element.label} com ${e.label}. Toque de novo para remover.'
+                        : '${e.label}: ${e.description}',
+                    child: Semantics(
+                      selected: run.element == e || run.secondaryElement == e,
+                      button: true,
+                      enabled: run.canSelectElement,
+                      child: InkWell(
+                        key: ValueKey('beta-element-${e.name}'),
+                        onTap: run.canSelectElement
+                            ? () {
+                                if (_mode == _SpellMode.mix) {
+                                  run.mix(e);
+                                } else {
+                                  run.select(e);
+                                }
+                                refresh();
+                              }
+                            : null,
+                        child: Container(
+                          height: 44,
+                          alignment: Alignment.center,
+                          margin: const EdgeInsets.all(1),
+                          decoration: BoxDecoration(
+                            color: run.element == e || run.secondaryElement == e
+                                ? betaElementColor(e)
+                                : const Color(0xDD243F38),
+                            border: Border.all(
+                              color: betaElementColor(e),
+                              width:
+                                  run.element == e || run.secondaryElement == e
+                                  ? 2
+                                  : 1,
+                            ),
+                            borderRadius: BorderRadius.circular(5),
                           ),
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                        child: Text(
-                          e.label,
-                          maxLines: 1,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: run.element == e
-                                ? const Color(0xFF253A35)
-                                : const Color(0xFFF4E7C8),
+                          child: Text(
+                            e.label,
+                            maxLines: 1,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color:
+                                  run.element == e || run.secondaryElement == e
+                                  ? const Color(0xFF253A35)
+                                  : const Color(0xFFF4E7C8),
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-          ],
-        ),
+            ],
+          ),
         const SizedBox(height: 6),
         Row(
           children: [
@@ -218,8 +335,10 @@ class BetaActionPad extends StatelessWidget {
                     ? () => _action(BetaAction.cast)
                     : null,
                 _detail(BetaAction.cast),
-                progress: 1 - run.spellCooldown / 1.25,
-                accent: betaElementColor(run.element),
+                progress: 1 - run.spellCooldown / run.spellRecovery,
+                accent: run.selectedCombo == null
+                    ? betaElementColor(run.element)
+                    : betaComboColor(run.selectedCombo!),
                 queued: run.queuedAction == BetaAction.cast,
               ),
             ),
@@ -318,13 +437,16 @@ class BetaActionPad extends StatelessWidget {
                           color: Color(0xFF263B32),
                         ),
                       ),
-                      Text(
-                        detail,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Color(0xFF263B32),
+                      Tooltip(
+                        message: detail,
+                        child: Text(
+                          detail,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFF263B32),
+                          ),
                         ),
                       ),
                     ],

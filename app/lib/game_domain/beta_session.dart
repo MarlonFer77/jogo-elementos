@@ -1,17 +1,14 @@
 import 'dart:math' as math;
+import 'beta_world.dart';
+import 'beta_spells.dart';
+import 'beta_skills.dart';
+
+export 'beta_world.dart';
+export 'beta_spells.dart';
+export 'beta_skills.dart';
 
 /// Offline sandbox. Never writes campaign/online rewards or turn-based saves.
 enum BetaPhase { ready, playing, paused, won, lost }
-
-enum BetaElement {
-  fire('Fogo', 'Projétil + queimadura'),
-  water('Água', 'Lentidão + cura ao acertar'),
-  wind('Vento', 'Explosão que afasta inimigos'),
-  earth('Terra', 'Impacto + proteção por 2s');
-
-  const BetaElement(this.label, this.description);
-  final String label, description;
-}
 
 enum BetaEnemyKind { goblin, brute, guardian }
 
@@ -30,6 +27,8 @@ enum BetaSound {
   waterImpact,
   windImpact,
   earthImpact,
+  passage,
+  discovery,
 }
 
 enum BetaAction { sword, cast, dodge }
@@ -89,11 +88,6 @@ class BetaAttackArea {
         ),
     ];
   }
-}
-
-class BetaObstacle {
-  const BetaObstacle(this.x, this.z, this.radius, this.height);
-  final double x, z, radius, height;
 }
 
 class BetaEnemy {
@@ -176,10 +170,11 @@ class BetaEnemy {
 }
 
 class BetaProjectile {
-  BetaProjectile(this.x, this.z, this.dx, this.dz, this.element);
+  BetaProjectile(this.x, this.z, this.dx, this.dz, this.element, {this.combo});
   double x, z, life = 1.3;
   final double dx, dz;
   final BetaElement element;
+  final BetaCombo? combo;
 }
 
 class BetaEffect {
@@ -191,6 +186,7 @@ class BetaEffect {
     this.hurt = false,
     this.kind = BetaEffectKind.impact,
     this.area,
+    this.combo,
   });
   final double x, z;
   final BetaElement element;
@@ -198,24 +194,42 @@ class BetaEffect {
   final bool hurt;
   final BetaEffectKind kind;
   final BetaAttackArea? area;
+  final BetaCombo? combo;
   double life = .65;
 }
 
 class BetaSession {
-  static const arenaX = 8.5, arenaZ = 10.5;
+  static const arenaX = BetaRegion.halfWidth, arenaZ = BetaRegion.halfDepth;
   // Shared with the renderer: the blade crosses its target at swordContact.
   static const swordDuration = .44, swordContact = .16, castDuration = .35;
   static const dodgeDuration = .24;
   static const deathDuration = .65, inputBuffer = .18;
   static const swordReach = 1.9, spellAimRange = 9.0, projectileRadius = .12;
-  static const obstacles = [
-    BetaObstacle(-4, 2, .65, 2.7),
-    BetaObstacle(4, 2, .65, 2.7),
-    BetaObstacle(-4, -5, .65, 1.5),
-    BetaObstacle(4, -5, .65, 3.1),
-  ];
+  BetaRegion get region => BetaRegion.values[(wave - 1).clamp(0, 2)];
+  List<BetaObstacle> get obstacles => region.obstacles;
   BetaPhase phase = BetaPhase.ready;
   BetaElement element = BetaElement.fire;
+  BetaElement? secondaryElement;
+  BetaCombo? get selectedCombo => BetaCombo.resolve(element, secondaryElement);
+  final _discoveredCombos = <BetaCombo>{};
+  final _equippedCombos = <BetaCombo>[];
+  final _skills = <BetaSkill>{};
+  int _skillPoints = 1;
+  int get skillPoints => _skillPoints;
+  Set<BetaCombo> get discoveredCombos => Set.unmodifiable(_discoveredCombos);
+  List<BetaCombo> get equippedCombos => List.unmodifiable(_equippedCombos);
+  bool hasSkill(BetaSkill skill) => _skills.contains(skill);
+  bool get canManageBuild =>
+      phase == BetaPhase.ready || (phase == BetaPhase.paused && remaining == 0);
+  double runicBladeTime = 0;
+  double get spellManaCost => (selectedCombo?.mana ?? 25).toDouble();
+  double get spellRecovery => selectedCombo?.cooldown ?? 1.25;
+  bool get spellEquipped =>
+      selectedCombo == null ||
+      !_discoveredCombos.contains(selectedCombo) ||
+      _equippedCombos.contains(selectedCombo);
+  double get activeCastDuration => _castCombo?.castTime ?? castDuration;
+  BetaCombo? get castingCombo => _castCombo;
   final enemies = <BetaEnemy>[];
   final projectiles = <BetaProjectile>[];
   final effects = <BetaEffect>[];
@@ -232,6 +246,8 @@ class BetaSession {
       invulnerable = 0,
       protection = 0;
   double _dodgeX = 0, _dodgeZ = 0, _waveWait = 0;
+  double _gateHold = 0, arrivalTime = 0;
+  static const arrivalDuration = .35, gateHoldDuration = .55;
   double stride = 0, hurtTime = 0, impactTime = 0, resultTime = 0;
   double _bufferTime = 0;
   bool _moving = false;
@@ -239,9 +255,10 @@ class BetaSession {
   BetaAction? queuedAction;
   bool _swordPending = false;
   BetaElement _castElement = BetaElement.fire;
+  BetaCombo? _castCombo;
   BetaEnemy? _actionTarget;
   int wave = 1, level = 1, xp = 0, kills = 0;
-  String message = 'Explore a ruína. Derrote o guardião.';
+  String message = 'Atravesse a ruína. Desperte os ecos.';
   double messageTime = 5;
   double get maxHp => 100 + (level - 1) * 10;
   int get nextLevelXp => 60 + (level - 1) * 80;
@@ -252,17 +269,31 @@ class BetaSession {
       (playing || phase == BetaPhase.paused) && wave < 3 && remaining == 0
       ? math.max(0, 2 - _waveWait)
       : 0;
-  bool get canSelectElement => playing && castTime <= 0 && swordTime <= 0;
+  bool get passageOpen =>
+      (playing || phase == BetaPhase.paused) &&
+      wave < BetaRegion.values.length &&
+      remaining == 0 &&
+      _waveWait >= 2;
+  double get passageProgress => (_gateHold / gateHoldDuration).clamp(0.0, 1.0);
+  bool get canSelectElement =>
+      playing && arrivalTime <= 0 && castTime <= 0 && swordTime <= 0;
   int get remaining => enemies.where((e) => e.alive).length;
   bool get canSword =>
-      playing && swordCooldown <= 0 && castTime <= 0 && dodgeTime <= 0;
+      playing &&
+      arrivalTime <= 0 &&
+      swordCooldown <= 0 &&
+      castTime <= 0 &&
+      dodgeTime <= 0;
   bool get canCast =>
       playing &&
+      arrivalTime <= 0 &&
       spellCooldown <= 0 &&
-      mana >= 25 &&
+      mana >= spellManaCost &&
+      spellEquipped &&
       swordTime <= 0 &&
       dodgeTime <= 0;
-  bool get canDodge => playing && dodgeCooldown <= 0 && castTime <= 0;
+  bool get canDodge =>
+      playing && arrivalTime <= 0 && dodgeCooldown <= 0 && castTime <= 0;
   double get aimDirection => swordTime > 0 || castTime > 0 ? angle : _aimAngle;
   double get dodgeDirection => math.atan2(_dodgeX, _dodgeZ);
   BetaEnemy? get aimTarget {
@@ -291,6 +322,7 @@ class BetaSession {
     if (phase == BetaPhase.won || phase == BetaPhase.lost) resultTime = 0;
     setMovement(0, 0);
     _clearBuffer();
+    _gateHold = 0;
     _moving = false;
   }
 
@@ -299,7 +331,10 @@ class BetaSession {
   }
 
   void setMovement(double horizontal, double vertical) {
-    if (!horizontal.isFinite || !vertical.isFinite || !playing) {
+    if (!horizontal.isFinite ||
+        !vertical.isFinite ||
+        !playing ||
+        arrivalTime > 0) {
       moveX = moveZ = 0;
       return;
     }
@@ -312,8 +347,62 @@ class BetaSession {
   void select(BetaElement value) {
     if (canSelectElement) {
       element = value;
+      secondaryElement = null;
       _clearBuffer();
     }
+  }
+
+  void mix(BetaElement value) {
+    if (!canSelectElement) return;
+    secondaryElement = value == element || value == secondaryElement
+        ? null
+        : value;
+    _clearBuffer();
+  }
+
+  bool selectCombo(BetaCombo combo) {
+    if (!canSelectElement || !_equippedCombos.contains(combo)) return false;
+    element = combo.first;
+    secondaryElement = combo.second;
+    _clearBuffer();
+    return true;
+  }
+
+  bool equipCombo(BetaCombo combo, {int? replaceSlot}) {
+    if (!canManageBuild ||
+        !_discoveredCombos.contains(combo) ||
+        _equippedCombos.contains(combo)) {
+      return false;
+    }
+    if (replaceSlot != null) {
+      if (replaceSlot < 0 || replaceSlot >= _equippedCombos.length) {
+        return false;
+      }
+      _equippedCombos[replaceSlot] = combo;
+    } else {
+      if (_equippedCombos.length >= 3) return false;
+      _equippedCombos.add(combo);
+    }
+    _clearBuffer();
+    return true;
+  }
+
+  String? skillLock(BetaSkill skill) {
+    if (hasSkill(skill)) return 'Aprendida';
+    if (!canManageBuild) return 'Limpe a área antes de aprender';
+    if (level < skill.level) return 'Requer nível ${skill.level}';
+    if (skill.prerequisite case final required?) {
+      if (!hasSkill(required)) return 'Requer ${required.label}';
+    }
+    if (_skillPoints <= 0) return 'Sem pontos';
+    return null;
+  }
+
+  bool learnSkill(BetaSkill skill) {
+    if (skillLock(skill) != null) return false;
+    _skills.add(skill);
+    _skillPoints--;
+    return true;
   }
 
   double _actionWait(BetaAction action) => switch (action) {
@@ -324,7 +413,8 @@ class BetaSession {
 
   bool canRequest(BetaAction action) =>
       playing &&
-      (action != BetaAction.cast || mana >= 25) &&
+      arrivalTime <= 0 &&
+      (action != BetaAction.cast || (mana >= spellManaCost && spellEquipped)) &&
       _actionWait(action) <= inputBuffer;
 
   /// One short-lived intent, never a chain of automatic attacks. Revalidated
@@ -378,10 +468,11 @@ class BetaSession {
   bool cast() {
     if (!canCast) return false;
     _aim(spellAimRange);
-    _castElement = element;
-    mana -= 25;
-    castTime = castDuration;
-    spellCooldown = 1.25;
+    _castCombo = selectedCombo;
+    _castElement = _castCombo?.first ?? element;
+    mana -= spellManaCost;
+    castTime = activeCastDuration;
+    spellCooldown = spellRecovery;
     sounds.add(BetaSound.cast);
     return true;
   }
@@ -392,7 +483,9 @@ class BetaSession {
     _dodgeX = length > .05 ? moveX / length : math.sin(angle);
     _dodgeZ = length > .05 ? moveZ / length : math.cos(angle);
     dodgeTime = dodgeDuration;
-    invulnerable = math.max(invulnerable, .3);
+    final stoneStep = hasSkill(BetaSkill.stoneStep) && protection > 0;
+    invulnerable = math.max(invulnerable, stoneStep ? .42 : .3);
+    if (stoneStep) protection = 0;
     dodgeCooldown = 1.6;
     swordTime = 0;
     _swordPending = false;
@@ -437,11 +530,11 @@ class BetaSession {
 
   static double distance(double ax, double az, double bx, double bz) =>
       math.sqrt((ax - bx) * (ax - bx) + (az - bz) * (az - bz));
-  static bool walkable(double px, double pz, double radius) =>
+  bool walkable(double px, double pz, double radius) =>
       px.abs() <= arenaX - radius &&
       pz.abs() <= arenaZ - radius &&
       obstacles.every((o) => distance(px, pz, o.x, o.z) >= radius + o.radius);
-  static bool clearLine(double ax, double az, double bx, double bz) {
+  bool clearLine(double ax, double az, double bx, double bz) {
     final dx = bx - ax, dz = bz - az, length = dx * dx + dz * dz;
     return obstacles.every((o) {
       final t = length == 0
@@ -472,7 +565,7 @@ class BetaSession {
     return t >= 0 && t <= 1 ? t : null;
   }
 
-  static double _terrainContact(double ax, double az, double bx, double bz) {
+  double _terrainContact(double ax, double az, double bx, double bz) {
     var first = double.infinity;
     for (final o in obstacles) {
       final t = _circleContact(
@@ -558,6 +651,10 @@ class BetaSession {
 
   void _step(double dt) {
     _visualStep(dt);
+    if (arrivalTime > 0) {
+      arrivalTime = _tick(arrivalTime, dt);
+      return; // Fade in before AI or held input can affect the new region.
+    }
     time += dt;
     messageTime = _tick(messageTime, dt);
     swordCooldown = _tick(swordCooldown, dt);
@@ -565,6 +662,7 @@ class BetaSession {
     dodgeCooldown = _tick(dodgeCooldown, dt);
     invulnerable = _tick(invulnerable, dt);
     protection = _tick(protection, dt);
+    runicBladeTime = _tick(runicBladeTime, dt);
     mana = math.min(100, mana + dt * 9);
     final speed = dodgeTime > 0
         ? 11.0
@@ -589,23 +687,43 @@ class BetaSession {
     if (_swordPending && swordTime <= swordDuration - swordContact) {
       _swordPending = false;
       sounds.add(BetaSound.sword);
+      final empowered = runicBladeTime > 0;
+      runicBladeTime =
+          0; // A missed empowered swing consumes the opportunity too.
+      var landed = false;
       for (final e in enemies.where((e) => e.alive)) {
         final dx = e.x - x, dz = e.z - z, d = distance(x, z, e.x, e.z);
         if (d <= swordReach + e.radius &&
             (d < .1 ||
                 (dx * math.sin(angle) + dz * math.cos(angle)) / d > .4) &&
             clearLine(x, z, e.x, e.z)) {
-          _hit(e, 13 + (level - 1) * 2.0, element);
+          _hit(e, 13 + (level - 1) * 2.0 + (empowered ? 8 : 0), element);
+          landed = true;
         }
+      }
+      if (landed && hasSkill(BetaSkill.manaWeave)) {
+        mana = math.min(100, mana + 6);
+      }
+      if (landed && empowered && hasSkill(BetaSkill.pursuit)) {
+        dodgeCooldown = math.max(0, dodgeCooldown - .6);
       }
     }
     if (castTime > 0) {
       castTime = _tick(castTime, dt);
       if (castTime == 0) {
         projectiles.add(
-          BetaProjectile(x, z, math.sin(angle), math.cos(angle), _castElement),
+          BetaProjectile(
+            x,
+            z,
+            math.sin(angle),
+            math.cos(angle),
+            _castElement,
+            combo: _castCombo,
+          ),
         );
-        if (_castElement == BetaElement.earth) protection = 2;
+        if (_castCombo == null && _castElement == BetaElement.earth) {
+          protection = 2;
+        }
       }
     }
     _consumeInput(dt);
@@ -629,6 +747,10 @@ class BetaSession {
       if (contact > 1) continue;
       p.life = 0;
       if (victim case final e?) {
+        if (p.combo != null) {
+          _resolveCombo(p, e);
+          continue;
+        }
         final damage = switch (p.element) {
           BetaElement.fire => 27.0,
           BetaElement.water => 18.0,
@@ -678,7 +800,13 @@ class BetaSession {
         }
       } else {
         effects.add(
-          BetaEffect(p.x, p.z, p.element, kind: BetaEffectKind.blocked),
+          BetaEffect(
+            p.x,
+            p.z,
+            p.element,
+            kind: BetaEffectKind.blocked,
+            combo: p.combo,
+          ),
         );
       }
     }
@@ -782,16 +910,119 @@ class BetaSession {
         _finish(BetaPhase.won);
         sounds.add(BetaSound.victory);
       } else {
-        _waveWait += dt;
-        if (_waveWait >= 2) {
-          wave++;
-          _waveWait = 0;
-          hp = math.min(maxHp, hp + 20);
-          mana = math.min(100, mana + 25);
-          _spawn();
+        if (_waveWait < 2) {
+          _waveWait = math.min(2, _waveWait + dt);
+          if (_waveWait == 2) sounds.add(BetaSound.passage);
+        }
+        final nearGate =
+            distance(x, z, BetaRegion.gateX, BetaRegion.gateZ) <=
+            BetaRegion.gateRadius;
+        if (passageOpen &&
+            nearGate &&
+            swordTime <= 0 &&
+            castTime <= 0 &&
+            dodgeTime <= 0) {
+          _gateHold += dt;
+          if (_gateHold >= gateHoldDuration) _travel();
+        } else {
+          _gateHold = 0;
         }
       }
     }
+  }
+
+  void _resolveCombo(BetaProjectile projectile, BetaEnemy primary) {
+    final combo = projectile.combo!;
+    final damage = combo.damage + (level - 1) * 3;
+    final targets = [
+      primary,
+      if (combo.radius > 0)
+        ...enemies.where(
+          (enemy) =>
+              enemy.alive &&
+              !identical(enemy, primary) &&
+              distance(projectile.x, projectile.z, enemy.x, enemy.z) <=
+                  combo.radius &&
+              clearLine(projectile.x, projectile.z, enemy.x, enemy.z),
+        ),
+    ];
+    for (final target in targets) {
+      final first = identical(target, primary);
+      _hit(
+        target,
+        damage * (first ? 1 : .6),
+        combo.first,
+        spell: true,
+        combo: first ? combo : null,
+        hitX: first ? projectile.x : target.x,
+        hitZ: first ? projectile.z : target.z,
+      );
+      if (!target.alive) continue;
+      target.burn = math.max(target.burn, combo.burn);
+      target.slow = math.max(target.slow, combo.slow);
+      if (combo.stagger > 0 || combo.push > 0) {
+        target.cancelAttack();
+        target.cooldown = math.max(
+          target.cooldown,
+          combo.stagger > 0 ? (target.boss ? .25 : combo.stagger) : .6,
+        );
+      }
+      if (combo.push > 0) {
+        target.pushTime = .2;
+        target.pushX = projectile.dx * combo.push;
+        target.pushZ = projectile.dz * combo.push;
+      }
+    }
+    if (combo.heal > 0) {
+      final healed = math.min(combo.heal, maxHp - hp);
+      hp += healed;
+      if (healed > 0) {
+        effects.add(
+          BetaEffect(
+            x,
+            z,
+            BetaElement.water,
+            text: '+${healed.ceil()}',
+            kind: BetaEffectKind.heal,
+          ),
+        );
+      }
+    }
+    protection = math.max(
+      protection,
+      math.max(combo.ward, hasSkill(BetaSkill.ward) ? 1 : 0),
+    );
+    if (hasSkill(BetaSkill.runicBlade)) runicBladeTime = 4;
+    if (hasSkill(BetaSkill.flow)) mana = math.min(100, mana + 8);
+    if (_discoveredCombos.add(combo)) {
+      final equipped = _equippedCombos.length < 3;
+      if (equipped) _equippedCombos.add(combo);
+      message =
+          'DESCOBERTO: ${combo.label} · ${equipped ? 'equipado' : 'troque um slot após limpar a área'}';
+      messageTime = 4;
+      sounds.add(BetaSound.discovery);
+    }
+  }
+
+  void _travel() {
+    wave++;
+    _waveWait = _gateHold = 0;
+    x = BetaRegion.entryX;
+    z = BetaRegion.entryZ;
+    angle = math.pi;
+    setMovement(0, 0);
+    _moving = _swordPending = false;
+    _actionTarget = null;
+    _clearBuffer();
+    swordTime = castTime = dodgeTime = 0;
+    swordCooldown = spellCooldown = dodgeCooldown = 0;
+    hurtTime = impactTime = protection = invulnerable = 0;
+    runicBladeTime = 0;
+    effects.clear();
+    hp = math.min(maxHp, hp + 20);
+    mana = math.min(100, mana + 25);
+    arrivalTime = arrivalDuration;
+    _spawn();
   }
 
   void _moveEnemy(BetaEnemy e, double dx, double dz) {
@@ -835,6 +1066,7 @@ class BetaSession {
     bool spell = false,
     double? hitX,
     double? hitZ,
+    BetaCombo? combo,
   }) {
     if (!e.alive) return;
     e.hp = math.max(0, e.hp - damage);
@@ -847,6 +1079,7 @@ class BetaSession {
         source,
         text: '${damage.round()}',
         kind: spell ? BetaEffectKind.spell : BetaEffectKind.impact,
+        combo: combo,
       ),
     );
     sounds.add(
@@ -876,8 +1109,9 @@ class BetaSession {
         : 20;
     while (xp >= nextLevelXp) {
       level++;
+      _skillPoints++;
       hp = math.min(maxHp, hp + 20);
-      message = 'NÍVEL $level · vitalidade e dano aumentaram';
+      message = 'NÍVEL $level · +1 ponto de habilidade · aprenda entre áreas';
       messageTime = 3;
       sounds.add(BetaSound.level);
     }
@@ -912,11 +1146,12 @@ class BetaSession {
       // Spawn at the far end from the hero; never on a column or on the player.
       enemies.add(BetaEnemy(kinds[i], (i - 1) * 3.0, z >= 0 ? -7 : 7));
     }
-    message = switch (wave) {
+    final hint = switch (wave) {
       1 => 'GOBLINS · desvie para o lado da estocada',
       2 => 'BRUTO · contorne a varredura e ataque na recuperação',
       _ => 'GUARDIÃO · saia do círculo antes do impacto',
     };
+    message = '${region.title.toUpperCase()}\n$hint';
     messageTime = 4;
   }
 }

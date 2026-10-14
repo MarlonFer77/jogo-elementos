@@ -11,6 +11,7 @@ import '../game_presentation/beta_arena_painter.dart' show betaElementColor;
 import '../game_presentation/pixel_content_panel.dart';
 import '../game_presentation/pixel_menu_button.dart';
 import 'beta_controls.dart';
+import 'beta_build_panel.dart';
 
 class BetaScreen extends StatefulWidget {
   const BetaScreen({super.key});
@@ -26,6 +27,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
   bool _collecting = false;
   bool _exitPromptOpen = false, _exitApproved = false;
   int _timingStart = 0;
+  int _inputRegion = 1;
   @override
   void initState() {
     super.initState();
@@ -49,6 +51,10 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
   }
 
   void _syncTimings() {
+    if (_inputRegion != _game.session.wave) {
+      _inputRegion = _game.session.wave;
+      _keys.clear();
+    }
     final collect =
         _game.performance.enabled && _game.session.playing && !_game.paused;
     if (collect == _collecting) return;
@@ -83,6 +89,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
     final size = _viewport!;
     final metrics = _game.performance.report;
     final encounter = run.wave;
+    final region = run.region.title;
     final density = MediaQuery.devicePixelRatioOf(context);
     var version = 'versão indisponível';
     try {
@@ -101,7 +108,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
       ClipboardData(
         text:
             'Elementos BETA TEST · $version · $mode · ${defaultTargetPlatform.name}\n'
-            '${size.width.round()}×${size.height.round()} lógicos · DPR $density · encontro $encounter/3\n'
+            '${size.width.round()}×${size.height.round()} lógicos · DPR $density · área $encounter/3 · $region\n'
             '$metrics\nInforme também modelo do celular, tempo jogado e problema percebido.',
       ),
     );
@@ -131,6 +138,17 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
     _game.resumeEngine();
     _game.refresh();
     _focus.requestFocus();
+  }
+
+  Future<void> _openBuild() async {
+    _keys.clear();
+    await showDialog<void>(
+      context: context,
+      barrierColor: const Color(0xEF14251F),
+      builder: (_) =>
+          BetaBuildPanel(run: _game.session, onChanged: _game.refresh),
+    );
+    if (mounted) _game.refresh();
   }
 
   Future<void> _requestExit() async {
@@ -254,7 +272,13 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
       LogicalKeyboardKey.digit3,
       LogicalKeyboardKey.digit4,
     ].indexOf(key);
-    if (index >= 0) run.select(BetaElement.values[index]);
+    if (index >= 0) {
+      if (HardwareKeyboard.instance.isShiftPressed) {
+        run.mix(BetaElement.values[index]);
+      } else {
+        run.select(BetaElement.values[index]);
+      }
+    }
     _game.refresh();
   }
 
@@ -301,7 +325,8 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                               _hud(run),
                               if (run.playing &&
                                   (run.messageTime > 0 ||
-                                      run.nextEncounterIn > 0))
+                                      run.nextEncounterIn > 0 ||
+                                      run.passageOpen))
                                 _notice(run),
                             ],
                           ),
@@ -311,6 +336,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                           left: 12,
                           bottom: 20,
                           child: BetaJoystick(
+                            key: ValueKey('beta-movement-${run.wave}'),
                             onChanged: run.setMovement,
                             size: MediaQuery.sizeOf(context).width < 350
                                 ? 96
@@ -321,6 +347,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                           right: 10,
                           bottom: 10,
                           child: BetaActionPad(
+                            key: ValueKey('beta-actions-${run.wave}'),
                             run: run,
                             refresh: _game.refresh,
                           ),
@@ -345,9 +372,11 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         color: const Color(0xE6263E35),
         child: Text(
-          run.nextEncounterIn > 0
-              ? 'ENCONTRO ${run.wave} CONCLUÍDO · próximo em ${run.nextEncounterIn.ceil()}s\n'
-                    'Ao iniciar: recupera até 20 HP e 25 MP'
+          run.passageOpen
+              ? '↑ PASSAGEM ABERTA · siga a estrada até o arco\n'
+                    'Ao atravessar: até +20 HP e +25 MP'
+              : run.nextEncounterIn > 0
+              ? 'ÁREA LIVRE · passagem abre em ${run.nextEncounterIn.ceil()}s'
               : run.message,
           textAlign: TextAlign.center,
           maxLines: 3,
@@ -385,7 +414,9 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'BETA TEST · Nível ${run.level} · Encontro ${run.wave}/3',
+                      '${run.region.title} · ${run.wave}/3',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 12,
                         color: Color(0xFFF3DFB5),
@@ -410,7 +441,10 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                     Text(
                       critical
                           ? 'VIDA BAIXA · Água cura ao acertar'
-                          : '${run.xp}/${run.nextLevelXp} XP · ${run.remaining} inimigos · progresso temporário',
+                          : run.runicBladeTime > 0
+                          ? 'LÂMINA RÚNICA · espada +8 · ${run.runicBladeTime.ceil()}s'
+                          : 'Nv. ${run.level} · ${run.remaining} inimigos · ${run.xp}/${run.nextLevelXp} XP',
+                      key: const ValueKey('beta-status'),
                       style: TextStyle(
                         fontSize: 10,
                         color: critical
@@ -507,16 +541,20 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                   const SizedBox(height: 8),
                   Text(
                     ready
-                        ? 'Vença três encontros e derrote o guardião.\n'
+                        ? 'Atravesse três regiões e derrote o guardião.\n'
                               'Mova e mire com o joystick; ataque, conjure e desvie.\n'
                               'Progresso temporário: sair encerra esta sessão.'
                         : paused
                         ? 'O tempo está parado. Seu progresso neste beta dura somente até sair.'
-                        : '${run.phase == BetaPhase.won ? 'Três encontros concluídos.' : 'Você caiu no encontro ${run.wave}/3.'}\n'
+                        : '${run.phase == BetaPhase.won ? 'A estrada dos ecos foi recuperada.' : 'Você caiu em ${run.region.title}.'}\n'
                               '${run.kills} inimigos · ${run.xp} XP · nível ${run.level}\n'
                               'Progresso desta sessão; seus outros modos não são alterados.',
                     style: const TextStyle(fontSize: 13),
                   ),
+                  if (ready || paused) ...[
+                    const SizedBox(height: 10),
+                    _route(run),
+                  ],
                   const SizedBox(height: 12),
                   PixelMenuButton(
                     label: ready
@@ -531,6 +569,15 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                     },
                   ),
                   const SizedBox(height: 8),
+                  if (ready || paused)
+                    TextButton.icon(
+                      key: const ValueKey('beta-open-build'),
+                      onPressed: _openBuild,
+                      icon: const Icon(Icons.auto_stories, size: 18),
+                      label: Text(
+                        'Magias e habilidades · ${run.skillPoints} PH',
+                      ),
+                    ),
                   TextButton(
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF314C40),
@@ -594,6 +641,40 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
     );
   }
 
+  Widget _route(BetaSession run) => Container(
+    padding: const EdgeInsets.all(8),
+    decoration: BoxDecoration(
+      color: const Color(0x18314C40),
+      border: Border.all(color: const Color(0x66314C40)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final region in BetaRegion.values)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Text(
+              '${region.index < run.region.index
+                  ? '✓'
+                  : region == run.region
+                  ? '›'
+                  : '·'} '
+              '${region.index + 1}. ${region.title}',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: region == run.region
+                    ? FontWeight.bold
+                    : FontWeight.normal,
+                color: const Color(0xFF314C40),
+              ),
+            ),
+          ),
+        const SizedBox(height: 4),
+        Text(run.region.story, style: const TextStyle(fontSize: 11)),
+      ],
+    ),
+  );
+
   Widget _combatGuide() => ExpansionTile(
     key: const PageStorageKey('beta-combat-guide'),
     iconColor: const Color(0xFF314C40),
@@ -603,7 +684,16 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
     children: [
       const Text(
         'Alvo dourado: espada no alcance. Azul: aproxime-se ou use magia. '
-        'Colunas bloqueiam golpes e disparos. Magia custa 25 MP; mana retorna sozinha.',
+        'Colunas bloqueiam golpes e disparos. Magia simples custa 25 MP; '
+        'mana retorna sozinha. Em Mistura, toque no segundo elemento e conjure '
+        '(35–45 MP). Acerte para descobrir; os três primeiros combos são equipados.',
+        style: TextStyle(fontSize: 12),
+      ),
+      const SizedBox(height: 8),
+      const Text(
+        'Após vencer, siga a estrada até o arco ao norte e fique no selo para '
+        'viajar. A passagem recupera até 20 HP e 25 MP; nível e elemento continuam. '
+        'A água rasa do aqueduto pode ser atravessada.',
         style: TextStyle(fontSize: 12),
       ),
       const SizedBox(height: 8),
@@ -632,7 +722,10 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
       const Text(
         'Goblin: desvie de lado. Bruto: contorne a varredura. '
         'Guardião: saia do círculo. Ataque quando aparecer “Recuperando”.\n\n'
-        'Teclado: WASD/setas · J espada · K magia · Espaço esquiva · 1–4 elementos.',
+        'Equipe até 3 combos e aprenda habilidades no grimório, antes da expedição '
+        'ou após limpar a área. PH, descobertas e build duram só esta sessão.\n\n'
+        'Teclado: WASD/setas · J espada · K magia · Espaço esquiva · '
+        '1–4 elemento · Shift + 1–4 mistura.',
         style: TextStyle(fontSize: 12),
       ),
       const SizedBox(height: 8),

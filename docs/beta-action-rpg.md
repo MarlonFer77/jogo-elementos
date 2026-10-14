@@ -6,6 +6,8 @@ em 14/10/2026 e promovida de pré-release a Latest por pedido do usuário para
 disponibilizar o aviso de atualização no app. Sem deploy ou troca de assinatura.
 Validação física ainda pendente, independentemente do canal de distribuição.
 Evidências e checklist em [Candidato Android](beta-candidate-v0.34.0.md).
+O recorte abaixo inclui a expansão local, combos e árvore de 14/10/2026,
+ainda fora desse APK.
 
 ## Acesso
 
@@ -25,30 +27,92 @@ servidor ou canal fechado, em outro bloco.
 - Joystick multi-touch, espada, magia e esquiva. Mira assistida no cone à frente,
   priorizando alvos ao alcance da espada, direção e proximidade, sem mirar através
   de colunas. Espada atinge uma vez por ação, recarga de 0,52s.
-- Magia canaliza por 0,35s, custa 25 MP, recarrega em 1,25s. Regeneração: 9 MP/s.
+- Magia individual canaliza por 0,35s, custa 25 MP, recarrega em 1,25s.
+  Regeneração: 9 MP/s. Combos têm tempos e custos próprios, descritos abaixo.
 - Fogo: projétil + queimadura. Água: lentidão + cura de 8 HP somente ao acertar.
   Vento: explosão curta com interrupção/afastamento. Terra: impacto e proteção
-  de 50% por dois segundos. São magias individuais; combos 3D ainda não existem.
+  de 50% por dois segundos. Esses efeitos individuais continuam disponíveis.
+- Seis combos de dois elementos, descobertos por acerto e até três equipados.
+  Árvore de três caminhos liga combos, espada, esquiva e gerenciamento de mana.
 - Esquiva direcional: invulnerabilidade breve, recarga de 1,6s; não atravessa
   colunas ou bordas. Faixa, setor frontal e círculo anunciam os ataques inimigos.
-- Três encontros: goblins, grupo com bruto e guardião com escolta. Entre grupos,
-  recuperação de até 20 HP/25 MP. XP aumenta nível, vitalidade e dano na sessão.
+- Rota de três áreas: Átrio das Raízes (goblins), Aqueduto Velado (bruto e grupo),
+  Santuário dos Ecos (guardião e escolta). Cada área tem obstáculos e ambiente
+  próprios. Não são três ondas automáticas dentro da mesma arena.
+- Após vencer, a passagem abre em 2s. Caminhar até o selo do arco ao norte e
+  permanecer por 550ms avança a rota. Não exige botão novo nem troca de menu.
+  Recupera até 20 HP/25 MP uma vez na viagem; preserva nível/XP/elementos/build.
+  Chegada de 350ms limpa comandos/efeitos e segura a IA; pausa congela a chegada.
+- Regiões são delimitadas, unidirecionais e carregadas uma por vez, sem retorno
+  ou salvamento permanente. Água rasa é transitável; colunas têm colisão real.
+  XP continua aumentando nível, vitalidade e dano apenas na sessão.
 - Vitória/derrota permitem reiniciar. Sair descarta progresso experimental.
   Não grava XP, elementos, habilidades ou recompensas em outros perfis.
 - Respeita volume/mudo global. Trocar de aplicativo pausa; retomada explícita
   limpa movimento anterior. Voltar durante a ação abre a pausa antes de sair.
 
 Teclado: WASD/setas, J (espada), K (magia), Espaço (esquiva), 1–4 (elemento),
-Esc (pausa). No celular todas essas ações possuem controles de toque.
+Shift + 1–4 (segundo elemento), Esc (pausa). No celular há controles de toque.
+
+## Combos e árvore — progresso da sessão
+
+No HUD, **Solo** escolhe a magia individual; **Mistura** mantém o primeiro
+elemento e permite tocar no segundo. Toque no mesmo elemento para desfazer.
+**Magia** conjura a receita selecionada; **3 slots** acessa combos equipados.
+Mana, recarga, canalização e disponibilidade continuam validados no domínio.
+Combos novos são registrados apenas quando o projétil acerta um inimigo.
+Errar ou atingir uma coluna não cura, não descobre nem ativa habilidades.
+
+| Combo | Elementos | MP | Dano base | Canalização / recarga | Função |
+| --- | --- | --- | --- | --- | --- |
+| Vapor | Fogo + Água | 35 | 28 | 0,45s / 1,8s | Até 12 HP de cura ao acertar |
+| Tornado Ígneo | Fogo + Vento | 42 | 26 | 0,55s / 2,2s | Área de 2m, queimadura de 2,5s e afastamento |
+| Erupção | Fogo + Terra | 45 | 40 | 0,65s / 2,4s | Área de 1,6m, maior compromisso na canalização |
+| Névoa | Água + Vento | 38 | 20 | 0,5s / 2s | Área de 2,4m e proteção de 50% por 2s |
+| Lama | Água + Terra | 38 | 24 | 0,55s / 2,1s | Área de 2m e lentidão de 4s |
+| Estilhaços | Vento + Terra | 40 | 34 | 0,5s / 2s | Interrupção e recarga inimiga mínima de 0,8s; guardião 0,25s |
+
+Receitas não dependem da ordem. Dano cresce em +3 por nível após o primeiro;
+alvos secundários recebem 60%. Área é medida do contato e respeita colunas.
+Cura, devolução de mana e buffs acontecem uma vez por conjuração, não por alvo.
+São efeitos imediatos, não campos persistentes. Mana e HP respeitam seus limites.
+
+Os três primeiros combos são equipados automaticamente. A quarta descoberta
+pode causar seu primeiro impacto, mas novos usos são bloqueados até substituir
+um slot no grimório. Selecionar os elementos manualmente não contorna a regra.
+**Magias e habilidades**, na entrada/pausa, abre o grimório. Só permite aprender
+ou trocar slots antes de iniciar ou em pausa com a área livre; durante o combate
+permite consultar. Nada é salvo no Treino, Dungeon, Multiplayer ou perfil online.
+
+Árvore: 1 PH inicial e +1 PH por nível, uma única vez. Cada nó custa 1 PH;
+o segundo nó de cada ramo exige nível 3 e o primeiro nó daquele ramo.
+
+- **Vanguarda:** Lâmina Rúnica prepara +8 na próxima espada por 4s após acertar
+  combo (errar a espada também consome). Perseguição devolve 0,6s da recarga
+  atual da esquiva ao acertar a espada rúnica, uma vez por golpe.
+- **Guardião:** Guarda Arcana garante ao menos 1s de proteção após acertar
+  combo. Passo de Pedra consome proteção ao esquivar e estende a
+  invulnerabilidade de 0,3s para 0,42s.
+- **Sintonia:** Pulso de Mana devolve 6 MP por espada acertada. Retorno Arcano
+  devolve 8 MP por combo acertado, mesmo que alcance vários inimigos.
+
+A viagem preserva habilidades, PH, descobertas e slots, mas limpa o preparo
+temporário da espada. Pausa congela os tempos. Sair ou reiniciar descarta a build.
+HUD não exige rolagem; o grimório usa listas apenas na entrada/pausa e apresenta
+os nós lado a lado na horizontal. Impactos têm movimento/cor dos dois elementos.
 
 ## Integração e limites
 
+- `beta_world.dart`: descrições e geometria imutável por região, sem Flutter.
+- `beta_spells.dart` / `beta_skills.dart`: catálogo de receitas e habilidades,
+  sem Flutter. Não altera o catálogo do combate por turnos.
 - `beta_session.dart`: regras puras Dart, tempo em subpassos limitados, IA,
-  colisão, projéteis, recursos e progressão temporária.
+  colisão da região, viagem, projéteis, recursos e progressão temporária.
 - `beta_game.dart`: loop Flame, áudio existente e HUD atualizado a 10 Hz.
 - `beta_arena_painter.dart`: malhas, câmera, projeção, iluminação direcional,
   ordenação de faces, animação de membros e feedback visual.
 - `beta_screen.dart` / `beta_controls.dart`: HUD, ciclo de vida e controles.
+- `beta_build_panel.dart`: grimório e árvore; chama as validações da sessão.
 - `beta_access_screen.dart`: trava local. Home: botão novo e grade compacta.
 
 Sem dependências novas, serviços, assets externos ou mudanças no engine por
@@ -61,16 +125,27 @@ mais robusto no futuro. Desempenho de produção ainda não está demonstrado.
 
 ### Critérios de liberação do beta atual
 
-Status: rodada de acabamento local fechada para playtest, **não aprovado para
-produção**. Este aceite cobre o modo solo de três encontros com progresso de
-sessão; não significa um RPG completo com save, combos 3D ou exploração.
+Status: acabamento, primeira rota, combos e árvore locais prontos para playtest,
+**não aprovado para produção**. Este aceite cobre três regiões solo com progresso
+de sessão; não significa um RPG completo com save ou mundo aberto.
+
+Verificação do bloco combos/árvore: 50 testes focados (35 domínio, 10 UI,
+5 render), análise limpa. Inclui custos/efeitos, área bloqueada por obstáculos,
+limite de slots, pré-requisitos/PH, sinergias, pausa/viagem/reinício e grimório
+em 320×568, 360×640 e 640×360. Capturas `beta-skills-*`, `beta-grimoire-*`,
+`beta-combos-hud-*` e `beta-combo-effects.png` revisadas em
+`app/build/gameplay-preview/`. Ainda não substitui validação em Android real.
 
 - [x] Controles, alvo/colisões, dano, pausa, vitória/derrota e reinício verificados
   localmente; HP, efeitos, áreas inimigas e animações têm apresentação revisada.
 - [x] Entrada curta, guia consultável, saída com confirmação e movimento reduzido.
 - [x] 37 testes beta aprovados no conjunto; análise Dart limpa; previews revistos.
 - [x] APK candidato 0.34.0+34 compilado; certificado/package compatíveis com a
-  v0.33.0, versionCode maior, hash conferido e 24 sons incluídos.
+  v0.33.0, versionCode maior, hash conferido e 24 sons incluídos (antes da expansão).
+- [x] Expansão: 36 testes focados aprovados, análise limpa e prévias vertical e
+  horizontal das três regiões revisadas. Limpeza de input, pausa, recuperação
+  única, entradas livres, caminho acessível e vitória verificados localmente.
+- [ ] Gerar candidato com a expansão quando autorizado; v0.34.0 não a contém.
 - [ ] Instalar por atualização em Android real e conferir
   que perfis de Treino/Dungeon/Multiplayer continuam disponíveis.
 - [ ] Android real: concluir três encontros, perder/reiniciar, cancelar/confirmar
@@ -83,9 +158,25 @@ sessão; não significa um RPG completo com save, combos 3D ou exploração.
 
 APK publicado e promovido a Latest por autorização explícita; não tratar a
 mudança de distribuição como aprovação de produção.
-Combos 3D, save e exploração continuam
+Combos 3D, save e exploração não linear continuam
 no roadmap posterior, não são preenchidos por polimento visual. A senha local
 continua sendo conveniência para testadores, não proteção de acesso em produção.
+
+### Primeira rota — identidade e travessia
+
+Átrio: pedra tomada por raízes, copas e estrada antiga. Aqueduto: canal elevado,
+quedas d'água decorativas e lâmina rasa. Santuário: basalto, estandartes, inscrições
+e obelisco elemental. Marcos ao fundo permanecem visíveis no enquadramento
+vertical; as laterais ampliam a paisagem no horizontal sem bloquear o combate.
+Malhas estáticas guardadas por região (máximo três), quatro acentos ambientais
+por frame e sem dependências/serviços novos. Movimento reduzido congela os
+acentos e desliga o fade; regras de viagem permanecem iguais.
+
+Prévias: `app/build/gameplay-preview/beta-world-360.png` e `beta-world-640.png`.
+Controles continuam cabendo em 320×568, 360×640 e 640×360. Falhas iniciais dos
+testes de tela eram seletores do texto antigo do HUD; agora usam uma chave
+estável e verificam também aviso de passagem, troca de área e controles novos.
+Não houve alterações de dano, custos, inimigos, Treino, Dungeon ou Multiplayer.
 
 ### Entrada, pausa e saída — fechamento do fluxo
 

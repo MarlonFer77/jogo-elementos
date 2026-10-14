@@ -10,6 +10,12 @@ Color betaElementColor(BetaElement element) => switch (element) {
   BetaElement.earth => const Color(0xFFD2B38A),
 };
 
+Color betaComboColor(BetaCombo combo) => Color.lerp(
+  betaElementColor(combo.first),
+  betaElementColor(combo.second),
+  .5,
+)!;
+
 class _V {
   const _V(this.x, this.y, this.z);
   final double x, y, z;
@@ -42,6 +48,48 @@ class _Projected {
   final int layer;
 }
 
+class _RegionLook {
+  const _RegionLook(
+    this.sky,
+    this.fog,
+    this.ground,
+    this.path,
+    this.stone,
+    this.trim,
+    this.accent,
+  );
+  final Color sky, fog, ground, path, stone, trim, accent;
+  static const values = [
+    _RegionLook(
+      Color(0xFF263C36),
+      Color(0xFF71836C),
+      Color(0xFF52664B),
+      Color(0xFF8B8465),
+      Color(0xFF85896F),
+      Color(0xFFC8B78C),
+      Color(0xFFD6BD78),
+    ),
+    _RegionLook(
+      Color(0xFF243C48),
+      Color(0xFF687F84),
+      Color(0xFF456C70),
+      Color(0xFF798A84),
+      Color(0xFF647B80),
+      Color(0xFFA4B8AC),
+      Color(0xFFA3CED0),
+    ),
+    _RegionLook(
+      Color(0xFF302C3B),
+      Color(0xFF716C7D),
+      Color(0xFF55515F),
+      Color(0xFF76707C),
+      Color(0xFF666273),
+      Color(0xFFB9AA94),
+      Color(0xFFE0BB7D),
+    ),
+  ];
+}
+
 /// Small software-projected 3D scene: real XYZ meshes, perspective, directional
 /// shading and face sorting. Deliberately no new native renderer or GPU plugin.
 /// Not a general 3D engine: no depth buffer, skeletal assets or vertical physics.
@@ -56,6 +104,7 @@ class BetaArenaPainter extends CustomPainter {
     }
   }
   final BetaSession run;
+  late BetaRegion _lastRegion = run.region;
   bool reduceMotion;
   double _cameraX, _cameraZ, _heroAngle;
   double _clock = 0;
@@ -82,7 +131,9 @@ class BetaArenaPainter extends CustomPainter {
     _enemyHealth.clear();
   }
 
-  static final _scenery = _buildScenery();
+  // Only three immutable scenes, built on first visit, never rebuilt per frame.
+  static final _scenery = <BetaRegion, List<_Face>>{};
+  _RegionLook get _look => _RegionLook.values[run.region.index];
   late _V _camera, _right, _up, _forward;
   late Size _size;
   late double _focal;
@@ -93,6 +144,14 @@ class BetaArenaPainter extends CustomPainter {
       return;
     }
     final dt = elapsed.clamp(0.0, .1);
+    if (_lastRegion != run.region) {
+      _lastRegion = run.region;
+      _cameraX = run.x * .8;
+      _cameraZ = run.z;
+      _heroAngle = run.angle;
+      _wasCasting = false;
+      _castRelease = 0;
+    }
     _heroHealth.advance(run.hp, run.maxHp, dt);
     _enemyHealth.removeWhere((enemy, _) => !run.enemies.contains(enemy));
     for (final enemy in run.enemies) {
@@ -208,103 +267,273 @@ class BetaArenaPainter extends CustomPainter {
     );
   }
 
-  static List<_Face> _buildScenery() {
+  static List<_Face> _buildScenery(BetaRegion region) {
     final faces = <_Face>[];
+    final look = _RegionLook.values[region.index];
+    void slab(
+      double x,
+      double z,
+      double width,
+      double depth,
+      Color color, {
+      double y = 0,
+    }) {
+      faces.add(
+        _Face(
+          [
+            _V(x - width / 2, y, z - depth / 2),
+            _V(x - width / 2, y, z + depth / 2),
+            _V(x + width / 2, y, z + depth / 2),
+            _V(x + width / 2, y, z - depth / 2),
+          ],
+          color,
+          ground: true,
+        ),
+      );
+    }
+
     for (var x = -9; x < 9; x += 2) {
       for (var z = -11; z < 11; z += 2) {
-        final path = x.abs() < 3;
-        final color = Color(
-          path
-              ? ((x + z) % 4 == 0 ? 0xFF8F8A6B : 0xFF999276)
-              : ((x + z) % 4 == 0 ? 0xFF4C6653 : 0xFF536E58),
-        );
-        faces.add(
-          _Face(
-            [
-              _V(x.toDouble(), -.02, z.toDouble()),
-              _V(x.toDouble(), -.02, z + 2.0),
-              _V(x + 2.0, -.02, z + 2.0),
-              _V(x + 2.0, -.02, z.toDouble()),
-            ],
-            color,
-            ground: true,
-          ),
-        );
+        final path = (x + 1).abs() <= 2;
+        final tint = ((x * 17 + z * 31).abs() % 7) / 70;
+        final color = Color.lerp(
+          path ? look.path : look.ground,
+          const Color(0xFF202B29),
+          tint,
+        )!;
+        slab(x + 1.0, z + 1.0, 2, 2, color, y: -.02);
+        if (!path && region == BetaRegion.roots && (x + z) % 4 == 0) {
+          slab(x + 1.2, z + .7, 1.3, .6, const Color(0xFF60734B), y: -.01);
+        }
       }
     }
-    for (final o in BetaSession.obstacles) {
-      _box(
-        faces,
-        _V(o.x, .16, o.z),
-        const _V(1.6, .32, 1.6),
-        const Color(0xFF666D5E),
+    // Inlaid road rather than an oversized checkerboard; all overlays are flat.
+    for (var i = 0; i < 10; i++) {
+      final z = -9 + i * 2.0;
+      slab(
+        i.isEven ? -.65 : .55,
+        z,
+        1.6,
+        1.25,
+        Color.lerp(look.path, look.trim, .18)!,
+        y: -.005,
       );
+      slab(i.isEven ? .3 : -.4, z + .15, .04, .8, look.stone, y: 0);
+    }
+    for (final o in region.obstacles) {
+      // Keep the widest solid mesh inside the collision cylinder.
+      final width = o.radius * 1.4;
+      _box(faces, _V(o.x, .13, o.z), _V(width, .26, width), look.stone);
       _box(
         faces,
         _V(o.x, o.height / 2, o.z),
-        _V(.95, o.height, .95),
-        const Color(0xFFABA585),
+        _V(width * .7, o.height, width * .7),
+        look.stone,
       );
-      _box(
-        faces,
-        _V(o.x, o.height, o.z),
-        const _V(1.35, .3, 1.35),
-        const Color(0xFFCAC09B),
-      );
-    }
-    for (var z = -10; z <= 10; z += 4) {
-      for (final x in [-9.0, 9.0]) {
+      _box(faces, _V(o.x, o.height, o.z), _V(width, .22, width), look.trim);
+      if (region == BetaRegion.roots) {
         _box(
           faces,
-          _V(x, .6, z.toDouble()),
-          const _V(.5, 1.2, 3.8),
-          const Color(0xFF68786A),
+          _V(o.x - width * .2, o.height * .45, o.z + width * .35),
+          _V(.12, o.height * .85, .12),
+          const Color(0xFF3D573B),
+          yaw: .2,
         );
+        slab(o.x, o.z, width * 2, width * 2, const Color(0xFF41583D));
+      } else if (region == BetaRegion.sanctum) {
         _box(
           faces,
-          _V(x, .85, z + 1.9),
-          const _V(.9, 1.7, .9),
-          const Color(0xFFB4AC88),
+          _V(o.x, o.height * .65, o.z + width * .36),
+          const _V(.12, .65, .035),
+          look.accent,
         );
       }
     }
-    for (final x in [-5.5, 5.5]) {
-      _box(
+    // Perimeter geometry is outside the same bounds used by movement.
+    for (final side in [-1.0, 1.0]) {
+      for (var i = 0; i < 6; i++) {
+        final z = -10 + i * 4.0;
+        _box(faces, _V(side * 8.85, .3, z), const _V(.5, .6, 4), look.stone);
+        _box(faces, _V(side * 8.85, .7, z), const _V(.6, 1.4, .65), look.trim);
+        if (region == BetaRegion.roots) {
+          final x = side * (11 + i % 2 * 1.8);
+          _box(
+            faces,
+            _V(x, 1.8, z - 1),
+            const _V(.55, 3.6, .55),
+            const Color(0xFF514C39),
+            yaw: i * .3,
+          );
+          _crown(
+            faces,
+            _V(x, 2.8, z - 1),
+            2.2,
+            2.6,
+            i.isEven ? const Color(0xFF3D5945) : const Color(0xFF6C7850),
+          );
+        } else if (region == BetaRegion.aqueduct) {
+          _box(
+            faces,
+            _V(side * 10.6, 1.9, z),
+            const _V(.8, 3.8, .8),
+            look.stone,
+          );
+          _box(
+            faces,
+            _V(side * 10.6, 3.9, z + 1.4),
+            const _V(.85, .5, 2.8),
+            look.trim,
+          );
+        } else {
+          _crown(
+            faces,
+            _V(side * 11.5, 0, z),
+            1.7,
+            4 + i % 3 * 1.2,
+            look.stone,
+          );
+        }
+      }
+    }
+    for (final z in [-10.9, 10.9]) {
+      _box(faces, _V(0, .23, z), const _V(17.5, .46, .5), look.stone);
+    }
+    // A distant skyline implies the ruined city beyond this playable route.
+    for (var i = 0; i < 7; i++) {
+      _crown(
         faces,
-        _V(x, 1.6, -10),
-        const _V(1.2, 3.2, 1.3),
-        const Color(0xFF879580),
-      );
-      _box(
-        faces,
-        _V(x, 3.3, -10),
-        const _V(1.7, .35, 1.7),
-        const Color(0xFFBCB695),
+        _V(-24 + i * 8.0, -1, -31 - i % 2 * 4.0),
+        7,
+        2.5 + i % 3 * 1.2,
+        Color.lerp(look.fog, look.sky, .5)!,
       );
     }
-    _box(
-      faces,
-      const _V(0, .25, -9.5),
-      const _V(6.5, .5, 2),
-      const Color(0xFF788773),
-    );
-    for (var i = 0; i < 8; i++) {
-      final x = i.isEven ? -7.0 : 7.0, z = -8 + (i ~/ 2) * 5.0;
-      _box(
-        faces,
-        _V(x, .3, z),
-        const _V(.9, .6, 1.1),
-        const Color(0xFF758976),
-        yaw: i * .3,
-      );
-      _box(
-        faces,
-        _V(x + .35, .5, z),
-        const _V(.45, 1, .45),
-        const Color(0xFF3D664F),
-      );
+    for (final x in [-2.2, 2.2]) {
+      _box(faces, _V(x, 1.6, -10.9), const _V(.8, 3.2, .8), look.stone);
+      _box(faces, _V(x, 3.2, -10.9), const _V(1.1, .3, 1), look.trim);
+    }
+    if (region != BetaRegion.sanctum) {
+      _box(faces, const _V(0, 3.5, -10.9), const _V(5.2, .5, 1), look.trim);
+    }
+    slab(0, BetaRegion.gateZ, 3.3, 3, look.stone, y: .002);
+    // Landmarks stay behind the playable bounds, readable in portrait too.
+    if (region == BetaRegion.roots) {
+      for (final x in [-7.0, -4.5, 4.5, 7.0]) {
+        _box(
+          faces,
+          _V(x, 2, -13),
+          const _V(.55, 4, .55),
+          const Color(0xFF514C39),
+        );
+        _crown(faces, _V(x, 2.3, -13), 2.2, 2.9, const Color(0xFF4B6844));
+        _crown(faces, _V(x, 4, -13), 1.5, 2.1, const Color(0xFF7C8655));
+      }
+      for (final x in [-1.9, 1.9]) {
+        _box(
+          faces,
+          _V(x, 1.7, -10.35),
+          const _V(.13, 3.4, .13),
+          const Color(0xFF476543),
+          yaw: x * .1,
+        );
+      }
+    }
+    if (region == BetaRegion.aqueduct) {
+      for (final x in [-7.0, -3.5, 3.5, 7.0]) {
+        _box(faces, _V(x, 2.2, -14), const _V(.85, 4.4, 1.1), look.stone);
+        _box(faces, _V(x, 3.7, -13.4), const _V(1.5, .35, .3), look.trim);
+      }
+      _box(faces, const _V(0, 4.5, -14), const _V(15.5, .7, 1.5), look.stone);
+      _box(faces, const _V(0, 4.9, -14), const _V(15.5, .08, 1), look.accent);
+      for (final x in [-6.0, 6.0]) {
+        _box(
+          faces,
+          _V(x, 2.5, -12),
+          const _V(.65, 4.7, .08),
+          const Color(0xFF7CACB1),
+        );
+        _box(
+          faces,
+          _V(x - .13, 2.6, -11.94),
+          const _V(.12, 4.3, .02),
+          look.accent,
+        );
+      }
+      // Shallow water is traversable; no invisible cliff or false bridge.
+      for (final x in [-6.0, 6.0]) {
+        for (var i = 0; i < 8; i++) {
+          slab(x, -8 + i * 2.2, 2.6, .035, const Color(0xFF739B98), y: .008);
+        }
+      }
+    } else if (region == BetaRegion.sanctum) {
+      for (var step = 0; step < 3; step++) {
+        _box(
+          faces,
+          _V(0, .2 + step * .35, -13),
+          _V(6 - step * 1.1, .35, 2.8 - step * .3),
+          look.stone,
+        );
+      }
+      _box(faces, const _V(0, 3.2, -13), const _V(1.4, 4.5, 1.4), look.stone);
+      _crown(faces, const _V(0, 5.45, -13), 1, 1.4, look.trim);
+      for (var i = 0; i < 4; i++) {
+        _box(
+          faces,
+          _V(0, 2.1 + i * .7, -12.28),
+          const _V(.33, .33, .035),
+          betaElementColor(BetaElement.values[i]),
+          yaw: 0,
+        );
+      }
+      for (final x in [-5.0, 5.0]) {
+        _box(faces, _V(x, 2, -12.3), const _V(.25, 4, .25), look.trim);
+        faces.add(
+          _Face(
+            [
+              _V(x, 3.8, -12.1),
+              _V(x + 1.2, 3.8, -12.1),
+              _V(x + 1.2, 1.7, -12.1),
+              _V(x + .6, 1.4, -12.1),
+              _V(x, 1.7, -12.1),
+            ],
+            const Color(0xFF6C4D59),
+            unlit: true,
+          ),
+        );
+      }
+      for (var i = 0; i < 8; i++) {
+        final angle = i * math.pi / 4;
+        slab(
+          math.sin(angle) * 5.8,
+          math.cos(angle) * 5.8 - 1,
+          .28,
+          .9,
+          look.trim,
+          y: .008,
+        );
+      }
     }
     return faces;
+  }
+
+  static void _crown(
+    List<_Face> faces,
+    _V base,
+    double radius,
+    double height,
+    Color color,
+  ) {
+    final tip = base + _V(.2, height, -.15);
+    for (var i = 0; i < 6; i++) {
+      final a = i * math.pi / 3, b = (i + 1) * math.pi / 3;
+      faces.add(
+        _Face([
+          base + _V(math.cos(a) * radius, 0, math.sin(a) * radius),
+          tip,
+          base + _V(math.cos(b) * radius, 0, math.sin(b) * radius),
+        ], color),
+      );
+    }
   }
 
   void _disc(
@@ -525,7 +754,7 @@ class BetaArenaPainter extends CustomPainter {
     }
     final releasing = hero && run.swordTime <= 0 && !dodging && !dead;
     final castLift = casting
-        ? ease((BetaSession.castDuration - run.castTime) / .12)
+        ? ease((run.activeCastDuration - run.castTime) / .12)
         : releasing
         ? ease(_castRelease / _releaseDuration)
         : 0.0;
@@ -735,14 +964,23 @@ class BetaArenaPainter extends CustomPainter {
       }
     }
     if (casting) {
-      final charge = 1 - run.castTime / BetaSession.castDuration;
+      final charge = 1 - run.castTime / run.activeCastDuration;
       _spellShape(
         faces,
         world(leftHand + const _V(0, .05, .18)),
-        run.element,
+        run.castingCombo?.first ?? run.element,
         yaw: yaw,
         power: .35 + charge * .65,
       );
+      if (run.castingCombo case final combo?) {
+        _spellShape(
+          faces,
+          world(leftHand + const _V(.2, .22, .18)),
+          combo.second,
+          yaw: -yaw,
+          power: .3 + charge * .45,
+        );
+      }
       _ring(faces, x, z, .7 + charge * .2, blade, fraction: charge);
     }
     if (hero && run.protection > 0) {
@@ -752,7 +990,7 @@ class BetaArenaPainter extends CustomPainter {
         z,
         .85,
         const Color(0xFFDFC88B),
-        fraction: run.protection / 2,
+        fraction: (run.protection / 2).clamp(0.0, 1.0),
       );
       for (var i = 0; i < 3; i++) {
         final a = _clock * 1.8 + i * math.pi * 2 / 3;
@@ -862,10 +1100,18 @@ class BetaArenaPainter extends CustomPainter {
   void _spellImpact(List<_Face> faces, BetaEffect fx) {
     final progress = (1 - fx.life / .65).clamp(0.0, 1.0);
     final blocked = fx.kind == BetaEffectKind.blocked;
-    final color = betaElementColor(fx.element);
+    final color = fx.combo == null
+        ? betaElementColor(fx.element)
+        : betaComboColor(fx.combo!);
     final scale = blocked ? .4 : 1.0;
-    final radius = (fx.element == BetaElement.wind ? 2 : .9) * scale;
-    if (fx.element == BetaElement.water || fx.element == BetaElement.wind) {
+    final radius =
+        (fx.combo == null
+            ? (fx.element == BetaElement.wind ? 2 : .9)
+            : math.max(.9, fx.combo!.radius)) *
+        scale;
+    if (fx.combo != null ||
+        fx.element == BetaElement.water ||
+        fx.element == BetaElement.wind) {
       _ring(
         faces,
         fx.x,
@@ -877,22 +1123,44 @@ class BetaArenaPainter extends CustomPainter {
     for (var i = 0; i < 6; i++) {
       final a = i * math.pi / 3;
       final spread = .15 + progress * (radius - .15);
+      final orbit = a + (fx.combo == BetaCombo.firestorm ? progress * 5 : 0);
+      final rise = math.sin(progress * math.pi);
+      final height = switch (fx.combo) {
+        BetaCombo.steam => .7 + progress * 1.5,
+        BetaCombo.firestorm => .4 + (i % 3) * .3 + progress,
+        BetaCombo.eruption => .12 + rise * 1.1,
+        BetaCombo.mist => .15 + rise * .25,
+        BetaCombo.mud => .08,
+        BetaCombo.shards => .85 + rise * .4,
+        null => .12 + rise * (fx.element == BetaElement.fire ? 1.4 : .6),
+      };
       final point = _V(
-        fx.x + math.sin(a) * spread,
-        .12 +
-            math.sin(progress * math.pi) *
-                (fx.element == BetaElement.fire ? 1.4 : .6),
-        fx.z + math.cos(a) * spread,
+        fx.x + math.sin(orbit) * spread,
+        height,
+        fx.z + math.cos(orbit) * spread,
       );
-      final size = (.06 + (1 - progress) * .14) * scale;
-      if (fx.element == BetaElement.earth) {
-        _box(faces, point, _V(size, size * 2, size), color, yaw: a + progress);
+      final size =
+          (.06 + (1 - progress) * .14) * scale * (fx.combo == null ? 1 : 1.35);
+      final particleColor = fx.combo == null
+          ? color
+          : betaElementColor(i.isEven ? fx.combo!.first : fx.combo!.second);
+      if (fx.element == BetaElement.earth ||
+          fx.combo?.second == BetaElement.earth) {
+        _box(
+          faces,
+          point,
+          fx.combo == BetaCombo.mud
+              ? _V(size * 1.6, .04, size * 1.6)
+              : _V(size, size * 2, size),
+          particleColor,
+          yaw: a + progress,
+        );
       } else {
         _gem(
           faces,
           point,
           _V(size, size * (fx.element == BetaElement.fire ? 2 : 1), size),
-          color,
+          particleColor,
           a,
         );
       }
@@ -913,7 +1181,7 @@ class BetaArenaPainter extends CustomPainter {
       enemy.alive &&
       enemy.windup > 0 &&
       enemy.attackArea.contains(run.x, run.z) &&
-      BetaSession.clearLine(enemy.x, enemy.z, run.x, run.z);
+      run.clearLine(enemy.x, enemy.z, run.x, run.z);
 
   void _contactImpact(Canvas canvas, BetaEffect fx) {
     final age = .65 - fx.life;
@@ -964,25 +1232,52 @@ class BetaArenaPainter extends CustomPainter {
     _up = _right.cross(_forward);
     canvas.save();
     canvas.clipRect(Offset.zero & size);
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()..color = const Color(0xFF243F3D),
-    );
+    canvas.drawRect(Offset.zero & size, Paint()..color = _look.sky);
     final shake = reduceMotion ? 0.0 : run.impactTime / .18;
     canvas.translate(
       math.sin(_clock * 85) * shake * 1.8,
       math.cos(_clock * 73) * shake * 1.2,
     );
-    final faces = <_Face>[..._scenery];
-    _ring(faces, 0, -9, 1.5, const Color(0xFFC5B77C));
-    for (final x in [-5.5, 5.5]) {
-      _box(
+    final faces = <_Face>[
+      ..._scenery.putIfAbsent(run.region, () => _buildScenery(run.region)),
+    ];
+    final gateColor = run.passageOpen ? _look.accent : _look.stone;
+    _ring(faces, BetaRegion.gateX, BetaRegion.gateZ, 1.3, gateColor);
+    if (run.passageProgress > 0) {
+      _ring(
         faces,
-        _V(x, 3.65 + math.sin(run.time * 5 + x) * .06, -10),
-        const _V(.35, .55, .35),
-        const Color(0xFFE8B558),
-        yaw: run.time,
+        BetaRegion.gateX,
+        BetaRegion.gateZ,
+        1.05,
+        _look.trim,
+        fraction: run.passageProgress,
       );
+    }
+    // Small environmental accents, fixed count; decorative motion can be reduced.
+    for (var i = 0; i < 4; i++) {
+      final t = reduceMotion ? 0.0 : _clock;
+      final x = (i.isEven ? -1 : 1) * (4.7 + i % 3 * .7);
+      final z = -7 + i * 4.1;
+      if (run.region == BetaRegion.aqueduct) {
+        _ring(
+          faces,
+          x,
+          z,
+          .15 + ((t * .2 + i * .17) % 1) * .45,
+          _look.accent.withValues(alpha: .2),
+        );
+      } else {
+        _box(
+          faces,
+          _V(
+            x + math.sin(t * .4 + i) * .2,
+            .7 + (i % 3) * .35 + math.sin(t + i) * .12,
+            z,
+          ),
+          const _V(.045, .045, .045),
+          _look.accent,
+        );
+      }
     }
     final aim = run.aimTarget;
     final inDanger = run.enemies.any(_threatensHero);
@@ -1071,13 +1366,24 @@ class BetaArenaPainter extends CustomPainter {
     for (final p in run.projectiles) {
       final yaw = math.atan2(p.dx, p.dz);
       _spellShape(faces, _V(p.x, .85, p.z), p.element, yaw: yaw);
+      if (p.combo case final combo?) {
+        _spellShape(
+          faces,
+          _V(p.x + .15, 1.05, p.z),
+          combo.second,
+          yaw: -yaw,
+          power: .65,
+        );
+      }
       for (var i = 1; i <= 3; i++) {
         final offset = i * .25;
         _gem(
           faces,
           _V(p.x - p.dx * offset, .83, p.z - p.dz * offset),
           _V(.12, .1, .17) * (1 - i * .22),
-          betaElementColor(p.element),
+          p.combo == null
+              ? betaElementColor(p.element)
+              : betaComboColor(p.combo!),
           yaw,
         );
       }
@@ -1160,7 +1466,7 @@ class BetaArenaPainter extends CustomPainter {
       if (depth > 23 && !face.unlit) {
         color = Color.lerp(
           color,
-          const Color(0xFF39524B),
+          _look.fog,
           ((depth - 23) / 30).clamp(0.0, .5),
         )!;
       }
@@ -1177,6 +1483,19 @@ class BetaArenaPainter extends CustomPainter {
     final paint = Paint()..isAntiAlias = true;
     for (final face in projected) {
       canvas.drawPath(face.path, paint..color = face.color);
+    }
+    if (run.passageOpen) {
+      final gate = _project(const _V(BetaRegion.gateX, .3, BetaRegion.gateZ));
+      if (gate != null) {
+        _label(
+          canvas,
+          gate,
+          'PASSAGEM ABERTA',
+          _look.accent,
+          size: 10,
+          badge: true,
+        );
+      }
     }
     for (final fx in run.effects) {
       if (fx.kind == BetaEffectKind.impact &&
@@ -1255,6 +1574,18 @@ class BetaArenaPainter extends CustomPainter {
             : const Color(0xFFFFE7A3),
         scale: reduceMotion ? 1 : 1 + pop * .2,
         opacity: (fx.life / .18).clamp(0.0, 1.0),
+      );
+    }
+    if (run.arrivalTime > 0 && !reduceMotion) {
+      canvas.drawRect(
+        Offset.zero & size,
+        Paint()
+          ..color = _look.sky.withValues(
+            alpha: (run.arrivalTime / BetaSession.arrivalDuration).clamp(
+              0.0,
+              1.0,
+            ),
+          ),
       );
     }
     canvas.restore();

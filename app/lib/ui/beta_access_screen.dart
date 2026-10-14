@@ -79,7 +79,8 @@ class _BetaAccessScreenState extends State<BetaAccessScreen> {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'RPG de ação 3D · protótipo solo\nAcesso reservado aos testadores.',
+                        'Uma estrada esquecida. Três regiões para recuperar.\n'
+                        'RPG de ação 3D · teste solo.',
                       ),
                       const SizedBox(height: 14),
                       TextField(
