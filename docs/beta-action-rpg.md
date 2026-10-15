@@ -3,9 +3,10 @@
 Primeiro protótipo solo de ação 3D dentro do app, implementado em 09/10/2026.
 Não substitui o combate por turnos. Polimentos anteriores incluídos na v0.34.0;
 três regiões, combos e árvore incluídos na **v0.35.0**. A **v0.36.0** foi
-publicada como Latest em 15/10/2026. Sem deploy ou troca de assinatura.
+publicada em 15/10/2026; a **v0.37.0** é a Latest atual, com loja e novos
+efeitos de magias. Sem deploy ou troca de assinatura.
 Validação física ainda pendente, independentemente do canal de distribuição.
-Artefato e verificações em [Release v0.36.0](release-v0.36.0.md).
+Artefato e verificações em [Release v0.37.0](release-v0.37.0.md).
 Checklist físico anterior em [Candidato Android](beta-candidate-v0.34.0.md),
 complementado pelos testes de combos, árvore e regiões nas notas atuais.
 
@@ -13,9 +14,9 @@ Polimento dos mobs iniciado em 15/10/2026 está **incluído na v0.36.0**: novas
 silhuetas, armas e queda; elfo sombrio nas áreas 2/3. Inclui também o rolamento
 e o polimento de conjurações/golpes descritos abaixo.
 
-## Magias com identidade própria — próximo candidato
+## Magias com identidade própria — v0.37.0
 
-Novo polimento visual local, ainda fora da v0.36.0. As quatro magias e os
+Polimento visual incluído na v0.37.0. As quatro magias e os
 seis combos têm formas próprias durante canalização, voo e impacto:
 
 - Fogo: línguas flamejantes e brasas; Água: gotas, coroa de respingos e ondas.
@@ -37,7 +38,7 @@ Custos, dano, alcance, duração, sons e outros modos permanecem inalterados.
 em `app/build/gameplay-preview/beta-spells-flight.png` e `beta-spells-impact.png`.
 Teste cobre dez silhuetas distintas, duas orientações, pausa, expiração,
 estado preservado e até 200 faces por manifestação (sem incluir rastros solo).
-Não garante FPS em aparelho. Sem novos assets/dependências ou publicação.
+Não garante FPS em aparelho. Sem novos assets/dependências.
 
 ## Direção visual — Ordem dos Ecos
 

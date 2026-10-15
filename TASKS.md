@@ -4,10 +4,14 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Publicar v0.37.0+37 como Latest por solicitação do usuário, incluindo Ateliê
-dos Ecos e efeitos próprios das magias/combos do BETA 3D. Compilar no GitHub,
-conferir assinatura/versão/hash e anexar app-release.apk. Sem deploy/backend
-ou troca de chave. Notas em docs/release-v0.37.0.md.
+v0.37.0+37 publicada como Latest em 15/10/2026, com Ateliê dos Ecos e novos
+efeitos das magias/combos do BETA 3D. Build 38799530454 no commit
+3ae2daa48efe9cac29cc09501f00af60952bdc82; app-release.apk anexado.
+Versão/hash/assinatura e permissões conferidos contra v0.36.0. Endpoint
+Latest e verificador real confirmam atualização 0.36 → 0.37 e nenhuma
+atualização na própria 0.37. Sem deploy/backend ou troca de chave.
+Notas em docs/release-v0.37.0.md. Próximo: validação física da instalação
+por atualização, loja, magias, fluidez e estabilidade no celular.
 
 Checkpoint anterior:
 

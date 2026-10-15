@@ -1,6 +1,6 @@
 # Ateliê dos Ecos
 
-Implementado localmente em 15/10/2026, ainda fora da release v0.36.0.
+Implementado em 15/10/2026 e publicado na [v0.37.0](release-v0.37.0.md).
 Menu inicial → **Loja de cosméticos**. Primeira coleção: paletas de roupas
 do herói do BETA 3D, não modelos novos nem equipamentos de combate.
 
@@ -50,4 +50,4 @@ autoridade de compras pagas ou recompensas online; isso exigirá servidor.
 22 testes focados de carteira, concorrência, marcos, corrupção/versão futura,
 compra/cancelamento/equipamento, menu e BETA aprovados. Prévias revisadas em
 360×640, 640×360 e 568×320; catálogo rola, prévia e ação permanecem fixas.
-Validação física no celular pendente. Sem geração ou publicação de APK.
+Validação física no celular pendente. APK e verificações nas notas da v0.37.0.

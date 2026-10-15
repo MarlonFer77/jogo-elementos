@@ -40,3 +40,21 @@ da versão anterior: **não desinstale nem limpe os dados**. Confira **0.37.0**.
 22 testes focados da loja/menu/BETA e 16 de magias/combos aprovados durante
 a implementação. Prévias visuais revisadas; testes locais não substituem
 instalação por atualização e playtest físico.
+
+## APK verificado
+
+- Commit compilado: `3ae2daa48efe9cac29cc09501f00af60952bdc82`.
+- [Build GitHub Actions](https://github.com/MarlonFer77/jogo-elementos/actions/runs/38799530454).
+- Arquivo: `app-release.apk`, 59.183.694 bytes; versão `0.37.0+37`.
+- Package ID: `com.example.app`; Android 7/API 24 ou superior.
+- Arquiteturas: arm64-v8a, armeabi-v7a e x86_64.
+- Certificado igual ao da v0.36.0, APK não depurável e mesmas permissões.
+- Assinatura ainda Android Debug, preservada para compatibilidade; definitiva pendente.
+- SHA-256: `ad4f23a467d4054d971b3c2965f735b75486b10c9ee305e223da0b383101d480`.
+
+Hash local igual ao registrado no build. Antes de publicar, 19 testes do
+atualizador e o teste das dez silhuetas integradas foram reexecutados e passaram.
+
+Publicada como Latest em 15/10/2026. Endpoint público e digest do asset
+conferidos. Verificador real detectou atualização 0.36.0+36 → 0.37.0;
+na própria 0.37.0+37, não oferece atualização desnecessária.
