@@ -130,7 +130,7 @@ class _BetaActionPadState extends State<BetaActionPad> {
     if (run.queuedAction == action) return 'Na fila';
     if (run.castTime > 0) return 'Conjurando';
     if (action == BetaAction.cast && run.swordTime > 0) return 'Em ataque';
-    if (action != BetaAction.dodge && run.dodgeTime > 0) return 'Esquivando';
+    if (run.dodgeTime > 0) return 'Rolando';
     if (action == BetaAction.cast && !run.spellEquipped) return 'Não equipado';
     if (action == BetaAction.cast && run.mana < run.spellManaCost) {
       return 'Sem mana';
@@ -151,7 +151,7 @@ class _BetaActionPadState extends State<BetaActionPad> {
             : 'Aproxime-se',
       BetaAction.cast =>
         '${run.spellManaCost.round()} MP · ${run.selectedCombo?.label ?? run.element.label}',
-      BetaAction.dodge => 'Desviar',
+      BetaAction.dodge => 'Esquiva direcional',
     };
   }
 
@@ -348,8 +348,8 @@ class _BetaActionPadState extends State<BetaActionPad> {
         SizedBox(
           width: double.infinity,
           child: _button(
-            'Esquiva',
-            Icons.air,
+            'Rolar',
+            Icons.rotate_right,
             run.canRequest(BetaAction.dodge)
                 ? () => _action(BetaAction.dodge)
                 : null,

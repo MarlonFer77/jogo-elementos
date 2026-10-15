@@ -4,6 +4,58 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Direção visual medieval-fantástica do BETA 3D concluída: Ordem dos Ecos,
+cristal partido, pedra facetada, bronze envelhecido, mantos/couro. Herói com
+capuz, manto dividido, ombreira e espada afilada; quatro mobs com malhas
+facetadas e equipamentos próprios. Bosque em ruínas, aqueduto com arcos,
+santuário com capela, estandartes e pavimentação irregular. Corrigidas faces
+ocultas de emblemas/tecidos e sobreposição do chão. Decoração sólida nova
+fora da arena; obstáculos/limites e regras preservados.
+51 testes focados passaram; cinco de render reexecutados após ajuste dos
+arcos laterais. Cenários estáticos em cache com teto de 2600 faces por região
+verificado em teste (não é garantia de FPS no celular). Prévias de cenários
+vertical/horizontal, criaturas e rolamento revisadas. Análise dos arquivos
+tocados limpa. Envio autorizado para codex/release-v0.35.0; sem APK/release,
+alteração de versão, deploy/backend ou arquivos temporários. A release v0.35.0
+existente ainda não inclui estes polimentos. Próximo: candidato Android e
+validação física de fluidez, leitura dos ataques e instalação por atualização.
+
+Checkpoint anterior:
+
+Combate mágico, golpes dos mobs e rolamento do BETA 3D concluídos localmente
+em 15/10/2026. Canalização visível ao lado do corpo, elementos convergem na mão,
+gesto de lançamento/retorno de 0,2s, rastros elementais e núcleo de impacto.
+Goblins recuam antes da estocada; ogro arma a clava; elfo desenha dois cortes;
+guardião leva os punhos ao chão. Áreas/tempos/dano continuam autoritativos no
+domínio; rastros não criam acertos. Sem alterar custo, dano ou efeitos das magias.
+Botão Rolar: agacha, recolhe membros/arma, gira e levanta. Duração 0,42s (antes
+0,24); curva de deslocamento conserva 2,64 unidades em 30/60/120 FPS. Mesma
+recarga 1,6s e invulnerabilidade 0,3s (0,42 com Passo de Pedra); saída vulnerável
+sem a habilidade. Colisões, direção comprometida, pausa e fila preservadas.
+51 testes focados passaram; domínio/render reexecutados após ajustes finais;
+análise limpa. Prévias beta-roll-*.png, beta-magic-casting.png e beta-mob-strikes.png
+em app/build/gameplay-preview/ revisadas. Não altera outros modos/backend/saves,
+não gera APK/release. Ainda requer validação de fluidez e resposta no celular.
+
+Checkpoint anterior:
+
+Polimento dos mobs do BETA 3D concluído localmente em 15/10/2026: goblin
+pequeno/curvado com orelhas e broquel, ogro largo com presas e clava, novo elfo
+sombrio esguio com capa/cabelo claro e duas lâminas, guardião de pedra com runa,
+punhos articulados e desmoronamento. Humanoides tombam de lado, sem armas
+erguidas na queda. Malhas procedurais; sem dependências/assets novos.
+Elfo substitui um goblin nas áreas 2/3: nove inimigos, 528 HP somados e 280 XP
+preservados. Corte duplo resolve um único acerto de 12; preparação 0,85s,
+recuperação 0,5s. Reutiliza áreas anunciadas, colisões, interrupção e status.
+50 testes focados passaram (35 domínio, 10 UI, 5 render); os cinco de render
+reexecutados após ajuste da queda. Análise dos arquivos tocados e diff limpos.
+Prévias revisadas em app/build/gameplay-preview/beta-enemy-polish.png e
+beta-creature-designs.png. Sem mudar Treino/Dungeon/Multiplayer/backend/saves,
+versão ou release. A v0.35.0 publicada NÃO contém estes novos mobs.
+Próximo: validar legibilidade e fluidez em Android no próximo candidato.
+
+Checkpoint anterior:
+
 v0.35.0+35 publicada como Latest em 14/10/2026 por autorização do usuário:
 https://github.com/MarlonFer77/jogo-elementos/releases/tag/v0.35.0
 Inclui três regiões, seis combos e árvore do beta 3D. Branch codex/release-v0.35.0;

@@ -422,7 +422,7 @@ void main() {
           .widget<GameWidget<BetaGame>>(find.byType(GameWidget<BetaGame>))
           .game!;
       expect(game.session.playing, true);
-      for (final label in ['Espada', 'Magia', 'Esquiva']) {
+      for (final label in ['Espada', 'Magia', 'Rolar']) {
         expect(find.text(label).hitTestable(), findsOneWidget);
       }
       final startX = game.session.x;

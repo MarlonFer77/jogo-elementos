@@ -246,6 +246,7 @@ void main() {
           case BetaEnemyKind.goblin:
             run.x = .6;
           case BetaEnemyKind.brute:
+          case BetaEnemyKind.darkElf:
             run.z = 2.5;
           case BetaEnemyKind.guardian:
             run.x = 2.3;
@@ -266,6 +267,9 @@ void main() {
         inside.enemies.single.beginAttack(inside.x, inside.z);
         advance(inside, inside.enemies.single.preparation + .02);
         expect(inside.hp, kind == BetaEnemyKind.guardian ? 75 : 88);
+        final hpAfterContact = inside.hp;
+        advance(inside, inside.enemies.single.recoveryDuration + .05);
+        expect(inside.hp, hpAfterContact); // Two blades still resolve one hit.
         final dodged = duel(kind: kind);
         final attacker = dodged.enemies.single..beginAttack(dodged.x, dodged.z);
         attacker.windup = .01;
@@ -283,20 +287,22 @@ void main() {
   test(
     'wind interruption removes committed threat and never resolves it later',
     () {
-      final run = duel(kind: BetaEnemyKind.brute);
-      final enemy = run.enemies.single..cooldown = 0;
-      run.update(.01);
-      final oldArea = enemy.attackArea;
-      run.projectiles.add(
-        BetaProjectile(run.x, run.z, 0, -1, BetaElement.wind),
-      );
-      advance(run, .1);
-      expect(enemy.windup, 0);
-      expect(enemy.recovery, 0);
-      expect(run.effects.any((fx) => fx.area != null), false);
-      advance(run, .8);
-      expect(run.hp, 100);
-      expect(run.effects.any((fx) => identical(fx.area, oldArea)), false);
+      for (final kind in [BetaEnemyKind.brute, BetaEnemyKind.darkElf]) {
+        final run = duel(kind: kind);
+        final enemy = run.enemies.single..cooldown = 0;
+        run.update(.01);
+        final oldArea = enemy.attackArea;
+        run.projectiles.add(
+          BetaProjectile(run.x, run.z, 0, -1, BetaElement.wind),
+        );
+        advance(run, .1);
+        expect(enemy.windup, 0);
+        expect(enemy.recovery, 0);
+        expect(run.effects.any((fx) => fx.area != null), false);
+        advance(run, .8);
+        expect(run.hp, 100);
+        expect(run.effects.any((fx) => identical(fx.area, oldArea)), false);
+      }
       final killed = duel();
       killed.enemies.single
         ..beginAttack(killed.x, killed.z)
@@ -439,9 +445,16 @@ void main() {
   });
   test('three encounters give session XP once and stop on victory/defeat', () {
     final run = BetaSession()..start();
+    var totalHealth = 0.0;
     for (var wave = 1; wave <= 3; wave++) {
       expect(run.wave, wave);
+      expect(run.enemies, hasLength(3));
+      expect(
+        run.enemies.where((e) => e.kind == BetaEnemyKind.darkElf),
+        hasLength(wave == 1 ? 0 : 1),
+      );
       for (final e in run.enemies) {
+        totalHealth += e.maxHp;
         e.x = run.x;
         e.z = run.z - 1;
         e.hp = 1;
@@ -457,7 +470,10 @@ void main() {
     }
     expect(run.phase, BetaPhase.won);
     expect(run.kills, 9);
-    expect(run.level, greaterThan(1));
+    expect(totalHealth, 528);
+    expect(run.xp, 280);
+    expect(run.level, 4);
+    expect(run.skillPoints, 4);
     final xp = run.xp;
     advance(run, 10);
     expect(run.xp, xp);
@@ -471,6 +487,55 @@ void main() {
     expect(lost.cast(), false);
     expect(lost.sword(), false);
   });
+  test(
+    'roll preserves range across frame rates and has a vulnerable recovery',
+    () {
+      for (final fps in [30, 60, 120]) {
+        for (final heading in [0.0, pi / 2, pi, -pi / 2]) {
+          final run = duel()..angle = heading;
+          run.enemies.clear();
+          final startX = run.x, startZ = run.z;
+          expect(run.dodge(), true);
+          expect(run.cast(), false);
+          expect(run.sword(), false);
+          while (run.dodgeTime > .000001) {
+            run.update(1 / fps);
+          }
+          expect(
+            run.x,
+            closeTo(startX + sin(heading) * BetaSession.dodgeDistance, .00001),
+          );
+          expect(
+            run.z,
+            closeTo(startZ + cos(heading) * BetaSession.dodgeDistance, .00001),
+          );
+          expect(run.invulnerable, 0);
+          expect(run.dodge(), false);
+          expect(run.mana, 100);
+        }
+      }
+      final wall = duel()..x = BetaSession.arenaX - .35;
+      wall.setMovement(1, 0);
+      wall.dodge();
+      advance(wall, .16);
+      wall.pause();
+      final remaining = wall.dodgeTime;
+      wall.update(.1);
+      expect(wall.dodgeTime, remaining);
+      wall.resume();
+      advance(wall, .16);
+      expect(wall.x, BetaSession.arenaX - .35);
+      expect(wall.dodgeTime, greaterThan(0));
+      expect(wall.invulnerable, 0);
+      wall.enemies.single
+        ..x = wall.x - 1
+        ..z = wall.z
+        ..beginAttack(wall.x, wall.z)
+        ..windup = .01;
+      wall.update(.02);
+      expect(wall.hp, 88); // A roll against a wall does not extend immunity.
+    },
+  );
   test('pursuit goes around a column instead of remaining stuck', () {
     final run = duel()
       ..x = 4

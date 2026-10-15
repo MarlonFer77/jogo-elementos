@@ -10,7 +10,74 @@ export 'beta_skills.dart';
 /// Offline sandbox. Never writes campaign/online rewards or turn-based saves.
 enum BetaPhase { ready, playing, paused, won, lost }
 
-enum BetaEnemyKind { goblin, brute, guardian }
+/// Enemy identity and combat tuning share one catalogue; no rendering data.
+enum BetaEnemyKind {
+  goblin('Goblin', shape: BetaAttackShape.thrust),
+  brute(
+    'Ogro',
+    health: 72,
+    shape: BetaAttackShape.sweep,
+    reach: 2.7,
+    preparation: .85,
+    recovery: .55,
+    strike: .18,
+    speed: 1.65,
+    reward: 40,
+  ),
+  darkElf(
+    'Elfo Sombrio',
+    shape: BetaAttackShape.sweep,
+    reach: 2.25,
+    preparation: .85,
+    recovery: .5,
+    strike: .14,
+    speed: 2,
+  ),
+  guardian(
+    'Guardião',
+    health: 190,
+    shape: BetaAttackShape.slam,
+    reach: 2.1,
+    preparation: 1.05,
+    recovery: .75,
+    strike: .18,
+    speed: 1.35,
+    reward: 100,
+    damage: 25,
+    radius: .75,
+    approach: 2.6,
+    cooldown: 1.7,
+  );
+
+  const BetaEnemyKind(
+    this.label, {
+    required this.shape,
+    this.health = 38,
+    this.reach = 2.4,
+    this.preparation = .7,
+    this.recovery = .36,
+    this.strike = .12,
+    this.speed = 2.15,
+    this.reward = 20,
+    this.damage = 12,
+    this.radius = .42,
+    this.approach = 1.55,
+    this.cooldown = 1.3,
+  });
+  final String label;
+  final BetaAttackShape shape;
+  final double health,
+      reach,
+      preparation,
+      recovery,
+      strike,
+      speed,
+      damage,
+      radius,
+      approach,
+      cooldown;
+  final int reward;
+}
 
 enum BetaSound {
   sword,
@@ -91,12 +158,7 @@ class BetaAttackArea {
 }
 
 class BetaEnemy {
-  BetaEnemy(this.kind, this.x, this.z)
-    : hp = switch (kind) {
-        BetaEnemyKind.goblin => 38,
-        BetaEnemyKind.brute => 72,
-        BetaEnemyKind.guardian => 190,
-      };
+  BetaEnemy(this.kind, this.x, this.z) : hp = kind.health;
   final BetaEnemyKind kind;
   double x, z, hp;
   double angle = 0, windup = 0, cooldown = .6, aimX = 0, aimZ = 0;
@@ -108,38 +170,20 @@ class BetaEnemy {
   bool moving = false;
   bool get alive => hp > 0;
   bool get boss => kind == BetaEnemyKind.guardian;
-  String get label => switch (kind) {
-    BetaEnemyKind.goblin => 'Goblin',
-    BetaEnemyKind.brute => 'Bruto',
-    BetaEnemyKind.guardian => 'Guardião',
-  };
-  double get radius => boss ? .75 : .42;
-  double get maxHp => switch (kind) {
-    BetaEnemyKind.goblin => 38,
-    BetaEnemyKind.brute => 72,
-    BetaEnemyKind.guardian => 190,
-  };
-  BetaAttackShape get attackShape => switch (kind) {
-    BetaEnemyKind.goblin => BetaAttackShape.thrust,
-    BetaEnemyKind.brute => BetaAttackShape.sweep,
-    BetaEnemyKind.guardian => BetaAttackShape.slam,
-  };
-  String get attackLabel => switch (attackShape) {
-    BetaAttackShape.thrust => 'Estocada',
-    BetaAttackShape.sweep => 'Varredura',
-    BetaAttackShape.slam => 'Impacto',
-  };
-  double get preparation => switch (kind) {
-    BetaEnemyKind.goblin => .7,
-    BetaEnemyKind.brute => .85,
-    BetaEnemyKind.guardian => 1.05,
-  };
-  double get recoveryDuration => switch (kind) {
-    BetaEnemyKind.goblin => .36,
-    BetaEnemyKind.brute => .55,
-    BetaEnemyKind.guardian => .75,
-  };
-  double get strikeDuration => kind == BetaEnemyKind.goblin ? .12 : .18;
+  String get label => kind.label;
+  double get radius => kind.radius;
+  double get maxHp => kind.health;
+  BetaAttackShape get attackShape => kind.shape;
+  String get attackLabel => kind == BetaEnemyKind.darkElf
+      ? 'Corte duplo'
+      : switch (attackShape) {
+          BetaAttackShape.thrust => 'Estocada',
+          BetaAttackShape.sweep => 'Varredura',
+          BetaAttackShape.slam => 'Impacto',
+        };
+  double get preparation => kind.preparation;
+  double get recoveryDuration => kind.recovery;
+  double get strikeDuration => kind.strike;
   BetaAttackArea get attackArea => _attackArea ?? _makeArea();
 
   BetaAttackArea _makeArea() => BetaAttackArea(
@@ -147,11 +191,7 @@ class BetaEnemy {
     boss ? aimX : x,
     boss ? aimZ : z,
     math.atan2(aimX - x, aimZ - z),
-    boss
-        ? 2.1
-        : kind == BetaEnemyKind.brute
-        ? 2.7
-        : 2.4,
+    kind.reach,
   );
 
   void beginAttack(double targetX, double targetZ) {
@@ -202,7 +242,7 @@ class BetaSession {
   static const arenaX = BetaRegion.halfWidth, arenaZ = BetaRegion.halfDepth;
   // Shared with the renderer: the blade crosses its target at swordContact.
   static const swordDuration = .44, swordContact = .16, castDuration = .35;
-  static const dodgeDuration = .24;
+  static const dodgeDuration = .42, dodgeDistance = 2.64;
   static const deathDuration = .65, inputBuffer = .18;
   static const swordReach = 1.9, spellAimRange = 9.0, projectileRadius = .12;
   BetaRegion get region => BetaRegion.values[(wave - 1).clamp(0, 2)];
@@ -611,6 +651,12 @@ class BetaSession {
 
   static double _tick(double timer, double dt) => math.max(0, timer - dt);
 
+  static double _rollDistance(double timeLeft) {
+    final t = (1 - timeLeft / dodgeDuration).clamp(0.0, 1.0);
+    return dodgeDistance *
+        (t - .55 * math.sin(t * math.pi * 2) / (math.pi * 2));
+  }
+
   /// Bounded substeps: resuming a suspended app never applies a huge time jump.
   void update(double elapsed) {
     if (!elapsed.isFinite ||
@@ -664,17 +710,20 @@ class BetaSession {
     protection = _tick(protection, dt);
     runicBladeTime = _tick(runicBladeTime, dt);
     mana = math.min(100, mana + dt * 9);
-    final speed = dodgeTime > 0
-        ? 11.0
-        : castTime > 0
+    final rolling = dodgeTime > 0;
+    final speed = castTime > 0
         ? 1.1
         : swordTime > 0
         ? 2.0
         : 4.1;
     final oldX = x, oldZ = z;
+    // Integrate a smooth travel curve, preserving range at every frame rate.
+    final travel = rolling
+        ? _rollDistance(math.max(0, dodgeTime - dt)) - _rollDistance(dodgeTime)
+        : speed * dt;
     _move(
-      (dodgeTime > 0 ? _dodgeX : moveX) * speed * dt,
-      (dodgeTime > 0 ? _dodgeZ : moveZ) * speed * dt,
+      (rolling ? _dodgeX : moveX) * travel,
+      (rolling ? _dodgeZ : moveZ) * travel,
     );
     final travelled = distance(oldX, oldZ, x, z);
     _moving = travelled > .00001;
@@ -841,7 +890,7 @@ class BetaSession {
           sounds.add(BetaSound.enemySwing);
         }
         if (e.windup == 0) {
-          e.cooldown = e.boss ? 1.7 : 1.3;
+          e.cooldown = e.kind.cooldown;
           e.recovery = e.recoveryDuration;
           final area = e.attackArea;
           effects.add(
@@ -855,25 +904,17 @@ class BetaSession {
           );
           if (e.boss) sounds.add(BetaSound.heavyImpact);
           if (area.contains(x, z) && clearLine(e.x, e.z, x, z)) {
-            _hurt(e.boss ? 25 : 12);
+            _hurt(e.kind.damage);
           }
         }
         continue;
       }
       final dx = x - e.x, dz = z - e.z, d = distance(x, z, e.x, e.z);
       e.angle = math.atan2(dx, dz);
-      if (d < (e.boss ? 2.6 : 1.55) &&
-          e.cooldown == 0 &&
-          clearLine(e.x, e.z, x, z)) {
+      if (d < e.kind.approach && e.cooldown == 0 && clearLine(e.x, e.z, x, z)) {
         e.beginAttack(x, z);
       } else if (d > .95) {
-        final speed =
-            (e.boss
-                ? 1.35
-                : e.kind == BetaEnemyKind.brute
-                ? 1.65
-                : 2.15) *
-            (e.slow > 0 ? .45 : 1);
+        final speed = e.kind.speed * (e.slow > 0 ? .45 : 1);
         var headingX = dx / d, headingZ = dz / d;
         if (e.detour <= 0 &&
             !walkable(
@@ -1102,11 +1143,7 @@ class BetaSession {
     e.cancelAttack();
     e.moving = false;
     kills++;
-    xp += e.boss
-        ? 100
-        : e.kind == BetaEnemyKind.brute
-        ? 40
-        : 20;
+    xp += e.kind.reward;
     while (xp >= nextLevelXp) {
       level++;
       _skillPoints++;
@@ -1139,8 +1176,12 @@ class BetaSession {
     projectiles.clear();
     final kinds = switch (wave) {
       1 => [BetaEnemyKind.goblin, BetaEnemyKind.goblin, BetaEnemyKind.goblin],
-      2 => [BetaEnemyKind.goblin, BetaEnemyKind.brute, BetaEnemyKind.goblin],
-      _ => [BetaEnemyKind.goblin, BetaEnemyKind.guardian, BetaEnemyKind.goblin],
+      2 => [BetaEnemyKind.goblin, BetaEnemyKind.brute, BetaEnemyKind.darkElf],
+      _ => [
+        BetaEnemyKind.darkElf,
+        BetaEnemyKind.guardian,
+        BetaEnemyKind.goblin,
+      ],
     };
     for (var i = 0; i < kinds.length; i++) {
       // Spawn at the far end from the hero; never on a column or on the player.
@@ -1148,7 +1189,7 @@ class BetaSession {
     }
     final hint = switch (wave) {
       1 => 'GOBLINS · desvie para o lado da estocada',
-      2 => 'BRUTO · contorne a varredura e ataque na recuperação',
+      2 => 'OGRO E ELFO · contorne os cortes; ataque na recuperação',
       _ => 'GUARDIÃO · saia do círculo antes do impacto',
     };
     message = '${region.title.toUpperCase()}\n$hint';

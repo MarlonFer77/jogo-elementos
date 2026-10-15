@@ -36,6 +36,8 @@ void main() {
         final painter = painterFor(run);
         final localRecorder = ui.PictureRecorder();
         painter.paint(Canvas(localRecorder), size);
+        // Static detailing stays bounded; rotating the screen reuses the scene.
+        expect(painter.cachedSceneryFaceCount, inInclusiveRange(1, 2600));
         final scene = localRecorder.endRecording();
         canvas.save();
         canvas.translate(region.index * size.width, 0);
@@ -373,6 +375,94 @@ void main() {
       expect(enemy.recovery, greaterThan(0));
     }
     await save('beta-enemy-polish');
+    recorder = ui.PictureRecorder();
+    canvas = Canvas(recorder);
+    index = 0;
+    for (final kind in BetaEnemyKind.values) {
+      final run = duel();
+      final enemy = BetaEnemy(kind, 1, 3.4)..beginAttack(run.x, run.z);
+      run.enemies
+        ..clear()
+        ..add(enemy);
+      final painter = painterFor(run);
+      advance(run, painter, enemy.preparation - .04);
+      frame(painter, '${enemy.label}: golpe em movimento');
+      advance(run, painter, .07);
+      frame(painter, '${enemy.label}: contato');
+    }
+    await save('beta-mob-strikes');
+    recorder = ui.PictureRecorder();
+    canvas = Canvas(recorder);
+    index = 0;
+    for (final kind in BetaEnemyKind.values) {
+      final run = duel()..x = -1.2;
+      final enemy = BetaEnemy(kind, 1, 3.4)..moving = true;
+      run.enemies
+        ..clear()
+        ..add(enemy);
+      final painter = painterFor(run)..advance(.1);
+      frame(painter, '${enemy.label}: silhueta em movimento');
+      enemy
+        ..hp = 0
+        ..moving = false
+        ..deathTime = BetaSession.deathDuration * .3;
+      frame(painter, '${enemy.label}: queda');
+    }
+    await save('beta-creature-designs');
+    recorder = ui.PictureRecorder();
+    canvas = Canvas(recorder);
+    index = 0;
+    for (final combined in [false, true]) {
+      final run = duel()..select(BetaElement.fire);
+      run.enemies.single
+        ..z = 2
+        ..cooldown = 100;
+      if (combined) run.mix(BetaElement.wind);
+      run.cast();
+      final painter = painterFor(run);
+      final duration = run.activeCastDuration;
+      var time = 0.0;
+      for (final targetTime in [
+        duration * .25,
+        duration * .75,
+        duration + .02,
+        duration + .09,
+        duration + .18,
+        duration + .29,
+      ]) {
+        advance(run, painter, targetTime - time);
+        time = targetTime;
+        frame(
+          painter,
+          '${combined ? 'Combo' : 'Fogo'}: ${(time * 1000).round()}ms',
+        );
+      }
+    }
+    await save('beta-magic-casting');
+    for (final direction in [
+      ('frente', 0.0, -1.0),
+      ('tras', 0.0, 1.0),
+      ('direita', 1.0, 0.0),
+      ('esquerda', -1.0, 0.0),
+    ]) {
+      recorder = ui.PictureRecorder();
+      canvas = Canvas(recorder);
+      index = 0;
+      final run = duel();
+      run.enemies.clear();
+      run.setMovement(direction.$2, direction.$3);
+      run.dodge();
+      run.setMovement(0, 0);
+      final painter = painterFor(run);
+      var time = 0.0;
+      for (final targetTime in [0.0, .06, .11, .18, .25, .32, .39, .46]) {
+        advance(run, painter, targetTime - time);
+        time = targetTime;
+        frame(painter, 'Rolar ${direction.$1}: ${(time * 1000).round()}ms');
+      }
+      expect(run.dodgeTime, 0);
+      await save('beta-roll-${direction.$1}');
+    }
     if (preview) {
       recorder = ui.PictureRecorder();
       canvas = Canvas(recorder);

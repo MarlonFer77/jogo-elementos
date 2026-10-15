@@ -9,6 +9,36 @@ Artefato e verificações em [Release v0.35.0](release-v0.35.0.md).
 Checklist físico anterior em [Candidato Android](beta-candidate-v0.34.0.md),
 complementado pelos testes de combos, árvore e regiões nas notas atuais.
 
+Polimento dos mobs iniciado em 15/10/2026 está **fora do APK publicado**: novas
+silhuetas, armas e queda; elfo sombrio nas áreas 2/3. Inclui também o rolamento
+e o polimento de conjurações/golpes descritos abaixo. Sem APK/backend neste bloco.
+
+## Direção visual — Ordem dos Ecos
+
+Medieval-fantástico low-poly, com pedra talhada, bronze envelhecido, couro e
+mantos azul-petróleo. O cristal partido liga brasões, arquitetura e guardião.
+Malhas procedurais facetadas substituem os volumes retangulares principais;
+não introduz modelos externos, texturas, dependências ou outra engine.
+
+- Herói: capuz, rosto facetado, manto dividido com brasão, ombreira assimétrica,
+  cinto/bolsa, túnica e espada afilada. Mantém canalização, combate e rolamento.
+- Goblin com barrete/broquel; ogro com armadura e tiras de couro; elfo sombrio
+  com cabelo em mechas e placas; guardião com juntas, fissuras e runa comum.
+- Átrio: copas facetadas, torres antigas e raízes. Aqueduto: arcos de pedra,
+  torres e água rasa. Santuário: capela arruinada, brasão monumental e obelisco.
+  Arco de saída, braseiros e estandartes unem as regiões.
+- Piso irregular é plano. Novos volumes decorativos ficam fora da área jogável;
+  colunas mantêm o volume dentro da colisão existente. Câmera/regras intactas.
+- Faces de tecidos/brasões são visíveis dos dois lados; camadas separam piso,
+  detalhes, marcas de ataque e corpos. Cenários estáticos reutilizados em cache;
+  teste limita cada região a 2600 faces, sem prometer desempenho de aparelho.
+
+51 testes focados aprovados (36 domínio, 10 UI, 5 render), análise limpa.
+Prévias em `app/build/gameplay-preview/beta-world-360.png`, `beta-world-640.png`,
+`beta-creature-designs.png` e `beta-roll-direita.png`. Código destinado à branch
+`codex/release-v0.35.0`; sem novo APK, tag ou publicação de release neste bloco.
+Ainda requer avaliação física de desempenho e legibilidade no Android.
+
 ## Acesso
 
 Menu inicial → BETA TEST → senha de seis dígitos definida pelo responsável.
@@ -34,9 +64,10 @@ servidor ou canal fechado, em outro bloco.
   de 50% por dois segundos. Esses efeitos individuais continuam disponíveis.
 - Seis combos de dois elementos, descobertos por acerto e até três equipados.
   Árvore de três caminhos liga combos, espada, esquiva e gerenciamento de mana.
-- Esquiva direcional: invulnerabilidade breve, recarga de 1,6s; não atravessa
+- Rolamento direcional: 0,42s e alcance de 2,64, invulnerabilidade base de 0,3s,
+  recarga de 1,6s; não atravessa
   colunas ou bordas. Faixa, setor frontal e círculo anunciam os ataques inimigos.
-- Rota de três áreas: Átrio das Raízes (goblins), Aqueduto Velado (bruto e grupo),
+- Rota de três áreas: Átrio das Raízes (goblins), Aqueduto Velado (ogro e elfo),
   Santuário dos Ecos (guardião e escolta). Cada área tem obstáculos e ambiente
   próprios. Não são três ondas automáticas dentro da mesma arena.
 - Após vencer, a passagem abre em 2s. Caminhar até o selo do arco ao norte e
@@ -53,6 +84,30 @@ servidor ou canal fechado, em outro bloco.
 
 Teclado: WASD/setas, J (espada), K (magia), Espaço (esquiva), 1–4 (elemento),
 Shift + 1–4 (segundo elemento), Esc (pausa). No celular há controles de toque.
+
+## Combate mágico e rolamento — 15/10/2026, local
+
+- Botão **Rolar** substitui Esquiva. Entrada agachada, membros recolhidos, arma
+  junto às costas, giro corporal completo no eixo da direção escolhida e retorno
+  à postura. Câmera não gira. Posição/colisão continuam no domínio, sem voo físico.
+- Duração de 0,24s passa a 0,42s para tornar o movimento legível. Curva suave de
+  aceleração/frenagem integrada mantém 2,64 unidades em 30/60/120 FPS. Recarga de
+  1,6s e invulnerabilidade de 0,3s não mudam: últimos 0,12s ficam vulneráveis.
+  Passo de Pedra mantém seus 0,42s de proteção. Rolamento não atravessa paredes,
+  não prolonga imunidade ao colidir e não muda de direção após começar.
+- Conjuração reúne energia ao lado do corpo, une os elementos do combo na mão,
+  projeta o braço e retorna por 0,2s. O retorno cede à próxima ação. Elemento
+  visual do lançamento permanece o conjurado, mesmo se a seleção mudar depois.
+- Rastros distintos de brasa, água, vento e fragmentos de pedra; surgem só após
+  o projétil percorrer aquele trecho. Núcleo curto destaca contato/bloqueio.
+  Nenhuma mudança de trajetória, mana, dano, status ou descoberta.
+- Mobs ganham recuo/preparação e continuidade do golpe: estocada, clava, cortes
+  de duas lâminas e punhos ao chão. Rastros são apenas visuais; áreas anunciadas,
+  interrupção, dano único e janelas de recuperação continuam definidos no domínio.
+- 51 testes focados passaram, incluindo alcance por FPS, pausa e vulnerabilidade
+  ao rolar contra a parede. Domínio/render reexecutados após os últimos ajustes.
+  Prévias `beta-roll-*.png`, `beta-magic-casting.png` e `beta-mob-strikes.png` em
+  `app/build/gameplay-preview/`. Desempenho e sensação no Android ainda pendentes.
 
 ## Combos e árvore — progresso da sessão
 
@@ -308,14 +363,24 @@ separadamente — diagnóstico não mede temperatura nem bateria. Sem aparelho A
 conectado nesta etapa. Playtest adiado pelo usuário para o fim dos polimentos;
 acabamento local pode continuar, sem considerar desempenho físico validado.
 
-### Leitura dos inimigos — polimento atual
+### Leitura dos inimigos — polimento local de 15/10/2026
 
-- Goblin: estocada em faixa de 2,4 × 0,84 unidades, preparação de 0,7s e
+- Goblin: pequeno e curvado, orelhas pontudas, lâmina curta e broquel.
+  Estocada em faixa de 2,4 × 0,84 unidades, preparação de 0,7s e
   recuperação de 0,36s. Desvio lateral evita a estocada.
-- Bruto: machado em varredura frontal, alcance de 2,7 unidades e arco de 136,8°,
+- Ogro (tipo interno `brute` preservado): tronco largo, presas e clava com aros
+  de metal. Varredura frontal, alcance de 2,7 unidades e arco de 136,8°,
   preparação de 0,85s e recuperação de 0,55s. Contornar evita a varredura.
-- Guardião: marreta/armadura de pedra, impacto circular de raio 2,1 no ponto
+- Elfo Sombrio: esguio, cabelo claro, capa partida e duas lâminas. Corte duplo
+  em arco frontal de 136,8° e alcance de 2,25, preparação de 0,85s e recuperação
+  de 0,5s. Duas armas, mas um único acerto de 12 por ação; recuar/contornar evita
+  o golpe, vento interrompe. 38 HP/20 XP, substitui um goblin nas áreas 2 e 3.
+- Guardião: golem com juntas escuras, runa e grandes punhos articulados.
+  Impacto circular de raio 2,1 no ponto
   marcado, preparação de 1,05s e recuperação de 0,75s. Sair da área evita o impacto.
+- Proporções, rostos, membros, armas e poses distintos; não são cópias coloridas
+  do herói. Humanoides tombam lateralmente; guardião desmorona. Barras e rótulos
+  acompanham a altura de cada espécie. Malhas limitadas, sem texturas/efeitos extras.
 - `BetaAttackArea` é o compromisso imutável de posição/direção/forma usado tanto
   pelo teste de dano quanto pelo desenho. Mede o centro no chão do jogador;
   não há dano fora da marca pela simples interseção da roupa ou arma do avatar.
@@ -323,12 +388,14 @@ acabamento local pode continuar, sem considerar desempenho físico validado.
 - Contorno preenche durante a preparação; depois do golpe, resíduo apagado e
   indicador verde/“Recuperando” mostram a janela de resposta sem bônus de dano.
   Poses/armas e áudio de golpe usam os recursos existentes, sem novas dependências.
-- HP, dano (12 goblin/bruto, 25 guardião), recompensas, três encontros e regras do
-  jogador preservados. Formas e tempos inimigos são mudanças locais de balanceamento;
-  precisam de playtest físico. Nenhuma alteração no Treino/Dungeon/Multiplayer.
-- Verificação: 25 testes focados aprovados (20 regras, 4 telas/acesso,
-  1 renderização), análise Dart limpa; poses em `beta-enemy-polish.png` e telas
-  320×568, 360×640 e 640×360 inspecionadas. Sem APK/release neste bloco.
+- HP/dano anteriores preservados (12 goblin/ogro/elfo, 25 guardião); rota mantém
+  nove inimigos, 528 HP somados, 280 XP e quatro PH ao terminar sem gastar.
+  Herói e regras dos outros modos não foram alterados. O novo confronto com elfos
+  ainda precisa de playtest físico para confirmar dificuldade e fluidez.
+- Verificação: 50 testes focados (35 domínio, 10 UI, 5 render), análise Dart limpa;
+  os cinco testes de render repetidos após ajustar a queda. Prévias inspecionadas
+  em `app/build/gameplay-preview/beta-enemy-polish.png` e `beta-creature-designs.png`.
+  Sem APK/release neste bloco.
 
 ### Continuação — mira e identidade elemental
 

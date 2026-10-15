@@ -720,11 +720,15 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
         ),
       const SizedBox(height: 8),
       const Text(
-        'Goblin: desvie de lado. Bruto: contorne a varredura. '
+        'Goblin: desvie de lado. Ogro: contorne a clava. '
+        'Elfo Sombrio: recue do corte duplo; puna a recuperação. '
         'Guardião: saia do círculo. Ataque quando aparecer “Recuperando”.\n\n'
+        'Rolar usa a direção do joystick. Sem Passo de Pedra, a proteção termina '
+        'antes de levantar; '
+        'saia da área do golpe, não apenas role parado contra a parede.\n\n'
         'Equipe até 3 combos e aprenda habilidades no grimório, antes da expedição '
         'ou após limpar a área. PH, descobertas e build duram só esta sessão.\n\n'
-        'Teclado: WASD/setas · J espada · K magia · Espaço esquiva · '
+        'Teclado: WASD/setas · J espada · K magia · Espaço rolar · '
         '1–4 elemento · Shift + 1–4 mistura.',
         style: TextStyle(fontSize: 12),
       ),
