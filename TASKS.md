@@ -4,6 +4,14 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Preparar e publicar v0.36.0+36 como Latest por solicitação do usuário:
+compilar pelo workflow existente, conferir versão/certificado/hash e anexar
+app-release.apk. Inclui os polimentos locais abaixo. Sem deploy no backend
+ou mudança de chave; validação física continua pendente. Notas em
+docs/release-v0.36.0.md.
+
+Checkpoint anterior:
+
 Direção visual medieval-fantástica do BETA 3D concluída: Ordem dos Ecos,
 cristal partido, pedra facetada, bronze envelhecido, mantos/couro. Herói com
 capuz, manto dividido, ombreira e espada afilada; quatro mobs com malhas
