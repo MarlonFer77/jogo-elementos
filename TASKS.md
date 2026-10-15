@@ -4,11 +4,14 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Preparar e publicar v0.36.0+36 como Latest por solicitação do usuário:
-compilar pelo workflow existente, conferir versão/certificado/hash e anexar
-app-release.apk. Inclui os polimentos locais abaixo. Sem deploy no backend
-ou mudança de chave; validação física continua pendente. Notas em
-docs/release-v0.36.0.md.
+v0.36.0+36 publicada como Latest em 15/10/2026, com app-release.apk.
+Build 38764206760 no commit 94c7739d1dcc9e99a22d884007bb0146c1a20c92.
+Versão, hash, certificado igual à v0.35.0 e mesmas permissões conferidos.
+19 testes do atualizador passaram; verificador real detecta 0.35 → 0.36
+e não oferece atualização na própria 0.36. Inclui os polimentos abaixo.
+Sem deploy/backend ou mudança de chave. Próximo: validação física de
+instalação por atualização, fluidez, áudio e estabilidade do BETA.
+Notas e hash em docs/release-v0.36.0.md.
 
 Checkpoint anterior:
 

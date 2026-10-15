@@ -32,7 +32,25 @@ Confirme a versão **0.36.0** e os perfis/progresso preservados.
 - Alterne aplicativos, pause/retome e confira volume/mudo.
 - Jogue por 15–20 minutos para avaliar fluidez, aquecimento e estabilidade.
 
-51 testes focados do BETA aprovados e análise dos arquivos alterados sem
+51 testes focados do BETA e 19 do atualizador aprovados; análise dos arquivos alterados sem
 problemas. Testes automatizados não substituem instalação/playtest físico.
 Sem alterações no backend, novas permissões ou troca intencional de chave.
 A assinatura definitiva segue pendente; a chave atual deve ser preservada.
+
+## Fonte e APK verificado
+
+- Commit compilado: `94c7739d1dcc9e99a22d884007bb0146c1a20c92`.
+- [Build GitHub Actions](https://github.com/MarlonFer77/jogo-elementos/actions/runs/38764206760).
+- Arquivo: `app-release.apk`, 58.904.726 bytes.
+- Versão: `0.36.0+36`; package ID: `com.example.app`.
+- Android 7.0/API 24 ou superior; arm64-v8a, armeabi-v7a e x86_64.
+- Certificado igual ao da v0.35.0, APK não depurável e mesmas permissões.
+- Chave atual ainda é Android Debug; assinatura definitiva não foi alterada.
+- SHA-256: `2225c6fe2115ca50e89584fd5e0338ea849acb96eb20010dea5a6aacadf1de22`.
+
+Hash local igual ao registrado pelo build. Compatibilidade de versão e
+certificado não substitui o teste de instalação por atualização no aparelho.
+
+Publicada como Latest em 15/10/2026. Endpoint público e digest do asset
+conferidos. O verificador real do app reconheceu atualização de 0.35.0+35
+para 0.36.0; na própria 0.36.0+36, não oferece atualização desnecessária.
