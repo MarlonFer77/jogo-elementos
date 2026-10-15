@@ -4,6 +4,43 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Publicar v0.37.0+37 como Latest por solicitação do usuário, incluindo Ateliê
+dos Ecos e efeitos próprios das magias/combos do BETA 3D. Compilar no GitHub,
+conferir assinatura/versão/hash e anexar app-release.apk. Sem deploy/backend
+ou troca de chave. Notas em docs/release-v0.37.0.md.
+
+Checkpoint anterior:
+
+Ateliê dos Ecos implementado localmente: loja no menu inicial, cinco trajes
+(paletas de tecido/manto/armadura) do BETA 3D, prévia giratória no modelo real,
+confirmação de compra, filtro de adquiridos e equipamento persistente.
+100 Ecos iniciais, +25 por nível da Dungeon após o primeiro e +100 por
+conclusão, com marcos idempotentes. Transações locais serializadas e backup
+RecoverablePreferences. Inventário ilegível não bloqueia o BETA: usa traje
+original sem sobrescrever save. Reinício da partida mantém roupa equipada.
+22 testes de domínio/loja/menu/BETA passaram; prévias 360×640, 640×360 e
+568×320 revisadas. Mensagem de compra não cobre o botão Equipar; apenas o
+catálogo rola. Sem dinheiro real, Firebase, bônus de combate ou sincronização
+multiplayer. Coleção compartilhada no aparelho, fora do backup online.
+Detalhes em docs/cosmetic-shop.md. Sem APK/release/push; efeitos de magia do
+bloco anterior preservados. Próximo: validar loja/equipamento no celular.
+
+Checkpoint anterior:
+
+Efeitos próprios das quatro magias e seis combos do BETA 3D concluídos
+localmente: canalização, projétil e impacto com identidade. Tornado Ígneo
+forma funil translúcido/espirais/brasas; Vapor vira gêiser; Erupção lança
+magma/rochas; Névoa rasteira, poça de Lama e Estilhaços giratórios distintos.
+Apresentação isolada em beta_spell_effects.dart, sem alterar regras/backend.
+Impactos bloqueados dissipam localmente, sem simular área de dano. Pausa,
+expiração, movimento reduzido e duas orientações verificados. 16 testes
+focados passaram, análise limpa e prévias de voo/impacto revisadas.
+Geometria de cada manifestação limitada a 200 faces nos testes, não garantia
+de FPS físico. Ainda fora da v0.36.0; sem APK/release/push neste bloco.
+Próximo: validar legibilidade e fluidez no celular no próximo candidato.
+
+Checkpoint anterior:
+
 v0.36.0+36 publicada como Latest em 15/10/2026, com app-release.apk.
 Build 38764206760 no commit 94c7739d1dcc9e99a22d884007bb0146c1a20c92.
 Versão, hash, certificado igual à v0.35.0 e mesmas permissões conferidos.

@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../game_domain/beta_session.dart';
+import '../game_domain/cosmetics.dart';
 import '../game_presentation/beta_game.dart';
 import '../game_presentation/beta_arena_painter.dart' show betaElementColor;
 import '../game_presentation/pixel_content_panel.dart';
@@ -14,13 +15,14 @@ import 'beta_controls.dart';
 import 'beta_build_panel.dart';
 
 class BetaScreen extends StatefulWidget {
-  const BetaScreen({super.key});
+  const BetaScreen({super.key, this.outfit = HeroOutfit.traveler});
+  final HeroOutfit outfit;
   @override
   State<BetaScreen> createState() => _BetaScreenState();
 }
 
 class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
-  final _game = BetaGame();
+  late final _game = BetaGame(outfit: widget.outfit);
   final _focus = FocusNode();
   final _keys = <LogicalKeyboardKey>{};
   Size? _viewport;

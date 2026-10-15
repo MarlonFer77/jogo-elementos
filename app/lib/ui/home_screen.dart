@@ -10,6 +10,7 @@ import 'audio_settings.dart';
 import 'quick_tutorial_screen.dart';
 import 'update_gate_screen.dart';
 import 'beta_access_screen.dart';
+import 'cosmetic_shop_screen.dart';
 import '../settings/game_settings.dart';
 
 /// Menu de entrada; regras, progresso e conexão continuam nas telas de destino.
@@ -256,6 +257,16 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 10),
           ],
+          TextButton.icon(
+            onPressed: _opening
+                ? null
+                : () => _open((_) => const CosmeticShopScreen()),
+            icon: const Icon(Icons.storefront, color: ink),
+            label: const Text(
+              'LOJA DE COSMÉTICOS',
+              style: TextStyle(color: ink),
+            ),
+          ),
           if (!compact) ...[
             const Divider(color: Color(0xFFB6A16D), height: 1),
             const SizedBox(height: 12),

@@ -2,16 +2,42 @@
 
 Primeiro protótipo solo de ação 3D dentro do app, implementado em 09/10/2026.
 Não substitui o combate por turnos. Polimentos anteriores incluídos na v0.34.0;
-três regiões, combos e árvore incluídos na **v0.35.0**, publicada como Latest
-em 14/10/2026 por pedido do usuário. Sem deploy ou troca de assinatura.
+três regiões, combos e árvore incluídos na **v0.35.0**. A **v0.36.0** foi
+publicada como Latest em 15/10/2026. Sem deploy ou troca de assinatura.
 Validação física ainda pendente, independentemente do canal de distribuição.
-Artefato e verificações em [Release v0.35.0](release-v0.35.0.md).
+Artefato e verificações em [Release v0.36.0](release-v0.36.0.md).
 Checklist físico anterior em [Candidato Android](beta-candidate-v0.34.0.md),
 complementado pelos testes de combos, árvore e regiões nas notas atuais.
 
-Polimento dos mobs iniciado em 15/10/2026 está **fora do APK publicado**: novas
+Polimento dos mobs iniciado em 15/10/2026 está **incluído na v0.36.0**: novas
 silhuetas, armas e queda; elfo sombrio nas áreas 2/3. Inclui também o rolamento
-e o polimento de conjurações/golpes descritos abaixo. Sem APK/backend neste bloco.
+e o polimento de conjurações/golpes descritos abaixo.
+
+## Magias com identidade própria — próximo candidato
+
+Novo polimento visual local, ainda fora da v0.36.0. As quatro magias e os
+seis combos têm formas próprias durante canalização, voo e impacto:
+
+- Fogo: línguas flamejantes e brasas; Água: gotas, coroa de respingos e ondas.
+- Vento: crescentes de ar expansivos; Terra: rocha facetada e espigões.
+- Tornado Ígneo: funil translúcido, três hélices flamejantes e brasas orbitais.
+- Vapor: gêiser de jatos claros com nuvens ascendentes.
+- Erupção: base de magma, coluna de fogo e fragmentos arremessados.
+- Névoa: nuvens baixas translúcidas e correntes rasteiras.
+- Lama: poça terrosa, ondulações e respingos pesados.
+- Estilhaços: fragmentos afiados girando numa corrente de ar.
+
+O mesmo perfil visual aparece em miniatura na mão e no projétil, expandindo
+no impacto. Colisões bloqueadas só dissipam a magia localmente, sem exibir
+área de dano. Animações respeitam pausa, expiração e movimento reduzido.
+Os efeitos são visuais e não adicionam dano contínuo, colisores ou status.
+Custos, dano, alcance, duração, sons e outros modos permanecem inalterados.
+
+16 testes focados aprovados; análise limpa e prévias de voo/impacto revisadas
+em `app/build/gameplay-preview/beta-spells-flight.png` e `beta-spells-impact.png`.
+Teste cobre dez silhuetas distintas, duas orientações, pausa, expiração,
+estado preservado e até 200 faces por manifestação (sem incluir rastros solo).
+Não garante FPS em aparelho. Sem novos assets/dependências ou publicação.
 
 ## Direção visual — Ordem dos Ecos
 
@@ -35,8 +61,8 @@ não introduz modelos externos, texturas, dependências ou outra engine.
 
 51 testes focados aprovados (36 domínio, 10 UI, 5 render), análise limpa.
 Prévias em `app/build/gameplay-preview/beta-world-360.png`, `beta-world-640.png`,
-`beta-creature-designs.png` e `beta-roll-direita.png`. Código destinado à branch
-`codex/release-v0.35.0`; sem novo APK, tag ou publicação de release neste bloco.
+`beta-creature-designs.png` e `beta-roll-direita.png`. Este polimento de cenários
+e modelos foi publicado na v0.36.0, a partir de `codex/release-v0.36.0`.
 Ainda requer avaliação física de desempenho e legibilidade no Android.
 
 ## Acesso

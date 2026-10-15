@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../game_domain/beta_session.dart';
+import '../game_domain/cosmetic_store.dart';
+import '../game_domain/cosmetics.dart';
 import '../game_presentation/beta_arena_painter.dart';
 import '../game_presentation/pixel_content_panel.dart';
 import '../game_presentation/pixel_menu_button.dart';
@@ -32,9 +34,25 @@ class _BetaAccessScreenState extends State<BetaAccessScreen> {
     });
     _password.clear();
     FocusScope.of(context).unfocus();
+    var outfit = HeroOutfit.traveler;
+    try {
+      outfit = (await CosmeticStore().load()).equipped;
+    } catch (_) {
+      // A wardrobe error must never prevent playing or erase the inventory.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Cosméticos indisponíveis: usando traje original. Save preservado.',
+            ),
+          ),
+        );
+      }
+    }
+    if (!mounted) return;
     await Navigator.of(
       context,
-    ).push(pixelSlideRoute((_) => const BetaScreen()));
+    ).push(pixelSlideRoute((_) => BetaScreen(outfit: outfit)));
     if (mounted) Navigator.pop(context);
   }
 

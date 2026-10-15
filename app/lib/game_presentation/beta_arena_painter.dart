@@ -1,7 +1,10 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../game_domain/beta_session.dart';
+import '../game_domain/cosmetics.dart';
 import 'beta_health_feedback.dart';
+
+part 'beta_spell_effects.dart';
 
 Color betaElementColor(BetaElement element) => switch (element) {
   BetaElement.fire => const Color(0xFFEAAF52),
@@ -96,16 +99,22 @@ class _RegionLook {
 /// shading and face sorting. Deliberately no new native renderer or GPU plugin.
 /// Not a general 3D engine: no depth buffer, skeletal assets or vertical physics.
 class BetaArenaPainter extends CustomPainter {
-  BetaArenaPainter(this.run, {this.reduceMotion = false})
-    : _cameraX = run.x * .8,
-      _cameraZ = run.z,
-      _heroAngle = run.angle,
-      _heroHealth = BetaHealthFeedback(run.hp, run.maxHp) {
+  BetaArenaPainter(
+    this.run, {
+    this.reduceMotion = false,
+    this.outfit = HeroOutfit.traveler,
+    this.wardrobePreview = false,
+  }) : _cameraX = run.x * .8,
+       _cameraZ = run.z,
+       _heroAngle = run.angle,
+       _heroHealth = BetaHealthFeedback(run.hp, run.maxHp) {
     for (final enemy in run.enemies) {
       _enemyHealth[enemy] = BetaHealthFeedback(enemy.hp, enemy.maxHp);
     }
   }
   final BetaSession run;
+  final HeroOutfit outfit;
+  final bool wardrobePreview;
   late BetaRegion _lastRegion = run.region;
   bool reduceMotion;
   double _cameraX, _cameraZ, _heroAngle;
@@ -126,6 +135,9 @@ class BetaArenaPainter extends CustomPainter {
   int get cachedLabelCount => _labels.length;
   @visibleForTesting
   int get cachedSceneryFaceCount => _scenery[run.region]?.length ?? 0;
+  @visibleForTesting
+  int get lastSpellFaceCount => _spellFaceCount;
+  int _spellFaceCount = 0;
 
   void dispose() {
     for (final text in _labels.values) {
@@ -1046,7 +1058,7 @@ class BetaArenaPainter extends CustomPainter {
         ? ease(_castRelease / _releaseDuration)
         : 0.0;
     final body = Color.lerp(
-      const Color(0xFF356D79),
+      Color(outfit.cloth),
       const Color(0xFFFFEBC3),
       recoil * .8,
     )!;
@@ -1165,7 +1177,8 @@ class BetaArenaPainter extends CustomPainter {
         const Color(0xFF313F3C),
       );
     }
-    const bronze = Color(0xFFC3A46A), leather = Color(0xFF655040);
+    final bronze = Color(outfit.trim);
+    const leather = Color(0xFF655040);
     _hewn(
       faces,
       const _V(0, .85, 0),
@@ -1201,7 +1214,9 @@ class BetaArenaPainter extends CustomPainter {
       faces.add(
         _Face(
           [world(a), world(b), world(fold), world(const _V(0, 1.22, -.3))],
-          side < 0 ? const Color(0xFF244D59) : const Color(0xFF326774),
+          side < 0
+              ? Color(outfit.mantle)
+              : Color.lerp(Color(outfit.mantle), Color(outfit.cloth), .7)!,
           doubleSided: true,
         ),
       );
@@ -1230,7 +1245,7 @@ class BetaArenaPainter extends CustomPainter {
       faces,
       const _V(.39, 1.16, -.01),
       const _V(.32, .26, .43),
-      const Color(0xFF9AABAA),
+      Color(outfit.armor),
       transform: world,
     );
     _hewn(
@@ -1253,7 +1268,7 @@ class BetaArenaPainter extends CustomPainter {
     const eyes = Color(0xFF253331);
     part(-.12, 1.5, .365, .075, .06, .025, eyes);
     part(.12, 1.5, .365, .075, .06, .025, eyes);
-    part(0, 1.25, .16, .45, .13, .43, const Color(0xFF294A50));
+    part(0, 1.25, .16, .45, .13, .43, Color(outfit.mantle));
     _V tucked(_V rest, _V folded) => rest + (folded - rest) * tuck;
     final hand = tucked(
       _V(
@@ -1346,41 +1361,25 @@ class BetaArenaPainter extends CustomPainter {
     if (casting) {
       final orb = leftHand + const _V(0, .16, .12);
       final orbit = (1 - charge) * .28;
-      _spellShape(
+      _spellVisual(
         faces,
         world(orb + _V(-orbit, 0, 0)),
-        run.castingCombo?.first ?? run.element,
+        run.element,
+        combo: run.castingCombo,
         yaw: yaw,
         power: .45 + charge * .8,
       );
-      if (run.castingCombo case final combo?) {
-        _spellShape(
-          faces,
-          world(orb + _V(orbit, orbit * .5, 0)),
-          combo.second,
-          yaw: -yaw,
-          power: .35 + charge * .65,
-        );
-      }
       _ring(faces, x, z, .7 + charge * .2, blade, fraction: charge);
     } else if (releasing && _castRelease > 0) {
       // A short palm burst bridges gathering and projectile travel.
-      _spellShape(
+      _spellVisual(
         faces,
         world(leftHand + const _V(0, .05, .2)),
-        _releaseCombo?.first ?? _releaseElement,
+        _releaseElement,
+        combo: _releaseCombo,
         yaw: yaw,
         power: castPush * .65,
       );
-      if (_releaseCombo case final combo?) {
-        _spellShape(
-          faces,
-          world(leftHand + const _V(.12, .08, .2)),
-          combo.second,
-          yaw: yaw,
-          power: castPush * .45,
-        );
-      }
     }
     if (hero && run.protection > 0) {
       _ring(
@@ -1895,7 +1894,7 @@ class BetaArenaPainter extends CustomPainter {
         );
       case BetaElement.wind:
         for (var i = 0; i < 9; i++) {
-          final a = _clock * 9 + i * .6, b = a + .4;
+          final a = (reduceMotion ? 0 : _clock * 9) + i * .6, b = a + .4;
           _beam(
             faces,
             _V(math.cos(a) * .33, math.sin(a) * .25, (i - 4) * .05),
@@ -1911,7 +1910,7 @@ class BetaArenaPainter extends CustomPainter {
           center,
           _V(.42, .34, .46) * power,
           const Color(0xFFA48D68),
-          yaw: yaw + _clock * 3,
+          yaw: yaw + (reduceMotion ? 0 : _clock * 3),
           pitch: .35,
         );
         _gem(
@@ -1926,79 +1925,19 @@ class BetaArenaPainter extends CustomPainter {
 
   void _spellImpact(List<_Face> faces, BetaEffect fx) {
     final progress = (1 - fx.life / .65).clamp(0.0, 1.0);
+    if (fx.life <= 0) return;
+    // A blocked projectile fizzles locally; never display its damaging area.
     final blocked = fx.kind == BetaEffectKind.blocked;
-    final color = fx.combo == null
-        ? betaElementColor(fx.element)
-        : betaComboColor(fx.combo!);
-    final scale = blocked ? .4 : 1.0;
-    final burst = (1 - progress / .35).clamp(0.0, 1.0) * scale;
-    if (burst > 0) {
-      _spellShape(faces, _V(fx.x, .7, fx.z), fx.element, power: burst * .85);
-      if (fx.combo case final combo?) {
-        _spellShape(faces, _V(fx.x, .9, fx.z), combo.second, power: burst * .6);
-      }
-    }
-    final radius =
-        (fx.combo == null
-            ? (fx.element == BetaElement.wind ? 2 : .9)
-            : math.max(.9, fx.combo!.radius)) *
-        scale;
-    if (fx.combo != null ||
-        fx.element == BetaElement.water ||
-        fx.element == BetaElement.wind) {
-      _ring(
-        faces,
-        fx.x,
-        fx.z,
-        .15 + math.sqrt(progress) * (radius - .15),
-        color.withValues(alpha: 1 - progress),
-      );
-    }
-    for (var i = 0; i < 6; i++) {
-      final a = i * math.pi / 3;
-      final spread = .15 + progress * (radius - .15);
-      final orbit = a + (fx.combo == BetaCombo.firestorm ? progress * 5 : 0);
-      final rise = math.sin(progress * math.pi);
-      final height = switch (fx.combo) {
-        BetaCombo.steam => .7 + progress * 1.5,
-        BetaCombo.firestorm => .4 + (i % 3) * .3 + progress,
-        BetaCombo.eruption => .12 + rise * 1.1,
-        BetaCombo.mist => .15 + rise * .25,
-        BetaCombo.mud => .08,
-        BetaCombo.shards => .85 + rise * .4,
-        null => .12 + rise * (fx.element == BetaElement.fire ? 1.4 : .6),
-      };
-      final point = _V(
-        fx.x + math.sin(orbit) * spread,
-        height,
-        fx.z + math.cos(orbit) * spread,
-      );
-      final size =
-          (.06 + (1 - progress) * .14) * scale * (fx.combo == null ? 1 : 1.35);
-      final particleColor = fx.combo == null
-          ? color
-          : betaElementColor(i.isEven ? fx.combo!.first : fx.combo!.second);
-      if (fx.element == BetaElement.earth ||
-          fx.combo?.second == BetaElement.earth) {
-        _box(
-          faces,
-          point,
-          fx.combo == BetaCombo.mud
-              ? _V(size * 1.6, .04, size * 1.6)
-              : _V(size, size * 2, size),
-          particleColor,
-          yaw: a + progress,
-        );
-      } else {
-        _gem(
-          faces,
-          point,
-          _V(size, size * (fx.element == BetaElement.fire ? 2 : 1), size),
-          particleColor,
-          a,
-        );
-      }
-    }
+    _spellVisual(
+      faces,
+      _V(fx.x, blocked ? .55 : .06, fx.z),
+      fx.element,
+      combo: fx.combo,
+      power: blocked ? .3 : 1,
+      impact: !blocked,
+      progress: progress,
+      opacity: (1 - progress) * (blocked ? .65 : 1),
+    );
   }
 
   Offset? _project(_V p) {
@@ -2053,14 +1992,23 @@ class BetaArenaPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    _spellFaceCount = 0;
     if (size.isEmpty) return;
     _labelBounds.clear();
     _size = size;
     final wide = size.width > size.height;
     _focal = wide ? size.height * 1.1 : size.width * 1.35;
     _horizon = wide ? .57 : .47;
-    final target = _V(_cameraX, 0, _cameraZ - 1.7);
-    _camera = _V(target.x, 11, _cameraZ + 13);
+    final target = wardrobePreview
+        ? _V(run.x, .95, run.z)
+        : _V(_cameraX, 0, _cameraZ - 1.7);
+    _camera = wardrobePreview
+        ? _V(run.x + 3, 2.3, run.z + 5.5)
+        : _V(target.x, 11, _cameraZ + 13);
+    if (wardrobePreview) {
+      _focal = math.min(size.width, size.height) * 2.2;
+      _horizon = .52;
+    }
     _forward = (target - _camera).unit;
     _right = _forward.cross(const _V(0, 1, 0)).unit;
     _up = _right.cross(_forward);
@@ -2073,10 +2021,13 @@ class BetaArenaPainter extends CustomPainter {
       math.cos(_clock * 73) * shake * 1.2,
     );
     final faces = <_Face>[
-      ..._scenery.putIfAbsent(run.region, () => _buildScenery(run.region)),
+      if (!wardrobePreview)
+        ..._scenery.putIfAbsent(run.region, () => _buildScenery(run.region)),
     ];
     final gateColor = run.passageOpen ? _look.accent : _look.stone;
-    _ring(faces, BetaRegion.gateX, BetaRegion.gateZ, 1.3, gateColor);
+    if (!wardrobePreview) {
+      _ring(faces, BetaRegion.gateX, BetaRegion.gateZ, 1.3, gateColor);
+    }
     if (run.passageProgress > 0) {
       _ring(
         faces,
@@ -2088,7 +2039,7 @@ class BetaArenaPainter extends CustomPainter {
       );
     }
     // Small environmental accents, fixed count; decorative motion can be reduced.
-    for (var i = 0; i < 4; i++) {
+    for (var i = 0; i < (wardrobePreview ? 0 : 4); i++) {
       final t = reduceMotion ? 0.0 : _clock;
       final x = (i.isEven ? -1 : 1) * (4.7 + i % 3 * .7);
       final z = -7 + i * 4.1;
@@ -2200,19 +2151,15 @@ class BetaArenaPainter extends CustomPainter {
     for (final p in run.projectiles) {
       final yaw = math.atan2(p.dx, p.dz);
       final age = (1.3 - p.life).clamp(0.0, 1.3);
-      _spellShape(faces, _V(p.x, .85, p.z), p.element, yaw: yaw);
-      if (p.combo case final combo?) {
-        _spellShape(
-          faces,
-          _V(
-            p.x + math.cos(yaw) * .16,
-            .95 + math.sin(age * 20) * .08,
-            p.z - math.sin(yaw) * .16,
-          ),
-          combo.second,
-          yaw: -yaw,
-          power: .65,
-        );
+      _spellVisual(
+        faces,
+        _V(p.x, p.combo == BetaCombo.firestorm ? .08 : .85, p.z),
+        p.element,
+        combo: p.combo,
+        yaw: yaw,
+      );
+      if (p.combo != null) {
+        continue; // Combo silhouettes carry their own trails.
       }
       for (var i = 1; i <= 3; i++) {
         final offset = i * .25;

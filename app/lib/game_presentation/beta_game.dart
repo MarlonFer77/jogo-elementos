@@ -2,13 +2,16 @@ import 'dart:ui';
 import 'package:flame/game.dart';
 import 'package:flutter/foundation.dart';
 import '../game_domain/beta_session.dart';
+import '../game_domain/cosmetics.dart';
 import 'beta_arena_painter.dart';
 import 'beta_performance.dart';
 import 'sfx_player.dart';
 
 class BetaGame extends FlameGame {
+  BetaGame({this.outfit = HeroOutfit.traveler});
+  final HeroOutfit outfit;
   BetaSession session = BetaSession();
-  late BetaArenaPainter _painter = BetaArenaPainter(session);
+  late BetaArenaPainter _painter = BetaArenaPainter(session, outfit: outfit);
   final hud = ValueNotifier<int>(0);
   final performance = BetaPerformance();
   bool _reduceMotion = false;
@@ -29,7 +32,11 @@ class BetaGame extends FlameGame {
     _painter.dispose();
     performance.reset();
     session = BetaSession();
-    _painter = BetaArenaPainter(session, reduceMotion: _reduceMotion);
+    _painter = BetaArenaPainter(
+      session,
+      reduceMotion: _reduceMotion,
+      outfit: outfit,
+    );
     refresh();
   }
 
