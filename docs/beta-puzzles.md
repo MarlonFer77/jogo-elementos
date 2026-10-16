@@ -1,6 +1,6 @@
 # Ecos da restauração — BETA 3D
 
-Implementado localmente em 16/10/2026, ainda fora da v0.37.0.
+Implementado em 16/10/2026 e incluído na [v0.38.0](release-v0.38.0.md).
 
 ## Loop
 
@@ -57,7 +57,7 @@ fora dos controles de ação.
 guardas de interação, HUD em 320×568/360×640/640×360, render em duas orientações
 e diferença antes/depois da restauração. Prévias em app/build/gameplay-preview/:
 beta-puzzles-*.png e beta-restoration-*.png. Ainda falta validação real de FPS,
-legibilidade, dificuldade e duração da expedição no Android. Sem APK/release.
+legibilidade, dificuldade e duração da expedição no Android.
 
 Polimento seguinte: 43 testes focados passaram, incluindo pistas sem spoilers,
 histórico, exploração final, cancelamento da saída ao pausar e vitória única.

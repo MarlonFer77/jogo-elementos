@@ -4,10 +4,14 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Preparar/publicar v0.38.0+38 como Latest: seis áreas/puzzles/restauração e
-novo atualizador. Preservar assinatura Android existente; conferir APK,
-versão/hash/certificado e detecção da atualização antes de encerrar.
-Não incluir arquivos locais de output/.codex-finalizer nem alterar backend.
+v0.38.0+38 publicada como Latest em 16/10/2026: seis áreas/puzzles/restauração,
+orientação e exploração final, novo atualizador. Build 38894155387 no commit
+aced694dd4e8f6b7182ef983d4c2c391aa062e30; APK de 59.364.514 bytes anexado.
+Versão, hash, assinatura igual à v0.37.0, permissões e tag conferidos. Endpoint
+Latest e verificador real aprovam 0.37 → 0.38 e nenhuma atualização na 0.38.
+36 testes de pré-publicação passaram. Sem deploy/backend ou troca de chave.
+Notas/hash em docs/release-v0.38.0.md. Próximo: validar instalação por atualização,
+rota completa, legibilidade, fluidez e estabilidade no celular.
 
 Checkpoint anterior:
 

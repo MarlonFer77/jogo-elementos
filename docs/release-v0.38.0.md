@@ -36,3 +36,20 @@ A assinatura definitiva continua pendente; preservada a chave anterior.
 - Jogue por 15–20 minutos para avaliar fluidez, áudio, aquecimento e estabilidade.
 
 Testes automatizados e prévias locais não substituem o playtest em Android real.
+
+## APK verificado
+
+- Commit compilado: `aced694dd4e8f6b7182ef983d4c2c391aa062e30`.
+- [Build GitHub Actions](https://github.com/MarlonFer77/jogo-elementos/actions/runs/38894155387).
+- `app-release.apk`: 59.364.514 bytes; versão `0.38.0+38`.
+- Package ID `com.example.app`; Android 7/API 24 ou superior.
+- Arquiteturas: arm64-v8a, armeabi-v7a e x86_64.
+- Certificado igual ao da v0.37.0, APK não depurável e mesmas permissões.
+- SHA-256: `f9c499e3c64aed707575ae370f7e2a7ff94f3d051c2575b2442bdd79119f499c`.
+
+36 testes focados do atualizador, puzzles e builds passaram antes da compilação.
+Hash local igual ao registrado no build. Assinatura Android Debug anterior
+preservada para atualização; assinatura definitiva e validação física pendentes.
+
+Publicada como Latest em 16/10/2026. Digest público do asset e tag conferidos.
+Verificador real detectou 0.37.0+37 → 0.38.0 e não oferece atualização na 0.38.0+38.

@@ -1,15 +1,15 @@
 # BETA TEST — Ruína dos Ecos
 
-Atualização local de 16/10/2026: rota de seis áreas, puzzles elementais e
-restauração visual, ainda não publicada. Ver [Ecos da restauração](beta-puzzles.md).
+Atualização publicada na v0.38.0 em 16/10/2026: rota de seis áreas, puzzles
+elementais e restauração visual. Ver [Ecos da restauração](beta-puzzles.md).
 
 Primeiro protótipo solo de ação 3D dentro do app, implementado em 09/10/2026.
 Não substitui o combate por turnos. Polimentos anteriores incluídos na v0.34.0;
 três regiões, combos e árvore incluídos na **v0.35.0**. A **v0.36.0** foi
-publicada em 15/10/2026; a **v0.37.0** é a Latest atual, com loja e novos
-efeitos de magias. Sem deploy ou troca de assinatura.
+publicada em 15/10/2026; a v0.37.0 adicionou loja e novos efeitos de magias.
+A **v0.38.0** é a Latest atual. Sem deploy ou troca de assinatura.
 Validação física ainda pendente, independentemente do canal de distribuição.
-Artefato e verificações em [Release v0.37.0](release-v0.37.0.md).
+Artefato e verificações em [Release v0.38.0](release-v0.38.0.md).
 Checklist físico anterior em [Candidato Android](beta-candidate-v0.34.0.md),
 complementado pelos testes de combos, árvore e regiões nas notas atuais.
 
