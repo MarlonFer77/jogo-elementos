@@ -1,5 +1,8 @@
 # BETA TEST — Ruína dos Ecos
 
+Atualização local de 16/10/2026: rota de seis áreas, puzzles elementais e
+restauração visual, ainda não publicada. Ver [Ecos da restauração](beta-puzzles.md).
+
 Primeiro protótipo solo de ação 3D dentro do app, implementado em 09/10/2026.
 Não substitui o combate por turnos. Polimentos anteriores incluídos na v0.34.0;
 três regiões, combos e árvore incluídos na **v0.35.0**. A **v0.36.0** foi
@@ -94,10 +97,10 @@ servidor ou canal fechado, em outro bloco.
 - Rolamento direcional: 0,42s e alcance de 2,64, invulnerabilidade base de 0,3s,
   recarga de 1,6s; não atravessa
   colunas ou bordas. Faixa, setor frontal e círculo anunciam os ataques inimigos.
-- Rota de três áreas: Átrio das Raízes (goblins), Aqueduto Velado (ogro e elfo),
-  Santuário dos Ecos (guardião e escolta). Cada área tem obstáculos e ambiente
-  próprios. Não são três ondas automáticas dentro da mesma arena.
-- Após vencer, a passagem abre em 2s. Caminhar até o selo do arco ao norte e
+- Rota de seis áreas: Átrio das Raízes, Aqueduto Velado, Santuário dos Ecos,
+  Jardins Suspensos, Forja das Marés e Coroa da Aurora. Cada área tem obstáculos,
+  encontro, puzzle e ambiente próprios.
+- Após vencer e resolver o puzzle, a passagem abre em 2s. Caminhar até o selo do arco ao norte e
   permanecer por 550ms avança a rota. Não exige botão novo nem troca de menu.
   Recupera até 20 HP/25 MP uma vez na viagem; preserva nível/XP/elementos/build.
   Chegada de 350ms limpa comandos/efeitos e segura a IA; pausa congela a chegada.
@@ -250,7 +253,7 @@ continua sendo conveniência para testadores, não proteção de acesso em produ
 quedas d'água decorativas e lâmina rasa. Santuário: basalto, estandartes, inscrições
 e obelisco elemental. Marcos ao fundo permanecem visíveis no enquadramento
 vertical; as laterais ampliam a paisagem no horizontal sem bloquear o combate.
-Malhas estáticas guardadas por região (máximo três), quatro acentos ambientais
+Malhas estáticas guardadas por região/restauração (máximo doze), quatro acentos ambientais
 por frame e sem dependências/serviços novos. Movimento reduzido congela os
 acentos e desliga o fade; regras de viagem permanecem iguais.
 

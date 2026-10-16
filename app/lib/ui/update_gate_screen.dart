@@ -7,9 +7,8 @@ import 'package:ota_update/ota_update.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../game_domain/update_checker.dart';
-import '../game_presentation/pixel_arena_background.dart';
 import '../game_presentation/pixel_menu_button.dart';
-import '../game_presentation/pixel_outlined_text.dart';
+import '../game_presentation/update_frame.dart';
 import 'home_screen.dart';
 
 enum _GateState { checking, upToDate, updateRequired, failed }
@@ -54,9 +53,11 @@ class _UpdateGateScreenState extends State<UpdateGateScreen> {
   String? _checksum, _checkError, _installedVersion;
   StreamSubscription<OtaEvent>? _subscription;
   int _downloadGeneration = 0;
+  int _checkGeneration = 0;
 
   _DownloadState _downloadState = _DownloadState.idle;
   double _downloadProgress = 0;
+  bool _hasProgress = false;
   String? _downloadErrorMessage;
 
   bool get _runningOnAndroid =>
@@ -69,8 +70,18 @@ class _UpdateGateScreenState extends State<UpdateGateScreen> {
   }
 
   Future<void> _check() async {
-    setState(() => _state = _GateState.checking);
+    final generation = ++_checkGeneration;
+    _downloadGeneration++;
+    unawaited(_subscription?.cancel());
+    _subscription = null;
+    setState(() {
+      _state = _GateState.checking;
+      _downloadState = _DownloadState.idle;
+      _latestVersion = _downloadUrl = _checksum = _checkError = null;
+      _downloadErrorMessage = null;
+    });
     await Future<void>.delayed(Duration.zero);
+    if (!mounted || generation != _checkGeneration) return;
 
     if (!_runningOnAndroid && !widget.manual) {
       if (mounted) setState(() => _state = _GateState.upToDate);
@@ -86,7 +97,7 @@ class _UpdateGateScreenState extends State<UpdateGateScreen> {
         currentVersion: currentVersion,
       );
 
-      if (!mounted) return;
+      if (!mounted || generation != _checkGeneration) return;
       setState(() {
         if (result.error != null) {
           _state = _GateState.failed;
@@ -101,7 +112,7 @@ class _UpdateGateScreenState extends State<UpdateGateScreen> {
         }
       });
     } catch (_) {
-      if (mounted) {
+      if (mounted && generation == _checkGeneration) {
         setState(() {
           _state = _GateState.failed;
           _checkError =
@@ -124,6 +135,7 @@ class _UpdateGateScreenState extends State<UpdateGateScreen> {
     setState(() {
       _downloadState = _DownloadState.downloading;
       _downloadProgress = 0;
+      _hasProgress = false;
       _downloadErrorMessage = null;
     });
     try {
@@ -161,6 +173,7 @@ class _UpdateGateScreenState extends State<UpdateGateScreen> {
 
   @override
   void dispose() {
+    _checkGeneration++;
     _downloadGeneration++;
     unawaited(_subscription?.cancel());
     super.dispose();
@@ -170,12 +183,14 @@ class _UpdateGateScreenState extends State<UpdateGateScreen> {
     if (!mounted || _downloadState == _DownloadState.error) return;
     switch (event.status) {
       case OtaStatus.DOWNLOADING:
+        if (_downloadState == _DownloadState.installing) return;
         final progress = double.tryParse(event.value ?? '');
         if (!mounted) return;
         setState(() {
           _downloadState = _DownloadState.downloading;
           if (progress != null && progress.isFinite) {
             _downloadProgress = progress.clamp(0, 100);
+            _hasProgress = true;
           }
         });
       case OtaStatus.INSTALLING:
@@ -222,140 +237,167 @@ class _UpdateGateScreenState extends State<UpdateGateScreen> {
       return const HomeScreen();
     }
 
-    return Scaffold(
-      body: Stack(
-        fit: StackFit.expand,
+    final downloading = _downloadState == _DownloadState.downloading;
+    final installing = _downloadState == _DownloadState.installing;
+    final error =
+        _state == _GateState.failed || _downloadState == _DownloadState.error;
+    return UpdateFrame(
+      title: switch (_state) {
+        _GateState.checking => 'Preparando sua jornada',
+        _GateState.failed => 'Atualização não verificada',
+        _GateState.upToDate => 'Você está atualizado',
+        _GateState.updateRequired =>
+          error
+              ? 'O download precisa de atenção'
+              : installing
+              ? 'Confirme no Android'
+              : downloading
+              ? 'Recebendo atualização'
+              : 'Atualização necessária',
+      },
+      icon: error
+          ? Icons.error_outline
+          : installing
+          ? Icons.install_mobile
+          : downloading
+          ? Icons.downloading
+          : _state == _GateState.upToDate
+          ? Icons.verified_outlined
+          : Icons.system_update,
+      step: _state == _GateState.upToDate
+          ? -1
+          : _state == _GateState.updateRequired
+          ? (installing ? 2 : 1)
+          : 0,
+      warning: error,
+      installedVersion: _installedVersion,
+      latestVersion: _latestVersion,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          CustomPaint(painter: ArenaBackdropPainter()),
-          SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: _state == _GateState.checking
-                        ? const [
-                            PixelOutlinedText('ELEMENTOS'),
-                            SizedBox(height: 24),
-                            Text(
-                              'Verificando atualizações...',
-                              style: TextStyle(
-                                fontFamily: 'monospace',
-                                color: Color(0xFF2B2B2B),
-                              ),
-                            ),
-                          ]
-                        : _state == _GateState.failed
-                        ? [
-                            const PixelOutlinedText(
-                              'Atualização não verificada',
-                              fontSize: 22,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              _checkError ?? 'Falha na consulta.',
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 16),
-                            PixelMenuButton(
-                              label: 'Verificar novamente',
-                              onPressed: _check,
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                if (widget.manual) {
-                                  Navigator.of(context).pop();
-                                } else {
-                                  setState(() => _state = _GateState.upToDate);
-                                }
-                              },
-                              child: Text(
-                                widget.manual
-                                    ? 'Voltar'
-                                    : 'Continuar sem verificar',
-                              ),
-                            ),
-                          ]
-                        : _state == _GateState.upToDate
-                        ? [
-                            const PixelOutlinedText(
-                              'Você está atualizado',
-                              fontSize: 24,
-                            ),
-                            const SizedBox(height: 16),
-                            Text('Versão instalada: $_installedVersion'),
-                            PixelMenuButton(
-                              label: 'Voltar',
-                              onPressed: () => Navigator.of(context).pop(),
-                            ),
-                          ]
-                        : [
-                            const PixelOutlinedText(
-                              'Atualização necessária',
-                              fontSize: 24,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Uma versão nova (v$_latestVersion) está disponível. '
-                              'Atualize pra continuar jogando.',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontFamily: 'monospace',
-                                color: Color(0xFF2B2B2B),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            ..._buildDownloadSection(),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'Atualize sem desinstalar para preservar seu progresso.',
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                  ),
-                ),
-              ),
+          if (_state == _GateState.checking) ...[
+            const Text('Verificando atualizações...'),
+            const SizedBox(height: 12),
+            LinearProgressIndicator(
+              value: MediaQuery.disableAnimationsOf(context) ? 0 : null,
             ),
-          ),
+            const SizedBox(height: 12),
+            const Text(
+              'Consultando a versão publicada do jogo.',
+              style: TextStyle(fontSize: 12),
+            ),
+          ] else if (_state == _GateState.failed) ...[
+            Text(_checkError ?? 'Falha na consulta.'),
+            const SizedBox(height: 10),
+            const Text(
+              'Sem confirmação da versão mais recente. Você pode tentar novamente.',
+              style: TextStyle(fontSize: 12),
+            ),
+          ] else if (_state == _GateState.upToDate)
+            const Text('Tudo pronto. Sua próxima aventura espera por você.')
+          else ...[
+            if (_downloadState == _DownloadState.idle)
+              const Text(
+                'Uma nova versão está disponível. Atualize para continuar sua jornada.',
+              ),
+            if (downloading || installing || error) ..._buildDownloadStatus(),
+            if (_checksum != null && !installing && !error) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Origem: GitHub Releases · Verificação SHA-256 no download.',
+                style: TextStyle(fontSize: 12),
+              ),
+            ],
+          ],
         ],
       ),
+      actions: switch (_state) {
+        _GateState.checking => const [],
+        _GateState.failed => [
+          PixelMenuButton(
+            label: 'Verificar novamente',
+            onPressed: _check,
+            primary: true,
+          ),
+          TextButton(
+            onPressed: () {
+              if (widget.manual) {
+                Navigator.of(context).pop();
+              } else {
+                setState(() => _state = _GateState.upToDate);
+              }
+            },
+            child: Text(widget.manual ? 'Voltar' : 'Continuar sem verificar'),
+          ),
+        ],
+        _GateState.upToDate => [
+          PixelMenuButton(
+            label: 'Voltar',
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
+        _GateState.updateRequired => _buildDownloadActions(),
+      },
     );
   }
 
-  List<Widget> _buildDownloadSection() {
+  List<Widget> _buildDownloadActions() => switch (_downloadState) {
+    _DownloadState.idle => [
+      PixelMenuButton(
+        label: 'Baixar atualização',
+        primary: true,
+        onPressed: _startDownload,
+      ),
+    ],
+    _DownloadState.downloading => const [],
+    _DownloadState.installing => [
+      PixelMenuButton(label: 'Verificar instalação', onPressed: _check),
+      TextButton(
+        onPressed: _startDownload,
+        child: const Text('Baixar novamente'),
+      ),
+    ],
+    _DownloadState.error => [
+      PixelMenuButton(
+        label: 'Tentar de novo',
+        primary: true,
+        onPressed: _startDownload,
+      ),
+    ],
+  };
+
+  List<Widget> _buildDownloadStatus() {
     switch (_downloadState) {
       case _DownloadState.idle:
-        return [
-          PixelMenuButton(
-            label: 'Baixar atualização',
-            primary: true,
-            onPressed: _startDownload,
-          ),
-        ];
+        return [];
       case _DownloadState.downloading:
         final progress = (_downloadProgress / 100).clamp(0.0, 1.0);
         return [
-          Container(
-            width: 240,
-            height: 20,
-            decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFF2B2B2B), width: 3),
-              color: const Color(0xFFF4F4E4),
-            ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: progress,
-              child: Container(color: const Color(0xFFF4C94A)),
-            ),
+          LinearProgressIndicator(
+            minHeight: 12,
+            value: _hasProgress
+                ? progress
+                : MediaQuery.disableAnimationsOf(context)
+                ? 0
+                : null,
+            semanticsLabel: 'Progresso do download',
+            color: const Color(0xFF517D69),
+            backgroundColor: const Color(0xFFD8CCAA),
           ),
           const SizedBox(height: 8),
           Text(
-            'Baixando... ${_downloadProgress.round()}%',
+            _hasProgress
+                ? 'Baixando... ${_downloadProgress.round()}%'
+                : 'Conectando ao download...',
             style: const TextStyle(
               fontFamily: 'monospace',
               color: Color(0xFF2B2B2B),
             ),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Mantenha o jogo aberto. Ao terminar, confirme a instalação no Android.',
+            style: TextStyle(fontSize: 12),
           ),
         ];
       case _DownloadState.installing:
@@ -365,10 +407,9 @@ class _UpdateGateScreenState extends State<UpdateGateScreen> {
             style: TextStyle(fontFamily: 'monospace', color: Color(0xFF2B2B2B)),
           ),
           const SizedBox(height: 12),
-          PixelMenuButton(label: 'Verificar instalação', onPressed: _check),
-          TextButton(
-            onPressed: _startDownload,
-            child: const Text('Reabrir instalador'),
+          const Text(
+            'Confirme a atualização na janela do Android. Se voltar sem instalar, você pode verificar ou baixar novamente.',
+            style: TextStyle(fontSize: 12),
           ),
         ];
       case _DownloadState.error:
@@ -376,13 +417,7 @@ class _UpdateGateScreenState extends State<UpdateGateScreen> {
           Text(
             _downloadErrorMessage ?? 'Falha ao baixar a atualização.',
             textAlign: TextAlign.center,
-            style: const TextStyle(fontFamily: 'monospace', color: Colors.red),
-          ),
-          const SizedBox(height: 16),
-          PixelMenuButton(
-            label: 'Tentar de novo',
-            primary: true,
-            onPressed: _startDownload,
+            style: const TextStyle(color: Color(0xFF8B422E)),
           ),
         ];
     }

@@ -2,10 +2,12 @@ import 'dart:math' as math;
 import 'beta_world.dart';
 import 'beta_spells.dart';
 import 'beta_skills.dart';
+import 'beta_puzzles.dart';
 
 export 'beta_world.dart';
 export 'beta_spells.dart';
 export 'beta_skills.dart';
+export 'beta_puzzles.dart';
 
 /// Offline sandbox. Never writes campaign/online rewards or turn-based saves.
 enum BetaPhase { ready, playing, paused, won, lost }
@@ -245,7 +247,67 @@ class BetaSession {
   static const dodgeDuration = .42, dodgeDistance = 2.64;
   static const deathDuration = .65, inputBuffer = .18;
   static const swordReach = 1.9, spellAimRange = 9.0, projectileRadius = .12;
-  BetaRegion get region => BetaRegion.values[(wave - 1).clamp(0, 2)];
+  BetaRegion get region =>
+      BetaRegion.values[(wave - 1).clamp(0, BetaRegion.values.length - 1)];
+  final _puzzles = [
+    for (final puzzle in BetaPuzzle.catalog) BetaPuzzleProgress(puzzle),
+  ];
+  BetaPuzzleProgress get puzzle => _puzzles[region.index];
+  int get restoredAreas => _puzzles.where((p) => p.solved).length;
+  bool get puzzleActive =>
+      playing && remaining == 0 && !puzzle.solved && arrivalTime <= 0;
+  int? get nearbyAltar {
+    if (!puzzleActive) return null;
+    for (var i = 0; i < BetaAltar.all.length; i++) {
+      final altar = BetaAltar.all[i];
+      if (distance(x, z, altar.x, altar.z) <= 1.35) return i;
+    }
+    return null;
+  }
+
+  double _attuneCooldown = 0;
+  bool get canAttune =>
+      nearbyAltar != null &&
+      _attuneCooldown <= 0 &&
+      swordTime <= 0 &&
+      castTime <= 0 &&
+      dodgeTime <= 0;
+
+  void revealPuzzleHint() {
+    if (!puzzleActive) return;
+    puzzle.revealHint();
+    message = 'PISTA · ${puzzle.next!.hint}';
+    messageTime = 8;
+  }
+
+  bool attune() {
+    if (!canAttune) return false;
+    _clearBuffer();
+    _attuneCooldown = .4;
+    final altar = BetaAltar.all[nearbyAltar!];
+    final accepted = puzzle.offer(nearbyAltar!, element, secondaryElement);
+    message = accepted
+        ? puzzle.solved
+              ? 'RESTAURADO · ${puzzle.puzzle.restoration}'
+              : 'ECO ${puzzle.completed}/${puzzle.puzzle.steps.length} · selo ${altar.label} ativado'
+        : 'O selo não ressoou. Confira a ordem e os elementos.\nProgresso mantido; Inscrição oferece pistas.';
+    messageTime = 4;
+    if (accepted) {
+      sounds.add(puzzle.solved ? BetaSound.discovery : BetaSound.passage);
+      effects.add(
+        BetaEffect(
+          altar.x,
+          altar.z,
+          element,
+          text: 'ECO',
+          kind: BetaEffectKind.heal,
+        ),
+      );
+    }
+    // Rituals never spend mana, equip combat skills or grant farmable XP.
+    return accepted;
+  }
+
   List<BetaObstacle> get obstacles => region.obstacles;
   BetaPhase phase = BetaPhase.ready;
   BetaElement element = BetaElement.fire;
@@ -305,14 +367,15 @@ class BetaSession {
   bool get playing => phase == BetaPhase.playing;
   bool get moving => playing && _moving;
   bool get settling => resultTime > 0;
+  bool get finalArea => wave == BetaRegion.values.length;
   double get nextEncounterIn =>
-      (playing || phase == BetaPhase.paused) && wave < 3 && remaining == 0
+      (playing || phase == BetaPhase.paused) && remaining == 0 && puzzle.solved
       ? math.max(0, 2 - _waveWait)
       : 0;
   bool get passageOpen =>
       (playing || phase == BetaPhase.paused) &&
-      wave < BetaRegion.values.length &&
       remaining == 0 &&
+      puzzle.solved &&
       _waveWait >= 2;
   double get passageProgress => (_gateHold / gateHoldDuration).clamp(0.0, 1.0);
   bool get canSelectElement =>
@@ -702,6 +765,7 @@ class BetaSession {
       return; // Fade in before AI or held input can affect the new region.
     }
     time += dt;
+    _attuneCooldown = _tick(_attuneCooldown, dt);
     messageTime = _tick(messageTime, dt);
     swordCooldown = _tick(swordCooldown, dt);
     spellCooldown = _tick(spellCooldown, dt);
@@ -946,28 +1010,23 @@ class BetaSession {
       }
     }
     if (!playing) return;
-    if (remaining == 0) {
-      if (wave == 3) {
-        _finish(BetaPhase.won);
-        sounds.add(BetaSound.victory);
+    if (remaining == 0 && puzzle.solved) {
+      if (_waveWait < 2) {
+        _waveWait = math.min(2, _waveWait + dt);
+        if (_waveWait == 2) sounds.add(BetaSound.passage);
+      }
+      final nearGate =
+          distance(x, z, BetaRegion.gateX, BetaRegion.gateZ) <=
+          BetaRegion.gateRadius;
+      if (passageOpen &&
+          nearGate &&
+          swordTime <= 0 &&
+          castTime <= 0 &&
+          dodgeTime <= 0) {
+        _gateHold += dt;
+        if (_gateHold >= gateHoldDuration) _travel();
       } else {
-        if (_waveWait < 2) {
-          _waveWait = math.min(2, _waveWait + dt);
-          if (_waveWait == 2) sounds.add(BetaSound.passage);
-        }
-        final nearGate =
-            distance(x, z, BetaRegion.gateX, BetaRegion.gateZ) <=
-            BetaRegion.gateRadius;
-        if (passageOpen &&
-            nearGate &&
-            swordTime <= 0 &&
-            castTime <= 0 &&
-            dodgeTime <= 0) {
-          _gateHold += dt;
-          if (_gateHold >= gateHoldDuration) _travel();
-        } else {
-          _gateHold = 0;
-        }
+        _gateHold = 0;
       }
     }
   }
@@ -1046,8 +1105,15 @@ class BetaSession {
   }
 
   void _travel() {
+    if (finalArea) {
+      _gateHold = 0;
+      _finish(BetaPhase.won);
+      sounds.add(BetaSound.victory);
+      return; // No seventh region, healing reward or additional XP.
+    }
     wave++;
     _waveWait = _gateHold = 0;
+    _attuneCooldown = 0;
     x = BetaRegion.entryX;
     z = BetaRegion.entryZ;
     angle = math.pi;
@@ -1177,6 +1243,9 @@ class BetaSession {
     final kinds = switch (wave) {
       1 => [BetaEnemyKind.goblin, BetaEnemyKind.goblin, BetaEnemyKind.goblin],
       2 => [BetaEnemyKind.goblin, BetaEnemyKind.brute, BetaEnemyKind.darkElf],
+      4 => [BetaEnemyKind.darkElf, BetaEnemyKind.brute, BetaEnemyKind.darkElf],
+      5 => [BetaEnemyKind.brute, BetaEnemyKind.guardian, BetaEnemyKind.darkElf],
+      6 => [BetaEnemyKind.darkElf, BetaEnemyKind.guardian, BetaEnemyKind.brute],
       _ => [
         BetaEnemyKind.darkElf,
         BetaEnemyKind.guardian,
@@ -1189,7 +1258,7 @@ class BetaSession {
     }
     final hint = switch (wave) {
       1 => 'GOBLINS · desvie para o lado da estocada',
-      2 => 'OGRO E ELFO · contorne os cortes; ataque na recuperação',
+      2 || 4 => 'OGRO E ELFO · contorne os cortes; ataque na recuperação',
       _ => 'GUARDIÃO · saia do círculo antes do impacto',
     };
     message = '${region.title.toUpperCase()}\n$hint';

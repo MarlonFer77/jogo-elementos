@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:app/game_domain/beta_session.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../helpers/beta_puzzle_fixture.dart';
 
 void advance(BetaSession run, double seconds) {
   for (var left = seconds; left > .00001; left -= 1 / 60) {
@@ -303,6 +304,7 @@ void main() {
       expect(run.runicBladeTime, 4);
       run.enemies.clear();
       run.resume();
+      restorePuzzle(run);
       run.x = BetaRegion.gateX;
       run.z = BetaRegion.gateZ;
       advance(run, 2.6);

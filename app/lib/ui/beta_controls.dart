@@ -126,6 +126,67 @@ class _BetaActionPadState extends State<BetaActionPad> {
     refresh();
   }
 
+  void _inscription() {
+    run.setMovement(0, 0);
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFFF0E5C9),
+        title: Text(run.puzzle.puzzle.title),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(run.puzzle.puzzle.inscription),
+              if (run.puzzle.history.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'Ecos registrados',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                for (final step in run.puzzle.history) Text('✓ ${step.hint}'),
+              ],
+              if (run.puzzle.revealedHint case final hint?) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Pista atual: ${hint.hint}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+              const SizedBox(height: 12),
+              const Text(
+                'Caminhe até a letra no chão. Selecione em Solo ou Mistura e toque em Sintonizar. Não custa mana; erros mantêm os ecos já ativados.',
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Ecos: ${run.puzzle.completed}/${run.puzzle.puzzle.steps.length} · Restauração: ${run.puzzle.puzzle.restoration}.',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              run.revealPuzzleHint();
+              refresh();
+              Navigator.pop(context);
+            },
+            child: Text(
+              run.puzzle.revealedHint == null
+                  ? 'Revelar próximo passo'
+                  : 'Mostrar selo indicado',
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Voltar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _detail(BetaAction action) {
     if (run.queuedAction == action) return 'Na fila';
     if (run.castTime > 0) return 'Conjurando';
@@ -307,43 +368,73 @@ class _BetaActionPadState extends State<BetaActionPad> {
             ],
           ),
         const SizedBox(height: 6),
-        Row(
-          children: [
-            Expanded(
-              child: _button(
-                'Espada',
-                Icons.flash_on,
-                run.canRequest(BetaAction.sword)
-                    ? () => _action(BetaAction.sword)
-                    : null,
-                _detail(BetaAction.sword),
-                progress: 1 - run.swordCooldown / .52,
-                queued: run.queuedAction == BetaAction.sword,
+        if (run.puzzleActive)
+          Row(
+            children: [
+              Expanded(
+                child: _button(
+                  'Sintonizar',
+                  Icons.auto_awesome,
+                  run.canAttune
+                      ? () {
+                          run.attune();
+                          refresh();
+                        }
+                      : null,
+                  run.nearbyAltar == null
+                      ? 'Aproxime-se de um selo'
+                      : 'Selo ${BetaAltar.all[run.nearbyAltar!].label} · grátis',
+                ),
               ),
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: _button(
-                'Magia',
-                switch (run.element) {
-                  BetaElement.fire => Icons.local_fire_department,
-                  BetaElement.water => Icons.water_drop,
-                  BetaElement.wind => Icons.air,
-                  BetaElement.earth => Icons.landscape,
-                },
-                run.canRequest(BetaAction.cast)
-                    ? () => _action(BetaAction.cast)
-                    : null,
-                _detail(BetaAction.cast),
-                progress: 1 - run.spellCooldown / run.spellRecovery,
-                accent: run.selectedCombo == null
-                    ? betaElementColor(run.element)
-                    : betaComboColor(run.selectedCombo!),
-                queued: run.queuedAction == BetaAction.cast,
+              const SizedBox(width: 6),
+              Expanded(
+                child: _button(
+                  'Inscrição',
+                  Icons.menu_book,
+                  _inscription,
+                  'Enigma e pista',
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          )
+        else
+          Row(
+            children: [
+              Expanded(
+                child: _button(
+                  'Espada',
+                  Icons.flash_on,
+                  run.canRequest(BetaAction.sword)
+                      ? () => _action(BetaAction.sword)
+                      : null,
+                  _detail(BetaAction.sword),
+                  progress: 1 - run.swordCooldown / .52,
+                  queued: run.queuedAction == BetaAction.sword,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _button(
+                  'Magia',
+                  switch (run.element) {
+                    BetaElement.fire => Icons.local_fire_department,
+                    BetaElement.water => Icons.water_drop,
+                    BetaElement.wind => Icons.air,
+                    BetaElement.earth => Icons.landscape,
+                  },
+                  run.canRequest(BetaAction.cast)
+                      ? () => _action(BetaAction.cast)
+                      : null,
+                  _detail(BetaAction.cast),
+                  progress: 1 - run.spellCooldown / run.spellRecovery,
+                  accent: run.selectedCombo == null
+                      ? betaElementColor(run.element)
+                      : betaComboColor(run.selectedCombo!),
+                  queued: run.queuedAction == BetaAction.cast,
+                ),
+              ),
+            ],
+          ),
         const SizedBox(height: 6),
         SizedBox(
           width: double.infinity,

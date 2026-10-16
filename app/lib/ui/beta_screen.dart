@@ -110,7 +110,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
       ClipboardData(
         text:
             'Elementos BETA TEST · $version · $mode · ${defaultTargetPlatform.name}\n'
-            '${size.width.round()}×${size.height.round()} lógicos · DPR $density · área $encounter/3 · $region\n'
+            '${size.width.round()}×${size.height.round()} lógicos · DPR $density · área $encounter/${BetaRegion.values.length} · $region\n'
             '$metrics\nInforme também modelo do celular, tempo jogado e problema percebido.',
       ),
     );
@@ -268,6 +268,8 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
     if (key == LogicalKeyboardKey.keyJ) run.request(BetaAction.sword);
     if (key == LogicalKeyboardKey.keyK) run.request(BetaAction.cast);
     if (key == LogicalKeyboardKey.space) run.request(BetaAction.dodge);
+    if (key == LogicalKeyboardKey.keyE) run.attune();
+    if (key == LogicalKeyboardKey.keyH) run.revealPuzzleHint();
     final index = [
       LogicalKeyboardKey.digit1,
       LogicalKeyboardKey.digit2,
@@ -328,6 +330,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                               if (run.playing &&
                                   (run.messageTime > 0 ||
                                       run.nextEncounterIn > 0 ||
+                                      run.puzzleActive ||
                                       run.passageOpen))
                                 _notice(run),
                             ],
@@ -367,23 +370,47 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
     ),
   );
 
-  Widget _notice(BetaSession run) => IgnorePointer(
-    child: Padding(
-      padding: const EdgeInsets.only(top: 6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        color: const Color(0xE6263E35),
-        child: Text(
-          run.passageOpen
-              ? '↑ PASSAGEM ABERTA · siga a estrada até o arco\n'
-                    'Ao atravessar: até +20 HP e +25 MP'
-              : run.nextEncounterIn > 0
-              ? 'ÁREA LIVRE · passagem abre em ${run.nextEncounterIn.ceil()}s'
-              : run.message,
-          textAlign: TextAlign.center,
-          maxLines: 3,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: Color(0xFFFFE2A3), fontSize: 11),
+  Widget _notice(BetaSession run) => Align(
+    alignment: MediaQuery.orientationOf(context) == Orientation.landscape
+        ? Alignment.topLeft
+        : Alignment.center,
+    child: ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.orientationOf(context) == Orientation.landscape
+            ? 285
+            : double.infinity,
+      ),
+      child: IgnorePointer(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            color: const Color(0xE6263E35),
+            child: Text(
+              run.puzzleActive
+                  ? '${run.puzzle.puzzle.title} · ${run.puzzle.completed}/${run.puzzle.puzzle.steps.length} ecos\n'
+                        '${run.messageTime > 0
+                            ? run.message
+                            : run.puzzle.revealedHint != null
+                            ? 'PISTA · ${run.puzzle.revealedHint!.hint} · siga o marcador dourado'
+                            : 'Explore os selos A–D. Leia a Inscrição para restaurar a área.'}'
+                  : run.passageOpen
+                  ? run.finalArea
+                        ? 'AURORA RESTAURADA · explore à vontade\n↑ Portal ao norte: concluir expedição'
+                        : '↑ PASSAGEM ABERTA · siga a estrada até o arco\n'
+                              'Ao atravessar: até +20 HP e +25 MP'
+                  : run.nextEncounterIn > 0
+                  ? 'ÁREA LIVRE · passagem abre em ${run.nextEncounterIn.ceil()}s\n${run.puzzle.puzzle.restoration}'
+                  : run.message,
+              textAlign: TextAlign.center,
+              maxLines:
+                  MediaQuery.orientationOf(context) == Orientation.landscape
+                  ? 2
+                  : 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Color(0xFFFFE2A3), fontSize: 11),
+            ),
+          ),
         ),
       ),
     ),
@@ -416,7 +443,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${run.region.title} · ${run.wave}/3',
+                      '${run.region.title} · ${run.wave}/${BetaRegion.values.length}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -532,7 +559,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                         : paused
                         ? 'BETA PAUSADO'
                         : run.phase == BetaPhase.won
-                        ? 'GUARDIÃO DERROTADO'
+                        ? 'AURORA RESTAURADA'
                         : 'A RUÍNA RESISTIU',
                     style: const TextStyle(
                       fontFamily: 'monospace',
@@ -543,13 +570,14 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                   const SizedBox(height: 8),
                   Text(
                     ready
-                        ? 'Atravesse três regiões e derrote o guardião.\n'
-                              'Mova e mire com o joystick; ataque, conjure e desvie.\n'
+                        ? 'Atravesse seis regiões e restaure seus ecos.\n'
+                              'Vença os inimigos, decifre os altares e transforme o cenário.\n'
                               'Progresso temporário: sair encerra esta sessão.'
                         : paused
                         ? 'O tempo está parado. Seu progresso neste beta dura somente até sair.'
                         : '${run.phase == BetaPhase.won ? 'A estrada dos ecos foi recuperada.' : 'Você caiu em ${run.region.title}.'}\n'
                               '${run.kills} inimigos · ${run.xp} XP · nível ${run.level}\n'
+                              '${run.restoredAreas}/${BetaRegion.values.length} áreas restauradas\n'
                               'Progresso desta sessão; seus outros modos não são alterados.',
                     style: const TextStyle(fontSize: 13),
                   ),
@@ -673,6 +701,10 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
           ),
         const SizedBox(height: 4),
         Text(run.region.story, style: const TextStyle(fontSize: 11)),
+        Text(
+          'Restauração: ${run.restoredAreas}/${BetaRegion.values.length} áreas · nesta expedição',
+          style: const TextStyle(fontSize: 11),
+        ),
       ],
     ),
   );
@@ -693,9 +725,13 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
       ),
       const SizedBox(height: 8),
       const Text(
-        'Após vencer, siga a estrada até o arco ao norte e fique no selo para '
+        'Após vencer, leia a Inscrição e sintonize os selos A–D com os elementos '
+        'indicados. Os enigmas avançam de elementos simples para misturas e ordens '
+        'invertidas. Pistas são gratuitas; erros não removem progresso. '
+        'Restaurada a área, siga até o arco ao norte e fique no selo para '
         'viajar. A passagem recupera até 20 HP e 25 MP; nível e elemento continuam. '
-        'A água rasa do aqueduto pode ser atravessada.',
+        'A água rasa do aqueduto pode ser atravessada. Na última área, você pode '
+        'explorar o cenário restaurado antes de concluir a expedição pelo portal.',
         style: TextStyle(fontSize: 12),
       ),
       const SizedBox(height: 8),

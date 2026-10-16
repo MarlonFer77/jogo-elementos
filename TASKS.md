@@ -4,6 +4,52 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Preparar/publicar v0.38.0+38 como Latest: seis áreas/puzzles/restauração e
+novo atualizador. Preservar assinatura Android existente; conferir APK,
+versão/hash/certificado e detecção da atualização antes de encerrar.
+Não incluir arquivos locais de output/.codex-finalizer nem alterar backend.
+
+Checkpoint anterior:
+
+Orientação dos puzzles polida localmente: Inscrição registra ecos concluídos e
+pistas solicitadas; marcador dourado/seta só após pedir ajuda, limpos ao acertar
+sem revelar o passo seguinte. Selo próximo mostra seleção; onda discreta de
+restauração respeita movimento reduzido. Avisos horizontais fora dos controles.
+Última região permite explorar cenário restaurado: vitória só no portal, com
+pausa/saída da zona cancelando travessia, sem cura/XP extra ou sétima região.
+43 testes focados passaram; prévias vertical/horizontal revisadas e análise limpa.
+Sem APK/release/push/backend ou alterações de saves. Próximo: validar no celular
+clareza, dificuldade e fluidez da rota completa; progresso ainda temporário.
+
+Checkpoint anterior:
+
+BETA 3D ampliado localmente para seis regiões: três existentes com puzzles,
+mais Jardins Suspensos, Forja das Marés e Coroa da Aurora. Enigmas de 2 a 7
+passos: elementos simples, fluxo, leitura inversa, alquimia, espelho e concerto.
+Após combate, Solo/Mistura + Sintonizar nos selos A–D; Inscrição e pistas opcionais.
+Erros preservam passos, sem custo de mana/recompensa farmável/exigência de slots.
+Passagem/vitória exigem puzzle concluído. Restauração clareia paisagem e acrescenta
+flores, cristais, vitrais; novos terraços/cascatas/torres. Cache de até 12 cenários,
+cada um abaixo de 2600 faces nos testes; não é garantia de FPS real.
+52 testes focados passaram, incluindo percurso das seis áreas, altares alcançáveis,
+pausa, ações repetidas, combos sem slots e HUD vertical/horizontal. Prévias revisadas.
+Detalhes em docs/beta-puzzles.md. Progresso temporário por expedição. Sem APK,
+release, push, backend ou alterações de saves/outros modos. Próximo: validar
+legibilidade/dificuldade dos enigmas e fluidez no celular com APK candidato.
+
+Checkpoint anterior:
+
+Tela de atualização renovada localmente no tema Ordem dos Ecos: painel de
+pergaminho/pedra, versões e etapas Consultar/Baixar/Instalar, ações fixas e
+layout horizontal em duas colunas. Download indeterminado, erros e orientação
+do instalador mais claros. Verificar instalação reinicia o estado corretamente;
+respostas antigas não sobrescrevem a consulta atual. GitHub, SHA-256 e política
+de atualização preservados. 22 testes focados passaram; prévias 320×568,
+568×320 e 800×360 revisadas. Sem APK/release neste bloco. Próximo: validar
+download e instalação real no Android no próximo APK candidato.
+
+Checkpoint anterior:
+
 v0.37.0+37 publicada como Latest em 15/10/2026, com Ateliê dos Ecos e novos
 efeitos das magias/combos do BETA 3D. Build 38799530454 no commit
 3ae2daa48efe9cac29cc09501f00af60952bdc82; app-release.apk anexado.

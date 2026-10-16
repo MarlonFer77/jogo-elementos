@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:app/game_domain/beta_session.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../helpers/beta_puzzle_fixture.dart';
 
 BetaSession duel({BetaEnemyKind kind = BetaEnemyKind.goblin}) {
   final run = BetaSession()..start();
@@ -59,6 +60,7 @@ void main() {
       expect(run.nextEncounterIn, 0);
       run.enemies.clear();
       run.hp = 89;
+      restorePuzzle(run);
       expect(run.nextEncounterIn, 2);
       advance(run, 1);
       expect(run.nextEncounterIn, closeTo(1, .001));
@@ -83,9 +85,13 @@ void main() {
       expect(run.hp, 100);
       expect(run.mana, 100);
       advance(run, .4);
-      run.wave = 3;
+      run.wave = BetaRegion.values.length;
       run.enemies.clear();
-      run.update(.01);
+      restorePuzzle(run);
+      advance(run, 2.1);
+      run.x = BetaRegion.gateX;
+      run.z = BetaRegion.gateZ;
+      advance(run, .6);
       expect(run.phase, BetaPhase.won);
       expect(run.nextEncounterIn, 0);
     },
@@ -103,6 +109,7 @@ void main() {
         run.enemies.clear();
         run.x = 0;
         run.z = 0;
+        restorePuzzle(run);
         advance(run, 2.1);
         expect(run.sounds.where((s) => s == BetaSound.passage), hasLength(1));
         run.z = BetaRegion.gateZ;
@@ -172,8 +179,9 @@ void main() {
             greaterThan(5),
           );
         }
-        if (region != BetaRegion.sanctum) {
+        if (region != BetaRegion.values.last) {
           run.enemies.clear();
+          restorePuzzle(run);
           run.setMovement(0, -1);
           for (var i = 0; i < 300 && run.region == region; i++) {
             run.update(1 / 60);
@@ -443,15 +451,21 @@ void main() {
     expect(run.cast(), false);
     expect(run.dodge(), false);
   });
-  test('three encounters give session XP once and stop on victory/defeat', () {
+  test('six encounters give session XP once and stop on victory/defeat', () {
     final run = BetaSession()..start();
     var totalHealth = 0.0;
-    for (var wave = 1; wave <= 3; wave++) {
+    for (var wave = 1; wave <= BetaRegion.values.length; wave++) {
       expect(run.wave, wave);
       expect(run.enemies, hasLength(3));
       expect(
         run.enemies.where((e) => e.kind == BetaEnemyKind.darkElf),
-        hasLength(wave == 1 ? 0 : 1),
+        hasLength(
+          wave == 1
+              ? 0
+              : wave == 4
+              ? 2
+              : 1,
+        ),
       );
       for (final e in run.enemies) {
         totalHealth += e.maxHp;
@@ -461,19 +475,19 @@ void main() {
       }
       run.sword();
       advance(run, .4);
-      if (wave < 3) {
-        advance(run, 2);
-        run.x = BetaRegion.gateX;
-        run.z = BetaRegion.gateZ;
-        advance(run, 1);
-      }
+      restorePuzzle(run);
+      run.update(.01);
+      advance(run, 2);
+      run.x = BetaRegion.gateX;
+      run.z = BetaRegion.gateZ;
+      advance(run, 1);
     }
     expect(run.phase, BetaPhase.won);
-    expect(run.kills, 9);
-    expect(totalHealth, 528);
-    expect(run.xp, 280);
-    expect(run.level, 4);
-    expect(run.skillPoints, 4);
+    expect(run.kills, 18);
+    expect(totalHealth, 1276);
+    expect(run.xp, 680);
+    expect(run.level, 9);
+    expect(run.skillPoints, 9);
     final xp = run.xp;
     advance(run, 10);
     expect(run.xp, xp);
@@ -643,23 +657,36 @@ void main() {
     expect(enemy.pushTime, 0);
   });
 
-  test('death finishes visually with no extra actions, damage or rewards', () {
-    final run = duel()..wave = 3;
-    final enemy = run.enemies.single..hp = 1;
-    run.sword();
-    advance(run, .2);
-    expect(run.phase, BetaPhase.won);
-    expect(run.settling, true);
-    expect(enemy.deathTime, greaterThan(0));
-    expect(run.request(BetaAction.cast), false);
-    final hp = run.hp, xp = run.xp;
-    advance(run, 1);
-    expect(run.settling, false);
-    expect(enemy.deathTime, 0);
-    expect(run.hp, hp);
-    expect(run.xp, xp);
-    expect(run.kills, 1);
-  });
+  test(
+    'enemy fades before final exit, with no duplicate damage or rewards',
+    () {
+      final run = duel()..wave = BetaRegion.values.length;
+      restorePuzzle(run);
+      final enemy = run.enemies.single..hp = 1;
+      run.sword();
+      advance(run, .2);
+      expect(run.phase, BetaPhase.playing);
+      expect(enemy.deathTime, greaterThan(0));
+      final hp = run.hp, xp = run.xp;
+      advance(run, 1);
+      expect(run.settling, false);
+      expect(enemy.deathTime, 0);
+      expect(run.hp, hp);
+      expect(run.xp, xp);
+      expect(run.kills, 1);
+      advance(run, 2);
+      run.x = BetaRegion.gateX;
+      run.z = BetaRegion.gateZ;
+      advance(run, .6);
+      expect(run.phase, BetaPhase.won);
+      expect(run.settling, true);
+      expect(run.request(BetaAction.cast), false);
+      advance(run, 1);
+      expect(run.settling, false);
+      expect(run.hp, hp);
+      expect(run.xp, xp);
+    },
+  );
 
   test(
     'aim respects facing and joystick, then stays committed during a cast',

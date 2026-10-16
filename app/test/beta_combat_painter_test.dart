@@ -5,6 +5,7 @@ import 'package:app/game_presentation/beta_arena_painter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'helpers/beta_puzzle_fixture.dart';
 
 void main() {
   BetaArenaPainter painterFor(BetaSession run) {
@@ -13,7 +14,7 @@ void main() {
     return painter;
   }
 
-  testWidgets('three regions render distinct scenery in both orientations', (
+  testWidgets('six regions render distinct scenery in both orientations', (
     tester,
   ) async {
     final preview = Platform.environment['ELEMENTOS_ART_PREVIEW'] == '1';
@@ -72,7 +73,7 @@ void main() {
       if (preview) {
         await tester.runAsync(() async {
           final image = await picture.toImage(
-            size.width.toInt() * 3,
+            size.width.toInt() * BetaRegion.values.length,
             size.height.toInt(),
           );
           final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
@@ -85,9 +86,57 @@ void main() {
         });
       }
       picture.dispose();
-      expect(signatures, hasLength(3));
+      expect(signatures, hasLength(BetaRegion.values.length));
     }
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('restoration changes every region with bounded scenery', (
+    tester,
+  ) async {
+    for (final region in BetaRegion.values) {
+      final run = BetaSession()..wave = region.index + 1;
+      run.start();
+      run.enemies.clear();
+      run.z = 1.5;
+      final painter = painterFor(run)..reduceMotion = true;
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      final signatures = <int>{};
+      for (var state = 0; state < 2; state++) {
+        if (state == 1) restorePuzzle(run);
+        final local = ui.PictureRecorder();
+        painter.paint(Canvas(local), const Size(640, 360));
+        expect(painter.cachedSceneryFaceCount, inInclusiveRange(1, 2600));
+        final scene = local.endRecording();
+        canvas.save();
+        canvas.translate(state * 640.0, 0);
+        canvas.drawPicture(scene);
+        canvas.restore();
+        await tester.runAsync(() async {
+          final image = await scene.toImage(640, 360);
+          final bytes = await image.toByteData();
+          signatures.add(Object.hashAll(bytes!.buffer.asUint8List()));
+          image.dispose();
+        });
+        scene.dispose();
+      }
+      expect(signatures, hasLength(2));
+      final picture = recorder.endRecording();
+      if (Platform.environment['ELEMENTOS_ART_PREVIEW'] == '1') {
+        await tester.runAsync(() async {
+          final image = await picture.toImage(1280, 360);
+          final data = await image.toByteData(format: ui.ImageByteFormat.png);
+          final file = File(
+            'build/gameplay-preview/beta-restoration-${region.name}.png',
+          );
+          await file.parent.create(recursive: true);
+          await file.writeAsBytes(data!.buffer.asUint8List());
+          image.dispose();
+        });
+      }
+      picture.dispose();
+    }
   });
 
   testWidgets('reduced motion removes camera shake, not the arena', (
@@ -316,7 +365,8 @@ void main() {
     advance(enemy, enemyPainter, .14);
     frame(enemyPainter, 'Inimigo: impacto + reação');
     expect(enemy.hurtTime, greaterThan(0));
-    final death = duel()..wave = 3;
+    final death = duel()..wave = BetaRegion.values.length;
+    restorePuzzle(death);
     death.enemies.single.hp = 1;
     death.sword();
     final deathPainter = painterFor(death);

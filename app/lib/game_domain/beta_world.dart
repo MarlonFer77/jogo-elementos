@@ -34,6 +34,36 @@ enum BetaRegion {
       BetaObstacle(-4.5, -4.5, .7, 2.2),
       BetaObstacle(4.5, -4.5, .7, 2.2),
     ],
+  ),
+  gardens(
+    'Jardins Suspensos',
+    'Terraços de flores escondem a alquimia que alimentava a cidade.',
+    [
+      BetaObstacle(-5, 0, .65, 2),
+      BetaObstacle(5, 0, .65, 2),
+      BetaObstacle(-4, -6, .7, 2.8),
+      BetaObstacle(4, -6, .7, 2.8),
+    ],
+  ),
+  forge(
+    'Forja das Marés',
+    'Cascatas resfriam os cristais que guardam o calor das montanhas.',
+    [
+      BetaObstacle(-4, 1, .75, 2.8),
+      BetaObstacle(4, 1, .75, 2.8),
+      BetaObstacle(-5, -5, .8, 3.2),
+      BetaObstacle(5, -5, .8, 3.2),
+    ],
+  ),
+  dawn(
+    'Coroa da Aurora',
+    'Seis ecos reunidos podem devolver a luz à cidade suspensa.',
+    [
+      BetaObstacle(-5, 2, .7, 3.2),
+      BetaObstacle(5, 2, .7, 3.2),
+      BetaObstacle(-4.5, -5, .8, 3.6),
+      BetaObstacle(4.5, -5, .8, 3.6),
+    ],
   );
 
   const BetaRegion(this.title, this.story, this.obstacles);

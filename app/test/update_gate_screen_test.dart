@@ -1,9 +1,14 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:app/game_domain/update_checker.dart';
+import 'package:app/game_presentation/sfx_player.dart';
 import 'package:app/ui/home_screen.dart';
 import 'package:app/ui/update_gate_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ota_update/ota_update.dart';
 
@@ -25,6 +30,123 @@ class _ThrowingUpdateChecker implements UpdateChecker {
 }
 
 void main() {
+  setUp(() {
+    final previous = sfxPlayer;
+    sfxPlayer = SfxPlayer(play: (_) {});
+    addTearDown(() => sfxPlayer = previous);
+  });
+  setUpAll(() async {
+    if (Platform.environment['ELEMENTOS_ART_PREVIEW'] == '1' &&
+        Platform.isWindows) {
+      await (FontLoader(
+        'MaterialIcons',
+      )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
+      for (final font in [('Roboto', 'segoeui'), ('monospace', 'consola')]) {
+        await (FontLoader(font.$1)..addFont(
+              Future.value(
+                ByteData.sublistView(
+                  await File('C:/Windows/Fonts/${font.$2}.ttf').readAsBytes(),
+                ),
+              ),
+            ))
+            .load();
+      }
+    }
+  });
+  for (final size in [
+    const Size(320, 568),
+    const Size(568, 320),
+    const Size(800, 360),
+  ]) {
+    testWidgets('update states fit $size and recheck resets installer', (
+      tester,
+    ) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final streams = <StreamController<OtaEvent>>[];
+      addTearDown(() async {
+        for (final stream in streams) {
+          await stream.close();
+        }
+      });
+      final key = GlobalKey();
+      Future<void> capture(String state) async {
+        if (Platform.environment['ELEMENTOS_ART_PREVIEW'] != '1') return;
+        await tester.runAsync(() async {
+          final image =
+              await (key.currentContext!.findRenderObject()
+                      as RenderRepaintBoundary)
+                  .toImage();
+          final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+          final file = File(
+            'build/gameplay-preview/update-${size.width.toInt()}-$state.png',
+          );
+          await file.parent.create(recursive: true);
+          await file.writeAsBytes(bytes!.buffer.asUint8List());
+          image.dispose();
+        });
+      }
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RepaintBoundary(
+            key: key,
+            child: UpdateGateScreen(
+              isAndroid: true,
+              currentVersion: '0.37.0',
+              updateChecker: _FakeUpdateChecker(
+                const UpdateCheckResult.updateAvailable(
+                  latestVersion: '0.38.0',
+                  downloadUrl: 'https://example.com/app-release.apk',
+                  checksum: 'test',
+                ),
+              ),
+              startDownload: (_) {
+                final stream = StreamController<OtaEvent>();
+                streams.add(stream);
+                return stream.stream;
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(
+        find.text('Versão instalada: 0.37.0').hitTestable(),
+        findsOneWidget,
+      );
+      expect(find.text('Nova versão: v0.38.0').hitTestable(), findsOneWidget);
+      expect(find.text('Baixar atualização').hitTestable(), findsOneWidget);
+      await capture('available');
+      await tester.tap(find.text('Baixar atualização'));
+      await tester.pump();
+      expect(find.text('Conectando ao download...'), findsOneWidget);
+      streams.last.add(OtaEvent(OtaStatus.DOWNLOADING, '45'));
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(find.text('Baixando... 45%').hitTestable(), findsOneWidget);
+      await capture('downloading');
+      streams.last.add(OtaEvent(OtaStatus.INSTALLING, null));
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(find.text('Verificar instalação').hitTestable(), findsOneWidget);
+      await capture('installing');
+      await tester.tap(find.text('Verificar instalação'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(find.text('Baixar atualização').hitTestable(), findsOneWidget);
+      expect(find.text('Abrindo instalador...'), findsNothing);
+      await tester.tap(find.text('Baixar atualização'));
+      await tester.pump();
+      streams.last.add(OtaEvent(OtaStatus.CHECKSUM_ERROR, null));
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(find.text('Tentar de novo').hitTestable(), findsOneWidget);
+      expect(find.textContaining('integridade'), findsOneWidget);
+      await capture('error');
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
   testWidgets('failed check offers retry and explicit offline continuation', (
     tester,
   ) async {

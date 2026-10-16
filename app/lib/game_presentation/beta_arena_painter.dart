@@ -5,6 +5,7 @@ import '../game_domain/cosmetics.dart';
 import 'beta_health_feedback.dart';
 
 part 'beta_spell_effects.dart';
+part 'beta_world_art.dart';
 
 Color betaElementColor(BetaElement element) => switch (element) {
   BetaElement.fire => const Color(0xFFEAAF52),
@@ -64,6 +65,19 @@ class _RegionLook {
     this.accent,
   );
   final Color sky, fog, ground, path, stone, trim, accent;
+  _RegionLook restored({required bool water}) => _RegionLook(
+    Color.lerp(sky, const Color(0xFF8DC6D7), .7)!,
+    Color.lerp(fog, const Color(0xFFDAE7D2), .65)!,
+    Color.lerp(
+      ground,
+      water ? const Color(0xFF63AAA9) : const Color(0xFF78A96B),
+      .5,
+    )!,
+    Color.lerp(path, const Color(0xFFD5C8A4), .5)!,
+    Color.lerp(stone, const Color(0xFFDDD5BD), .45)!,
+    const Color(0xFFE9CD91),
+    const Color(0xFF84D6C6),
+  );
   static const values = [
     _RegionLook(
       Color(0xFF304544),
@@ -92,6 +106,39 @@ class _RegionLook {
       Color(0xFFD0BDA1),
       Color(0xFFDEB675),
     ),
+    _RegionLook(
+      Color(0xFF506B70),
+      Color(0xFFADC3B0),
+      Color(0xFF5B7D59),
+      Color(0xFFA6AA82),
+      Color(0xFF9BA78D),
+      Color(0xFFE2CBAC),
+      Color(0xFFDCA9BD),
+    ),
+    _RegionLook(
+      Color(0xFF41617A),
+      Color(0xFF9CBAC3),
+      Color(0xFF526E7A),
+      Color(0xFFA8A9A2),
+      Color(0xFF8198A6),
+      Color(0xFFD6C5AA),
+      Color(0xFF80D5DA),
+    ),
+    _RegionLook(
+      Color(0xFF7E8AA2),
+      Color(0xFFD1CDD1),
+      Color(0xFF7C967C),
+      Color(0xFFC3B998),
+      Color(0xFFAAAEB7),
+      Color(0xFFECD7A8),
+      Color(0xFFDFC29A),
+    ),
+  ];
+  static final restoredValues = [
+    for (final region in BetaRegion.values)
+      values[region.index].restored(
+        water: region == BetaRegion.aqueduct || region == BetaRegion.forge,
+      ),
   ];
 }
 
@@ -134,7 +181,8 @@ class BetaArenaPainter extends CustomPainter {
   @visibleForTesting
   int get cachedLabelCount => _labels.length;
   @visibleForTesting
-  int get cachedSceneryFaceCount => _scenery[run.region]?.length ?? 0;
+  int get cachedSceneryFaceCount =>
+      _scenery[(run.region, run.puzzle.solved)]?.length ?? 0;
   @visibleForTesting
   int get lastSpellFaceCount => _spellFaceCount;
   int _spellFaceCount = 0;
@@ -149,9 +197,11 @@ class BetaArenaPainter extends CustomPainter {
     _enemyHealth.clear();
   }
 
-  // Only three immutable scenes, built on first visit, never rebuilt per frame.
-  static final _scenery = <BetaRegion, List<_Face>>{};
-  _RegionLook get _look => _RegionLook.values[run.region.index];
+  // Six regions × two restoration states; bounded, never rebuilt per frame.
+  static final _scenery = <(BetaRegion, bool), List<_Face>>{};
+  _RegionLook get _look => run.puzzle.solved
+      ? _RegionLook.restoredValues[run.region.index]
+      : _RegionLook.values[run.region.index];
   late _V _camera, _right, _up, _forward;
   late Size _size;
   late double _focal;
@@ -445,9 +495,11 @@ class BetaArenaPainter extends CustomPainter {
     );
   }
 
-  static List<_Face> _buildScenery(BetaRegion region) {
+  static List<_Face> _buildScenery(BetaRegion region, bool restored) {
     final faces = <_Face>[];
-    final look = _RegionLook.values[region.index];
+    final look = restored
+        ? _RegionLook.restoredValues[region.index]
+        : _RegionLook.values[region.index];
     void slab(
       double x,
       double z,
@@ -596,7 +648,7 @@ class BetaArenaPainter extends CustomPainter {
               ),
             );
           }
-        } else {
+        } else if (region == BetaRegion.sanctum) {
           _crown(
             faces,
             _V(side * 11.5, 0, z),
@@ -792,6 +844,7 @@ class BetaArenaPainter extends CustomPainter {
         );
       }
     }
+    _addWorldArt(faces, region, look, restored);
     return faces;
   }
 
@@ -2022,11 +2075,69 @@ class BetaArenaPainter extends CustomPainter {
     );
     final faces = <_Face>[
       if (!wardrobePreview)
-        ..._scenery.putIfAbsent(run.region, () => _buildScenery(run.region)),
+        ..._scenery.putIfAbsent((
+          run.region,
+          run.puzzle.solved,
+        ), () => _buildScenery(run.region, run.puzzle.solved)),
     ];
     final gateColor = run.passageOpen ? _look.accent : _look.stone;
+    final hint = run.puzzleActive ? run.puzzle.revealedHint : null;
+    const hintColor = Color(0xFFF5D58B);
     if (!wardrobePreview) {
       _ring(faces, BetaRegion.gateX, BetaRegion.gateZ, 1.3, gateColor);
+      if (!reduceMotion && run.nextEncounterIn > 0) {
+        final origin = BetaAltar.all[run.puzzle.history.last.altar];
+        final progress = 1 - run.nextEncounterIn / 2;
+        _ring(
+          faces,
+          origin.x,
+          origin.z,
+          .8 + progress * 10,
+          _look.accent.withValues(alpha: (1 - progress) * .4),
+        );
+      }
+      if (run.remaining == 0) {
+        for (var i = 0; i < BetaAltar.all.length; i++) {
+          final altar = BetaAltar.all[i];
+          final active = run.puzzle.history.any((s) => s.altar == i);
+          final nearby = run.nearbyAltar == i;
+          final indicated = hint?.altar == i;
+          _ring(
+            faces,
+            altar.x,
+            altar.z,
+            .65,
+            indicated
+                ? hintColor
+                : active
+                ? const Color(0xFF9CE6C9)
+                : _look.trim,
+          );
+          if (nearby || indicated) {
+            _ring(
+              faces,
+              altar.x,
+              altar.z,
+              .83,
+              indicated ? hintColor : _look.accent,
+            );
+          }
+          // Floating echo is ethereal: ground seals remain fully walkable.
+          _gem(
+            faces,
+            _V(altar.x, .45, altar.z),
+            const _V(.14, .28, .14),
+            nearby
+                ? run.selectedCombo == null
+                      ? betaElementColor(run.element)
+                      : betaComboColor(run.selectedCombo!)
+                : active
+                ? const Color(0xFF9CE6C9)
+                : _look.stone,
+            reduceMotion ? 0 : _clock * .5,
+          );
+        }
+      }
     }
     if (run.passageProgress > 0) {
       _ring(
@@ -2043,7 +2154,7 @@ class BetaArenaPainter extends CustomPainter {
       final t = reduceMotion ? 0.0 : _clock;
       final x = (i.isEven ? -1 : 1) * (4.7 + i % 3 * .7);
       final z = -7 + i * 4.1;
-      if (run.region == BetaRegion.aqueduct) {
+      if (run.region == BetaRegion.aqueduct || run.region == BetaRegion.forge) {
         _ring(
           faces,
           x,
@@ -2078,7 +2189,11 @@ class BetaArenaPainter extends CustomPainter {
       );
     }
     if (run.playing) {
-      final dx = math.sin(run.aimDirection), dz = math.cos(run.aimDirection);
+      final target = hint == null ? null : BetaAltar.all[hint.altar];
+      final direction = target == null
+          ? run.aimDirection
+          : math.atan2(target.x - run.x, target.z - run.z);
+      final dx = math.sin(direction), dz = math.cos(direction);
       _V arrow(double forward, double side) => _V(
         run.x + dx * forward + dz * side,
         .03,
@@ -2087,7 +2202,7 @@ class BetaArenaPainter extends CustomPainter {
       faces.add(
         _Face(
           [arrow(1.02, 0), arrow(.73, -.13), arrow(.73, .13)],
-          const Color(0xFFD5D6AB),
+          hint == null ? const Color(0xFFD5D6AB) : hintColor,
           unlit: true,
           ground: true,
         ),
@@ -2308,13 +2423,41 @@ class BetaArenaPainter extends CustomPainter {
     for (final face in projected) {
       canvas.drawPath(face.path, paint..color = face.color);
     }
+    if (!wardrobePreview && run.remaining == 0) {
+      for (var i = 0; i < BetaAltar.all.length; i++) {
+        final altar = BetaAltar.all[i];
+        final indicated = hint?.altar == i;
+        final echoes = run.puzzle.history
+            .where((step) => step.altar == i)
+            .length;
+        final label =
+            '${altar.label}${indicated
+                ? ' · PISTA'
+                : run.nearbyAltar == i
+                ? ' · aqui'
+                : echoes > 0
+                ? ' · $echoes'
+                : ''}';
+        final p = _project(_V(altar.x, .9, altar.z));
+        if (p != null) {
+          _label(
+            canvas,
+            p,
+            label,
+            indicated ? hintColor : _look.trim,
+            size: 12,
+            badge: true,
+          );
+        }
+      }
+    }
     if (run.passageOpen) {
       final gate = _project(const _V(BetaRegion.gateX, .3, BetaRegion.gateZ));
       if (gate != null) {
         _label(
           canvas,
           gate,
-          'PASSAGEM ABERTA',
+          run.finalArea ? 'CONCLUIR EXPEDIÇÃO' : 'PASSAGEM ABERTA',
           _look.accent,
           size: 10,
           badge: true,

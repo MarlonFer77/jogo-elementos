@@ -97,7 +97,7 @@ class _BetaAccessScreenState extends State<BetaAccessScreen> {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'Uma estrada esquecida. Três regiões para recuperar.\n'
+                        'Seis regiões. Enigmas elementais. Um mundo para restaurar.\n'
                         'RPG de ação 3D · teste solo.',
                       ),
                       const SizedBox(height: 14),

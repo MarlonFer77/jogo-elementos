@@ -561,6 +561,49 @@ void main() {
       expect(find.textContaining('VIDA BAIXA'), findsNothing);
       expect(game.healthTrail, .28);
       game.session.enemies.clear();
+      game.session.x = -2;
+      game.session.z = 3;
+      game.session.select(BetaElement.water);
+      game.refresh();
+      await tester.pump();
+      expect(find.text('Sintonizar').hitTestable(), findsOneWidget);
+      await tester.tap(find.text('Inscrição'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.textContaining('Em A, a chuva'), findsOneWidget);
+      await tester.tap(find.text('Revelar próximo passo'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Sintonizar'));
+      await tester.pump();
+      expect(game.session.puzzle.completed, 1);
+      expect(game.session.puzzle.revealedHint, isNull);
+      await tester.tap(find.text('Inscrição'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('✓ A: Água'), findsOneWidget);
+      await tester.tap(find.text('Revelar próximo passo'));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(game.session.puzzle.revealedHint?.hint, 'B: Terra');
+      if (Platform.environment['ELEMENTOS_ART_PREVIEW'] == '1') {
+        await tester.runAsync(() async {
+          final image =
+              await (key.currentContext!.findRenderObject()
+                      as RenderRepaintBoundary)
+                  .toImage();
+          final data = await image.toByteData(format: ui.ImageByteFormat.png);
+          await File(
+            'build/gameplay-preview/beta-puzzles-${size.width.toInt()}.png',
+          ).writeAsBytes(data!.buffer.asUint8List());
+          image.dispose();
+        });
+      }
+      for (var i = 0; i < 5; i++) {
+        game.update(.1);
+      }
+      game.session.x = 2;
+      game.session.select(BetaElement.earth);
+      game.refresh();
+      await tester.pump();
+      await tester.tap(find.text('Sintonizar'));
+      expect(game.session.puzzle.solved, true);
       game.refresh();
       await tester.pump();
       expect(find.textContaining('ÁREA LIVRE'), findsOneWidget);
@@ -595,7 +638,7 @@ void main() {
         game.update(.1);
       }
       await tester.pump();
-      expect(find.textContaining('Aqueduto Velado · 2/3'), findsOneWidget);
+      expect(find.textContaining('Aqueduto Velado · 2/6'), findsOneWidget);
       expect(find.byKey(const ValueKey('beta-movement-2')), findsOneWidget);
       expect(find.byKey(const ValueKey('beta-actions-1')), findsNothing);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
@@ -617,7 +660,7 @@ void main() {
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
       await tester.pump();
       expect(game.session.settling, false);
-      expect(find.text('GUARDIÃO DERROTADO'), findsOneWidget);
+      expect(find.text('AURORA RESTAURADA'), findsOneWidget);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       expect((await SharedPreferences.getInstance()).getKeys(), {
         'training_sentinel',
