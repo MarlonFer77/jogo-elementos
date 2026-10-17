@@ -139,6 +139,34 @@ void main() {
     }
   });
 
+  testWidgets('earned scenery carries to regions with unsolved puzzles', (
+    tester,
+  ) async {
+    final run = BetaSession()..start();
+    final painter = painterFor(run);
+    int renderFaces() {
+      final recorder = ui.PictureRecorder();
+      painter.paint(Canvas(recorder), const Size(640, 360));
+      recorder.endRecording().dispose();
+      return painter.cachedSceneryFaceCount;
+    }
+
+    run.wave = 2;
+    final dormantFaces = renderFaces();
+    run.wave = 1;
+    restorePuzzle(run);
+    for (var stage = 2; stage <= BetaRegion.values.length; stage++) {
+      run.wave = stage;
+      expect(run.puzzle.solved, false);
+      expect(run.passageOpen, false);
+      final inheritedFaces = renderFaces();
+      expect(inheritedFaces, inInclusiveRange(1, 2600));
+      if (stage == 2) expect(inheritedFaces, greaterThan(dormantFaces));
+      restorePuzzle(run);
+      expect(renderFaces(), inheritedFaces);
+    }
+  });
+
   testWidgets('reduced motion removes camera shake, not the arena', (
     tester,
   ) async {

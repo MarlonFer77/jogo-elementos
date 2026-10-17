@@ -75,7 +75,7 @@ void main() {
         (await SharedPreferences.getInstance()).getString(CosmeticStore.key),
         'broken',
       );
-      final newer = jsonEncode({...CosmeticInventory().toJson(), 'version': 2});
+      final newer = jsonEncode({...CosmeticInventory().toJson(), 'version': 3});
       SharedPreferences.setMockInitialValues({CosmeticStore.key: newer});
       await expectLater(CosmeticStore().load(), throwsStateError);
       expect(
@@ -88,6 +88,13 @@ void main() {
     for (final field in [
       {'coins': -1},
       {'equipped': 'moon'},
+      {
+        'slots': {'weapon': 'excalibur'},
+      },
+      {
+        'slots': {'weapon': 'spin'},
+        'owned': ['traveler', 'spin'],
+      },
       {
         'owned': ['traveler', 'traveler'],
       },

@@ -4,6 +4,56 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Preparando publicação v0.39.0+39: coleção e polimentos do BETA, APK pelo workflow
+existente, assinatura compatível, publicação Latest e verificação do atualizador.
+Sem deploy de backend; preservar arquivos não relacionados.
+
+Correção incluída antes da publicação: restauração visual acompanha as próximas
+regiões da expedição, sem usar o puzzle local como seletor do cenário. Puzzles e
+portais permanecem independentes; reiniciar ainda inicia uma nova expedição.
+Verificando transições nas seis regiões e cache visual limitado a 12 cenários.
+
+Checkpoint anterior:
+
+Leitura do combate polida: vida baixa não é escondida por buffs/status; indicadores
+compactos com duração e descrição por toque longo para queimadura, maldição,
+Excalibur, Lâmina Rúnica, proteção e resistência de Perseu. Ícones/texto/cores
+distintos, anéis separados para queimadura/maldição simultâneas. Perseu confirma
+o efeito negado (não imunidade a dano), realce breve no peitoral e áudio existente
+de purificação. Timer de confirmação pausa/expira/limpa com a sessão.
+10 testes focados passaram e análise estática limpa; prévias 320×568/568×320
+revisadas, sem sobrepor controles. Sem balanceamento, save, outros modos,
+APK/release/push/backend. Próximo: validar legibilidade e volume/fluidez no celular.
+
+Checkpoint anterior:
+
+Polimento da coleção implementado: aba Equipamento no grimório mostra traje,
+técnicas, relíquias e bônus reais, somente leitura inclusive durante combate
+pausado. Prévia da loja descarta projéteis/eventos temporários que encobriam o
+herói e para ao sair do app. Bênção de Excalibur conserva cor do combo/elemento
+durante o golpe após consumir a carga; próximo corte normal restaura cor normal.
+18 testes focados de domínio/loja/grimório e layouts 320×568/568×320 passaram;
+sem mudanças de preços/bônus/save, sem APK/release/push/backend. Próximo:
+validar animações, prévia, itens e persistência no próximo APK em celular.
+
+Checkpoint anterior:
+
+Coleção do BETA implementada localmente: Anjo/Demônio/Arthur com malhas próprias,
+técnicas giratória/salto/mortal e relíquias Excalibur/Mercerus/Perseu. Loja com
+categorias, prévia animada real, confirmação, equipar/remover e espaços separados.
+Save v2 migra v1 preservando carteira/roupa/marcos; transações serializadas.
+Excalibur +4, Merlin concede próximo corte +3/elemento por 5s após conjurar;
+Mercerus +10 agilidade (+10% movimento, sem mudar esquiva); Perseu bloqueia
+queimadura/maldição, não impacto. Guardião aplica 3s de queimadura (2 HP/s),
+elfo 4s de meia regeneração de MP, com HUD/feedback/limpeza e pausa.
+44 testes focados passaram; análise estática limpa. Prévia das malhas revisada,
+comprar/equipar/remover verificados em 320×568 e 568×320. Detalhes em
+docs/cosmetic-shop.md. Sem APK/release/push/backend ou dinheiro real; outros
+modos fora deste bloco. Próximo: validar visual, áudio, desempenho e instalação
+com save antigo no celular quando houver próximo APK candidato.
+
+Checkpoint anterior:
+
 v0.38.0+38 publicada como Latest em 16/10/2026: seis áreas/puzzles/restauração,
 orientação e exploração final, novo atualizador. Build 38894155387 no commit
 aced694dd4e8f6b7182ef983d4c2c391aa062e30; APK de 59.364.514 bytes anexado.

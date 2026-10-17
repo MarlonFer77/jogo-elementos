@@ -13,16 +13,22 @@ import '../game_presentation/pixel_content_panel.dart';
 import '../game_presentation/pixel_menu_button.dart';
 import 'beta_controls.dart';
 import 'beta_build_panel.dart';
+import 'beta_status_readout.dart';
 
 class BetaScreen extends StatefulWidget {
-  const BetaScreen({super.key, this.outfit = HeroOutfit.traveler});
+  const BetaScreen({
+    super.key,
+    this.outfit = HeroOutfit.traveler,
+    this.loadout = const BetaLoadout(),
+  });
   final HeroOutfit outfit;
+  final BetaLoadout loadout;
   @override
   State<BetaScreen> createState() => _BetaScreenState();
 }
 
 class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
-  late final _game = BetaGame(outfit: widget.outfit);
+  late final _game = BetaGame(outfit: widget.outfit, loadout: widget.loadout);
   final _focus = FocusNode();
   final _keys = <LogicalKeyboardKey>{};
   Size? _viewport;
@@ -147,8 +153,11 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
     await showDialog<void>(
       context: context,
       barrierColor: const Color(0xEF14251F),
-      builder: (_) =>
-          BetaBuildPanel(run: _game.session, onChanged: _game.refresh),
+      builder: (_) => BetaBuildPanel(
+        run: _game.session,
+        outfit: _game.outfit,
+        onChanged: _game.refresh,
+      ),
     );
     if (mounted) _game.refresh();
   }
@@ -467,20 +476,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                       run.mana / 100,
                       const Color(0xFF83BCC7),
                     ),
-                    Text(
-                      critical
-                          ? 'VIDA BAIXA · Água cura ao acertar'
-                          : run.runicBladeTime > 0
-                          ? 'LÂMINA RÚNICA · espada +8 · ${run.runicBladeTime.ceil()}s'
-                          : 'Nv. ${run.level} · ${run.remaining} inimigos · ${run.xp}/${run.nextLevelXp} XP',
-                      key: const ValueKey('beta-status'),
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: critical
-                            ? const Color(0xFFFFC4A1)
-                            : const Color(0xFFD0D5B7),
-                      ),
-                    ),
+                    BetaStatusReadout(run: run, critical: critical),
                   ],
                 ),
               ),
@@ -605,7 +601,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                       onPressed: _openBuild,
                       icon: const Icon(Icons.auto_stories, size: 18),
                       label: Text(
-                        'Magias e habilidades · ${run.skillPoints} PH',
+                        'Grimório e equipamento · ${run.skillPoints} PH',
                       ),
                     ),
                   TextButton(

@@ -1,13 +1,20 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../game_domain/beta_session.dart';
+import '../game_domain/cosmetics.dart';
 import '../game_presentation/beta_arena_painter.dart' show betaComboColor;
 import '../game_presentation/pixel_content_panel.dart';
 
 /// Paused, session-only build management. Mutations are validated by the domain.
 class BetaBuildPanel extends StatefulWidget {
-  const BetaBuildPanel({super.key, required this.run, required this.onChanged});
+  const BetaBuildPanel({
+    super.key,
+    required this.run,
+    required this.onChanged,
+    this.outfit = HeroOutfit.traveler,
+  });
   final BetaSession run;
+  final HeroOutfit outfit;
   final VoidCallback onChanged;
   @override
   State<BetaBuildPanel> createState() => _BetaBuildPanelState();
@@ -31,7 +38,7 @@ class _BetaBuildPanelState extends State<BetaBuildPanel> {
       height: math.min(610, MediaQuery.sizeOf(context).height - 48),
       child: PixelContentPanel(
         child: DefaultTabController(
-          length: 2,
+          length: 3,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -60,21 +67,24 @@ class _BetaBuildPanelState extends State<BetaBuildPanel> {
                 ],
               ),
               Text(
-                '${run.skillPoints} PH disponíveis · nível ${run.level} · só nesta sessão',
+                'Nível ${run.level} · ${run.skillPoints} PH desta sessão',
                 style: const TextStyle(fontSize: 12),
               ),
               if (!run.canManageBuild)
                 const Text(
-                  'Equipe e aprenda antes de entrar ou após limpar a área.',
+                  'Combos e habilidades: altere antes de entrar ou após limpar a área.',
                   style: TextStyle(fontSize: 11, color: Color(0xFF754E37)),
                 ),
               const TabBar(
+                labelStyle: TextStyle(fontSize: 12),
+                labelPadding: EdgeInsets.symmetric(horizontal: 4),
                 labelColor: Color(0xFF314C40),
                 unselectedLabelColor: Color(0xFF646B5A),
                 indicatorColor: Color(0xFF887140),
                 tabs: [
                   Tab(text: 'Combos', height: 36),
                   Tab(text: 'Habilidades', height: 36),
+                  Tab(text: 'Equipamento', height: 36),
                 ],
               ),
               Expanded(
@@ -102,6 +112,7 @@ class _BetaBuildPanelState extends State<BetaBuildPanel> {
                       ],
                     ),
                     _skillTree(),
+                    _equipment(),
                   ],
                 ),
               ),
@@ -111,6 +122,72 @@ class _BetaBuildPanelState extends State<BetaBuildPanel> {
       ),
     ),
   );
+
+  Widget _equipment() {
+    final gear = run.loadout;
+    return ListView(
+      key: const ValueKey('beta-equipment'),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      children: [
+        const Text(
+          'EQUIPAMENTO ATIVO',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Ataque da relíquia: +${gear.attackBonus} · Agilidade: +${gear.agility}',
+          style: const TextStyle(fontSize: 12),
+        ),
+        const Text(
+          'Compras permanecem após sair. Para trocar, volte à loja e entre novamente no BETA. '
+          'Consultar aqui não equipa nem gasta Ecos.',
+          style: TextStyle(fontSize: 12),
+        ),
+        const Divider(),
+        _equipmentEntry(
+          'Traje',
+          widget.outfit.label,
+          '${widget.outfit.description} Sem bônus de combate.',
+        ),
+        for (final entry in [
+          ('Espada · técnica', gear.sword, 'Corte original'),
+          ('Esquiva · técnica', gear.dodge, 'Rolagem original'),
+          ('Arma', gear.weapon, 'Espada elemental original'),
+          ('Capa', gear.cloak, 'Manto original'),
+          ('Peitoral', gear.armor, 'Sem relíquia'),
+        ])
+          _equipmentEntry(
+            entry.$1,
+            entry.$2?.label ?? entry.$3,
+            entry.$2?.description ?? 'Padrão · sem bônus adicional.',
+          ),
+        const Divider(),
+        const Text(
+          'Trajes e técnicas são visuais: não ampliam alcance, dano ou invulnerabilidade.',
+          style: TextStyle(fontSize: 12),
+        ),
+      ],
+    );
+  }
+
+  Widget _equipmentEntry(String slot, String name, String description) =>
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              slot.toUpperCase(),
+              style: const TextStyle(fontSize: 10, color: Color(0xFF646B5A)),
+            ),
+            Text(
+              name,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            Text(description, style: const TextStyle(fontSize: 12)),
+          ],
+        ),
+      );
 
   Widget _skillTree() => LayoutBuilder(
     builder: (context, constraints) {

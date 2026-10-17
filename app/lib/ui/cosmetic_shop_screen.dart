@@ -15,7 +15,8 @@ class CosmeticShopScreen extends StatefulWidget {
 class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
   final _store = CosmeticStore();
   CosmeticInventory? _inventory;
-  HeroOutfit _selected = HeroOutfit.traveler;
+  ShopItem _selected = ShopItem.byId('traveler')!;
+  ShopCategory _category = ShopCategory.outfits;
   bool _busy = false, _ownedOnly = false;
   String? _error, _notice;
 
@@ -50,7 +51,8 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
       if (mounted) {
         setState(() {
           _inventory = inventory;
-          _selected = inventory.equipped;
+          _selected = ShopItem.byId(inventory.equipped.id)!;
+          _category = ShopCategory.outfits;
           _notice = notice;
         });
       }
@@ -80,7 +82,7 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
             content: Text(
               '${item.price} Ecos serão descontados.\n'
               'Saldo após a compra: ${_inventory!.coins - item.price} Ecos.\n\n'
-              'Apenas visual, para o BETA 3D. Sem dinheiro real.',
+              '${item.description}\n\nSomente BETA 3D. Sem dinheiro real.',
             ),
             actions: [
               TextButton(
@@ -96,13 +98,19 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
         );
         if (confirmed != true || !mounted) return;
       }
+      final removing =
+          owned && _inventory!.isEquipped(item) && item.upgrade != null;
       final inventory = owned
-          ? await _store.equip(item.id)
+          ? removing
+                ? await _store.unequip(item.upgrade!.slot)
+                : await _store.equip(item.id)
           : await _store.buy(item.id);
       if (!mounted) return;
       setState(() {
         _inventory = inventory;
-        _notice = owned
+        _notice = removing
+            ? 'Removido. O espaço volta ao padrão.'
+            : owned
             ? 'Equipado! Disponível ao entrar no BETA 3D.'
             : 'Adquirido! Toque em Equipar para usar.';
       });
@@ -130,9 +138,11 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
           '100 Ecos de boas-vindas. Ganhe +25 por nível da Dungeon após o primeiro '
           'e +100 por expedição concluída. Progresso anterior também conta. '
           'Recompensas são recebidas ao abrir a loja, uma vez por marco.\n\n'
-          'Primeira coleção: cores de mantos e armaduras do BETA 3D. '
+          'Trajes com modelos próprios e técnicas mudam somente o visual. '
+          'Relíquias têm bônus exclusivos do BETA solo. Espada e esquiva usam '
+          'técnicas separadas; cada espaço aceita um item. Remover restaura o padrão. '
           'Prévia não equipa: compre e depois toque em Equipar. '
-          'Nenhum traje altera dano, defesa, magias ou velocidade.\n\n'
+          'Nenhum traje ou técnica altera dano, alcance ou invulnerabilidade.\n\n'
           'Loja offline deste aparelho, compartilhada localmente. '
           'Sem dinheiro real, anúncios, sorteios ou prazo de oferta. '
           'Não sincroniza com Firebase/Multiplayer nem faz parte do backup online. '
@@ -190,14 +200,24 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
     final compact = screen.width > screen.height && screen.height < 400;
     final inventory = _inventory!;
     final owned = inventory.owned.contains(_selected.id);
-    final equipped = inventory.equipped == _selected;
+    final equipped = inventory.isEquipped(_selected);
     final affordable = inventory.coins >= _selected.price;
-    final items = HeroOutfit.values.where(
-      (item) => !_ownedOnly || inventory.owned.contains(item.id),
+    final items = ShopItem.catalog.where(
+      (item) =>
+          item.category == _category &&
+          (!_ownedOnly || inventory.owned.contains(item.id)),
     );
     final catalog = ListView(
+      cacheExtent: 500,
       padding: const EdgeInsets.all(6),
       children: [
+        if (items.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(12),
+            child: Text(
+              'Nenhum item adquirido nesta categoria. Desative o filtro para explorar.',
+            ),
+          ),
         for (final item in items)
           Padding(
             padding: const EdgeInsets.only(bottom: 6),
@@ -214,20 +234,24 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                 visualDensity: VisualDensity.compact,
                 selected: item == _selected,
                 leading: Icon(
-                  Icons.checkroom,
-                  color: Color(item.cloth),
+                  switch (item.category) {
+                    ShopCategory.outfits => Icons.checkroom,
+                    ShopCategory.techniques => Icons.rotate_right,
+                    ShopCategory.relics => Icons.shield_outlined,
+                  },
+                  color: Color(item.outfit?.cloth ?? 0xFF6A7861),
                   size: 30,
                 ),
                 title: Text(item.label),
                 subtitle: Text(
-                  inventory.equipped == item
+                  inventory.isEquipped(item)
                       ? 'Equipado'
                       : inventory.owned.contains(item.id)
                       ? 'Adquirido'
                       : '${item.price} Ecos',
                 ),
                 trailing: Icon(
-                  inventory.equipped == item
+                  inventory.isEquipped(item)
                       ? Icons.check_circle
                       : Icons.chevron_right,
                 ),
@@ -243,22 +267,56 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            _selected.label,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+          InkWell(
+            onTap: () => showDialog<void>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: Text(_selected.label),
+                content: Text(_selected.description),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Fechar'),
+                  ),
+                ],
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _selected.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const Icon(Icons.info_outline, size: 18),
+              ],
+            ),
           ),
           if (!compact)
-            Text(_selected.description, style: const TextStyle(fontSize: 12)),
+            Text(
+              _selected.description,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12),
+            ),
           const SizedBox(height: 6),
           FilledButton(
-            onPressed: _busy || equipped || (!owned && !affordable)
+            onPressed:
+                _busy ||
+                    (equipped && _selected.outfit != null) ||
+                    (!owned && !affordable)
                 ? null
                 : _act,
             child: Text(
               _busy
                   ? 'Salvando…'
                   : equipped
-                  ? 'Equipado no BETA 3D'
+                  ? _selected.upgrade != null
+                        ? 'Remover · voltar ao padrão'
+                        : 'Equipado no BETA 3D'
                   : owned
                   ? 'Equipar'
                   : affordable
@@ -282,13 +340,20 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
                 ),
               ),
               FilterChip(
-                label: const Text('Meus trajes'),
+                label: const Text('Adquiridos'),
                 selected: _ownedOnly,
                 onSelected: _busy
                     ? null
                     : (value) => setState(() {
                         _ownedOnly = value;
-                        if (value && !owned) _selected = inventory.equipped;
+                        if (value && !owned) {
+                          final available = ShopItem.catalog.where(
+                            (item) =>
+                                item.category == _category &&
+                                inventory.owned.contains(item.id),
+                          );
+                          if (available.isNotEmpty) _selected = available.first;
+                        }
                       }),
               ),
             ],
@@ -299,15 +364,62 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Text(_notice!, style: const TextStyle(fontSize: 12)),
           ),
-        const Text(
-          'Cosméticos do BETA 3D · Somente visual · Save local',
-          style: TextStyle(fontSize: 11),
+        SizedBox(
+          height: 36,
+          child: Row(
+            children: [
+              for (final category in ShopCategory.values)
+                Expanded(
+                  child: TextButton(
+                    style: TextButton.styleFrom(
+                      backgroundColor: _category == category
+                          ? const Color(0xFFD8DDC1)
+                          : null,
+                      padding: EdgeInsets.zero,
+                    ),
+                    onPressed: _busy
+                        ? null
+                        : () => setState(() {
+                            _category = category;
+                            _ownedOnly = false;
+                            _selected = ShopItem.catalog.firstWhere(
+                              (item) => item.category == category,
+                            );
+                          }),
+                    child: Text(switch (category) {
+                      ShopCategory.outfits => 'Trajes',
+                      ShopCategory.techniques => 'Técnicas',
+                      ShopCategory.relics => 'Relíquias',
+                    }),
+                  ),
+                ),
+            ],
+          ),
         ),
         Expanded(
           child: LayoutBuilder(
             builder: (context, size) {
-              final preview = CosmeticPreview(outfit: _selected);
-              if (size.maxWidth > 540 && size.maxWidth > size.maxHeight) {
+              final slots = {
+                ...inventory.slots,
+                if (_selected.upgrade != null)
+                  _selected.upgrade!.slot: _selected.upgrade!,
+              };
+              final preview = CosmeticPreview(
+                outfit: _selected.outfit ?? inventory.equipped,
+                loadout: BetaLoadout(
+                  sword: slots[ShopSlot.sword],
+                  dodge: slots[ShopSlot.dodge],
+                  weapon: slots[ShopSlot.weapon],
+                  cloak: slots[ShopSlot.cloak],
+                  armor: slots[ShopSlot.armor],
+                ),
+                demo: _selected.upgrade?.slot == ShopSlot.dodge
+                    ? BetaAction.dodge
+                    : _selected.upgrade == ShopUpgrade.excalibur
+                    ? BetaAction.cast
+                    : BetaAction.sword,
+              );
+              if (screen.width > screen.height || size.maxWidth > 700) {
                 return Row(
                   children: [
                     Expanded(child: preview),
@@ -342,33 +454,70 @@ class _CosmeticShopScreenState extends State<CosmeticShopScreen> {
 
 /// Uses the same hero mesh and materials as gameplay; preview never equips.
 class CosmeticPreview extends StatefulWidget {
-  const CosmeticPreview({super.key, required this.outfit});
+  const CosmeticPreview({
+    super.key,
+    required this.outfit,
+    this.loadout = const BetaLoadout(),
+    this.demo = BetaAction.sword,
+  });
   final HeroOutfit outfit;
+  final BetaLoadout loadout;
+  final BetaAction demo;
   @override
   State<CosmeticPreview> createState() => _CosmeticPreviewState();
 }
 
-class _CosmeticPreviewState extends State<CosmeticPreview> {
+class _CosmeticPreviewState extends State<CosmeticPreview>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   double _angle = .5;
+  double _lastFrame = 0;
+  late BetaSession _run;
+  late final AnimationController _animation;
   late BetaArenaPainter _painter;
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _animation =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 1600),
+        )..addListener(() {
+          final now = _animation.value * 1.6;
+          final dt = now - _lastFrame;
+          _lastFrame = now;
+          if (dt <= 0) return;
+          _run.update(dt);
+          // Showcase the equipped actor, not a projectile flying into the camera.
+          // These disposable preview events never reach the real session or audio.
+          _run.projectiles.clear();
+          _run.effects.clear();
+          _run.sounds.clear();
+          _painter.advance(dt);
+          setState(() {});
+        });
     _create();
   }
 
-  void _create() => _painter = BetaArenaPainter(
-    BetaSession()
-      ..enemies.clear()
-      ..angle = _angle,
-    outfit: widget.outfit,
-    wardrobePreview: true,
-    reduceMotion: true,
-  );
+  void _create() {
+    _animation.stop();
+    _run = BetaSession(loadout: widget.loadout)..start();
+    _run.enemies.clear();
+    _run.angle = _angle;
+    _painter = BetaArenaPainter(
+      _run,
+      outfit: widget.outfit,
+      wardrobePreview: true,
+      reduceMotion: true,
+    );
+  }
+
   @override
   void didUpdateWidget(CosmeticPreview oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.outfit != widget.outfit) {
+    if (oldWidget.outfit != widget.outfit ||
+        oldWidget.loadout != widget.loadout ||
+        oldWidget.demo != widget.demo) {
       _painter.dispose();
       _create();
     }
@@ -381,8 +530,15 @@ class _CosmeticPreviewState extends State<CosmeticPreview> {
   });
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _animation.dispose();
     _painter.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) _animation.stop();
   }
 
   @override
@@ -394,6 +550,24 @@ class _CosmeticPreviewState extends State<CosmeticPreview> {
         fit: StackFit.expand,
         children: [
           CustomPaint(painter: _painter),
+          Positioned(
+            bottom: 0,
+            left: 48,
+            right: 48,
+            child: Center(
+              child: IconButton.filledTonal(
+                tooltip: 'Testar animação',
+                onPressed: () {
+                  _painter.dispose();
+                  _create();
+                  _run.request(widget.demo);
+                  _lastFrame = 0;
+                  _animation.forward(from: 0);
+                },
+                icon: const Icon(Icons.play_arrow),
+              ),
+            ),
+          ),
           Positioned(
             bottom: 0,
             left: 0,

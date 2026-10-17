@@ -3,6 +3,7 @@ import 'beta_world.dart';
 import 'beta_spells.dart';
 import 'beta_skills.dart';
 import 'beta_puzzles.dart';
+import 'cosmetics.dart';
 
 export 'beta_world.dart';
 export 'beta_spells.dart';
@@ -98,6 +99,7 @@ enum BetaSound {
   earthImpact,
   passage,
   discovery,
+  ward,
 }
 
 enum BetaAction { sword, cast, dodge }
@@ -241,6 +243,25 @@ class BetaEffect {
 }
 
 class BetaSession {
+  BetaSession({this.loadout = const BetaLoadout()});
+  final BetaLoadout loadout;
+  double blessingTime = 0, merlinTime = 0, burnTime = 0, curseTime = 0;
+  double wardTime = 0; // Presentation-only confirmation of a resisted status.
+  BetaElement blessingElement = BetaElement.fire;
+  BetaCombo? blessingCombo;
+  BetaElement _strikeElement = BetaElement.fire;
+  BetaCombo? _strikeCombo;
+  // Keep the committed impact's color through follow-through, after charge consumption.
+  BetaElement get bladeElement => swordTime > 0 && !_swordPending
+      ? _strikeElement
+      : blessingTime > 0
+      ? blessingElement
+      : element;
+  BetaCombo? get bladeCombo => swordTime > 0 && !_swordPending
+      ? _strikeCombo
+      : blessingTime > 0
+      ? blessingCombo
+      : null;
   static const arenaX = BetaRegion.halfWidth, arenaZ = BetaRegion.halfDepth;
   // Shared with the renderer: the blade crosses its target at swordContact.
   static const swordDuration = .44, swordContact = .16, castDuration = .35;
@@ -254,6 +275,9 @@ class BetaSession {
   ];
   BetaPuzzleProgress get puzzle => _puzzles[region.index];
   int get restoredAreas => _puzzles.where((p) => p.solved).length;
+
+  // Visual restoration carries across regions; local puzzles still gate travel.
+  bool get sceneryRestored => restoredAreas > 0;
   bool get puzzleActive =>
       playing && remaining == 0 && !puzzle.solved && arrivalTime <= 0;
   int? get nearbyAltar {
@@ -773,7 +797,21 @@ class BetaSession {
     invulnerable = _tick(invulnerable, dt);
     protection = _tick(protection, dt);
     runicBladeTime = _tick(runicBladeTime, dt);
-    mana = math.min(100, mana + dt * 9);
+    blessingTime = _tick(blessingTime, dt);
+    merlinTime = _tick(merlinTime, dt);
+    wardTime = _tick(wardTime, dt);
+    final burning = math.min(burnTime, dt);
+    burnTime = _tick(burnTime, dt);
+    curseTime = _tick(curseTime, dt);
+    if (burning > 0) {
+      hp = math.max(0, hp - burning * 2);
+      if (hp == 0) {
+        _finish(BetaPhase.lost);
+        sounds.add(BetaSound.defeat);
+        return;
+      }
+    }
+    mana = math.min(100, mana + dt * (curseTime > 0 ? 4.5 : 9));
     final rolling = dodgeTime > 0;
     final speed = castTime > 0
         ? 1.1
@@ -784,7 +822,7 @@ class BetaSession {
     // Integrate a smooth travel curve, preserving range at every frame rate.
     final travel = rolling
         ? _rollDistance(math.max(0, dodgeTime - dt)) - _rollDistance(dodgeTime)
-        : speed * dt;
+        : speed * (1 + loadout.agility / 100) * dt;
     _move(
       (rolling ? _dodgeX : moveX) * travel,
       (rolling ? _dodgeZ : moveZ) * travel,
@@ -801,6 +839,11 @@ class BetaSession {
       _swordPending = false;
       sounds.add(BetaSound.sword);
       final empowered = runicBladeTime > 0;
+      final blessed = loadout.excalibur && blessingTime > 0;
+      final swordElement = blessed ? blessingElement : element;
+      _strikeElement = swordElement;
+      _strikeCombo = blessed ? blessingCombo : null;
+      blessingTime = 0; // Also consumed by a miss; no stored multiple charges.
       runicBladeTime =
           0; // A missed empowered swing consumes the opportunity too.
       var landed = false;
@@ -810,7 +853,15 @@ class BetaSession {
             (d < .1 ||
                 (dx * math.sin(angle) + dz * math.cos(angle)) / d > .4) &&
             clearLine(x, z, e.x, e.z)) {
-          _hit(e, 13 + (level - 1) * 2.0 + (empowered ? 8 : 0), element);
+          _hit(
+            e,
+            13 +
+                (level - 1) * 2.0 +
+                (empowered ? 8 : 0) +
+                loadout.attackBonus +
+                (blessed ? 3 : 0),
+            swordElement,
+          );
           landed = true;
         }
       }
@@ -824,6 +875,13 @@ class BetaSession {
     if (castTime > 0) {
       castTime = _tick(castTime, dt);
       if (castTime == 0) {
+        if (loadout.excalibur) {
+          blessingTime = 5;
+          merlinTime = 1.25;
+          blessingElement = _castElement;
+          blessingCombo = _castCombo;
+          effects.add(BetaEffect(x, z, _castElement, text: 'MERLIN · +3'));
+        }
         projectiles.add(
           BetaProjectile(
             x,
@@ -968,7 +1026,7 @@ class BetaSession {
           );
           if (e.boss) sounds.add(BetaSound.heavyImpact);
           if (area.contains(x, z) && clearLine(e.x, e.z, x, z)) {
-            _hurt(e.kind.damage);
+            _hurt(e.kind.damage, source: e.kind);
           }
         }
         continue;
@@ -1125,6 +1183,7 @@ class BetaSession {
     swordCooldown = spellCooldown = dodgeCooldown = 0;
     hurtTime = impactTime = protection = invulnerable = 0;
     runicBladeTime = 0;
+    blessingTime = merlinTime = burnTime = curseTime = wardTime = 0;
     effects.clear();
     hp = math.min(maxHp, hp + 20);
     mana = math.min(100, mana + 25);
@@ -1156,6 +1215,7 @@ class BetaSession {
   }
 
   void _finish(BetaPhase result) {
+    blessingTime = merlinTime = burnTime = curseTime = wardTime = 0;
     phase = result;
     resultTime = .7;
     setMovement(0, 0);
@@ -1220,8 +1280,32 @@ class BetaSession {
     }
   }
 
-  void _hurt(double amount) {
+  void _hurt(double amount, {BetaEnemyKind? source}) {
     if (!playing || invulnerable > 0) return;
+    if (source == BetaEnemyKind.guardian || source == BetaEnemyKind.darkElf) {
+      if (loadout.perseus) {
+        wardTime = .7;
+        sounds.add(BetaSound.ward);
+        effects.add(
+          BetaEffect(
+            x,
+            z,
+            BetaElement.earth,
+            text: source == BetaEnemyKind.guardian
+                ? 'QUEIMADURA NEGADA'
+                : 'MALDIÇÃO NEGADA',
+          ),
+        );
+      } else if (source == BetaEnemyKind.guardian) {
+        burnTime = 3; // Six extra HP total; refreshing never stacks intensity.
+        effects.add(
+          BetaEffect(x, z, BetaElement.fire, text: 'QUEIMADURA · 3s'),
+        );
+      } else {
+        curseTime = 4; // Half mana regeneration, not an input/control lock.
+        effects.add(BetaEffect(x, z, BetaElement.wind, text: 'MALDIÇÃO · 4s'));
+      }
+    }
     final damage = protection > 0 ? amount * .5 : amount;
     hp = math.max(0, hp - damage);
     invulnerable = .5;
@@ -1258,8 +1342,9 @@ class BetaSession {
     }
     final hint = switch (wave) {
       1 => 'GOBLINS · desvie para o lado da estocada',
-      2 || 4 => 'OGRO E ELFO · contorne os cortes; ataque na recuperação',
-      _ => 'GUARDIÃO · saia do círculo antes do impacto',
+      2 ||
+      4 => 'OGRO E ELFO · desvie dos cortes; maldição reduz regeneração de MP',
+      _ => 'GUARDIÃO · saia do círculo; impactos causam queimadura',
     };
     message = '${region.title.toUpperCase()}\n$hint';
     messageTime = 4;

@@ -58,4 +58,6 @@ class CosmeticStore {
   Future<CosmeticInventory> buy(String id) => _update((state) => state.buy(id));
   Future<CosmeticInventory> equip(String id) =>
       _update((state) => state.equip(id));
+  Future<CosmeticInventory> unequip(ShopSlot slot) =>
+      _update((state) => state.unequip(slot));
 }

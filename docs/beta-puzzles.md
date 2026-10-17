@@ -40,8 +40,12 @@ a travessia. A saída final não cria outra área nem concede cura/XP extra.
 
 ## Visual e limites
 
-Cada área tem estado adormecido/restaurado: paleta mais clara, flores, cristais,
-vitrais e lanternas. Jardins têm terraços arborizados; Forja, cristais/cascatas;
+Após a primeira restauração, a paleta mais clara, flores, cristais, vitrais e
+lanternas acompanham as fases seguintes durante toda a expedição. O cenário não
+volta ao visual adormecido ao viajar; cada região conserva sua identidade.
+Os puzzles e portais continuam independentes: herdar o visual não resolve selos
+nem libera passagens. Reiniciar a expedição ainda reinicia essa progressão.
+Jardins têm terraços arborizados; Forja, cristais/cascatas;
 Coroa, torres com telhados azuis e arco monumental. Decoração sólida permanece
 fora da arena; restauração não altera colisões ou configurações gráficas.
 

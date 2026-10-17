@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'dart:ui' as ui;
 import 'package:app/game_domain/cosmetic_store.dart';
 import 'package:app/game_domain/cosmetics.dart';
@@ -58,7 +59,15 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Brasa Errante').first);
+      await tester.scrollUntilVisible(
+        find.text('Brasa Errante'),
+        60,
+        scrollable: find.descendant(
+          of: find.byType(ListView),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Brasa Errante').first);
       await tester.pumpAndSettle();
       expect((await CosmeticStore().load()).equipped, HeroOutfit.traveler);
@@ -110,4 +119,58 @@ void main() {
     expect(find.text('Tentar novamente'), findsOneWidget);
     expect(find.text('100 ECOS'), findsNothing);
   });
+  for (final size in [const Size(320, 568), const Size(568, 320)]) {
+    testWidgets(
+      'relic and technique purchase preview equip removal fit $size',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({
+          CosmeticStore.key: jsonEncode(
+            CosmeticInventory(coins: 2000).toJson(),
+          ),
+        });
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await tester.pumpWidget(const MaterialApp(home: CosmeticShopScreen()));
+        await tester.pumpAndSettle();
+        for (final selection in [
+          ('Relíquias', 300, 'excalibur'),
+          ('Técnicas', 125, 'spin'),
+        ]) {
+          await tester.tap(find.text(selection.$1));
+          await tester.pumpAndSettle();
+          await tester.tap(find.byTooltip('Testar animação'));
+          await tester.pump(const Duration(milliseconds: 200));
+          expect(
+            (await CosmeticStore().load()).owned,
+            isNot(contains(selection.$3)),
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Comprar · ${selection.$2} Ecos'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Confirmar compra'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Equipar'));
+          await tester.pumpAndSettle();
+          expect(
+            (await CosmeticStore().load()).isEquipped(
+              ShopItem.byId(selection.$3)!,
+            ),
+            true,
+          );
+          expect(
+            find.text('Remover · voltar ao padrão').hitTestable(),
+            findsOneWidget,
+          );
+          await tester.tap(find.text('Remover · voltar ao padrão'));
+          await tester.pumpAndSettle();
+          final saved = await CosmeticStore().load();
+          expect(saved.isEquipped(ShopItem.byId(selection.$3)!), false);
+          expect(saved.owned, contains(selection.$3));
+          expect(tester.takeException(), isNull);
+        }
+      },
+    );
+  }
 }

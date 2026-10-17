@@ -274,10 +274,18 @@ void main() {
         final inside = duel(kind: kind);
         inside.enemies.single.beginAttack(inside.x, inside.z);
         advance(inside, inside.enemies.single.preparation + .02);
-        expect(inside.hp, kind == BetaEnemyKind.guardian ? 75 : 88);
+        final burnDamage = kind == BetaEnemyKind.guardian
+            ? (3 - inside.burnTime) * 2
+            : 0.0;
+        expect(inside.hp + burnDamage, closeTo(100 - kind.damage, .0001));
         final hpAfterContact = inside.hp;
+        final burnBefore = inside.burnTime;
         advance(inside, inside.enemies.single.recoveryDuration + .05);
-        expect(inside.hp, hpAfterContact); // Two blades still resolve one hit.
+        // No second impact; the guardian's burn continues during recovery.
+        expect(
+          inside.hp,
+          closeTo(hpAfterContact - (burnBefore - inside.burnTime) * 2, .0001),
+        );
         final dodged = duel(kind: kind);
         final attacker = dodged.enemies.single..beginAttack(dodged.x, dodged.z);
         attacker.windup = .01;

@@ -6,6 +6,7 @@ import 'beta_health_feedback.dart';
 
 part 'beta_spell_effects.dart';
 part 'beta_world_art.dart';
+part 'beta_wardrobe_art.dart';
 
 Color betaElementColor(BetaElement element) => switch (element) {
   BetaElement.fire => const Color(0xFFEAAF52),
@@ -182,7 +183,7 @@ class BetaArenaPainter extends CustomPainter {
   int get cachedLabelCount => _labels.length;
   @visibleForTesting
   int get cachedSceneryFaceCount =>
-      _scenery[(run.region, run.puzzle.solved)]?.length ?? 0;
+      _scenery[(run.region, run.sceneryRestored)]?.length ?? 0;
   @visibleForTesting
   int get lastSpellFaceCount => _spellFaceCount;
   int _spellFaceCount = 0;
@@ -199,7 +200,7 @@ class BetaArenaPainter extends CustomPainter {
 
   // Six regions × two restoration states; bounded, never rebuilt per frame.
   static final _scenery = <(BetaRegion, bool), List<_Face>>{};
-  _RegionLook get _look => run.puzzle.solved
+  _RegionLook get _look => run.sceneryRestored
       ? _RegionLook.restoredValues[run.region.index]
       : _RegionLook.values[run.region.index];
   late _V _camera, _right, _up, _forward;
@@ -1054,6 +1055,27 @@ class BetaArenaPainter extends CustomPainter {
       -math.sin(run.dodgeDirection - angle),
     );
     final tumbleCos = math.cos(tumble), tumbleSin = math.sin(tumble);
+    final aerialRoll = hero && run.loadout.dodge == ShopUpgrade.somersault;
+    final aerialHeight = dodging && aerialRoll
+        ? math.sin(dodgeProgress * math.pi) * .75
+        : 0.0;
+    final attackProgress = hero && run.swordTime > 0
+        ? 1 - run.swordTime / BetaSession.swordDuration
+        : 0.0;
+    final jumpHeight = hero && run.loadout.sword == ShopUpgrade.leap
+        ? math.sin(attackProgress * math.pi) * .65
+        : 0.0;
+    // Complete the rotation at the actual contact frame, facing the target.
+    final spinYaw =
+        hero && run.swordTime > 0 && run.loadout.sword == ShopUpgrade.spin
+        ? math.pi *
+              2 *
+              ease(
+                (BetaSession.swordDuration - run.swordTime) /
+                    BetaSession.swordContact,
+              ) *
+              run.swordSide
+        : 0.0;
 
     var swing = 0.0, lift = 0.0, lunge = 0.0, thrust = 0.0;
     if (hero && run.swordTime > 0) {
@@ -1120,7 +1142,7 @@ class BetaArenaPainter extends CustomPainter {
       const Color(0xFFFFEBC3),
       recoil * .8,
     )!;
-    final yaw = angle + swing * .16;
+    final yaw = angle + swing * .16 + spinYaw;
     final collapse = enemy?.boss == true ? fall : 0.0;
     final tilt =
         -fall * (hero ? math.pi / 2 : .2) -
@@ -1152,7 +1174,7 @@ class BetaArenaPainter extends CustomPainter {
             rollAxis * (rollAxis.dot(local) * (1 - tumbleCos));
         return _V(
           x + (rotated.x * cy + rotated.z * sy),
-          math.max(.03, .82 - tuck * .1 + rotated.y),
+          math.max(.03, .82 - tuck * .1 + rotated.y + aerialHeight),
           z + (-rotated.x * sy + rotated.z * cy),
         );
       }
@@ -1163,6 +1185,7 @@ class BetaArenaPainter extends CustomPainter {
       final height =
           ((px * sr + py * cr) * (1 - collapse * .72) +
               bob +
+              jumpHeight +
               (collapse > 0 ? 0 : fall * (hero ? .22 : .3))) *
           scale;
       return _V(
@@ -1259,6 +1282,9 @@ class BetaArenaPainter extends CustomPainter {
       depth: .025,
     );
     _crest(faces, const _V(.14, 1.01, .229), .2, bronze, transform: world);
+    final mantleColor = run.loadout.agility > 0
+        ? const Color(0xFF3D8178)
+        : Color(outfit.mantle);
     // Split travelling mantle, with folds that follow the existing walk/roll.
     final hem = -.38 - walk.abs() * .3;
     for (final side in [-1.0, 1.0]) {
@@ -1268,8 +1294,8 @@ class BetaArenaPainter extends CustomPainter {
         _Face(
           [world(a), world(b), world(fold), world(const _V(0, 1.22, -.3))],
           side < 0
-              ? Color(outfit.mantle)
-              : Color.lerp(Color(outfit.mantle), Color(outfit.cloth), .7)!,
+              ? mantleColor
+              : Color.lerp(mantleColor, Color(outfit.cloth), .7)!,
           doubleSided: true,
         ),
       );
@@ -1322,6 +1348,13 @@ class BetaArenaPainter extends CustomPainter {
     part(-.12, 1.5, .365, .075, .06, .025, eyes);
     part(.12, 1.5, .365, .075, .06, .025, eyes);
     part(0, 1.25, .16, .45, .13, .43, Color(outfit.mantle));
+    _wardrobeArt(
+      faces,
+      outfit,
+      run.loadout,
+      world,
+      flutter: reduceMotion ? 0 : math.sin(_clock * 3) * .09,
+    );
     _V tucked(_V rest, _V folded) => rest + (folded - rest) * tuck;
     final hand = tucked(
       _V(
@@ -1350,7 +1383,9 @@ class BetaArenaPainter extends CustomPainter {
       _beam(faces, elbow, entry.$2, .19, skin, world);
       part(entry.$2.x, entry.$2.y, entry.$2.z, .23, .21, .23, skin);
     }
-    final blade = betaElementColor(run.element);
+    final blade = run.bladeCombo != null
+        ? betaComboColor(run.bladeCombo!)
+        : betaElementColor(run.bladeElement);
     final bladePitch = .12 + castLift * -.45;
     final direction = _V(
       math.sin(swing) * math.cos(bladePitch),
@@ -1394,6 +1429,85 @@ class BetaArenaPainter extends CustomPainter {
       const Color(0xFFC3A46A),
       world,
     );
+    if (run.loadout.excalibur) {
+      // Engraved golden crossguard and a luminous elemental blade ridge.
+      _beam(
+        faces,
+        guard - cross * 1.5,
+        guard + cross * 1.5,
+        .12,
+        const Color(0xFFE9C777),
+        world,
+      );
+      _hewn(
+        faces,
+        guard,
+        const _V(.17, .19, .17),
+        blade,
+        crown: 0,
+        transform: world,
+      );
+      faces.add(
+        _Face(
+          [world(ridge), world(tip), world(ridge + const _V(.025, .025, 0))],
+          Color.lerp(blade, Colors.white, .55)!,
+          unlit: true,
+          doubleSided: true,
+        ),
+      );
+      if (run.blessingTime > 0) {
+        for (var i = 1; i <= 3; i++) {
+          final p = guard + (tip - guard) * (i / 4);
+          _hewn(
+            faces,
+            p,
+            const _V(.045, .09, .045),
+            const Color(0xFFFFE5A2),
+            crown: 0,
+            transform: world,
+          );
+        }
+      }
+    }
+    if (run.merlinTime > 0) {
+      _merlinArt(faces, _V(x - 1.5, .08, z + .4), blade, run.merlinTime / 1.25);
+    }
+    if (run.wardTime > 0) {
+      final strength = (run.wardTime / .7).clamp(0.0, 1.0);
+      final wardColor = Color.lerp(
+        const Color(0xFFADAD8B),
+        const Color(0xFFB2DFCA),
+        strength,
+      )!;
+      _crest(
+        faces,
+        const _V(0, .94, .41),
+        .38 + strength * .1,
+        wardColor,
+        transform: world,
+      );
+      _ring(faces, x, z, .9, wardColor, fraction: strength);
+    }
+    if (run.burnTime > 0) {
+      _ring(
+        faces,
+        x,
+        z,
+        .65,
+        const Color(0xFFE49A57),
+        fraction: (run.burnTime / 3).clamp(0.0, 1.0),
+      );
+    }
+    if (run.curseTime > 0) {
+      _ring(
+        faces,
+        x,
+        z,
+        .78,
+        const Color(0xFFB79AD2),
+        fraction: (run.curseTime / 4).clamp(0.0, 1.0),
+      );
+    }
     // Short, opaque arc: readable blade motion without a full-screen glow.
     final elapsed = BetaSession.swordDuration - run.swordTime;
     if (hero && run.swordTime > 0 && elapsed >= .1 && elapsed <= .24) {
@@ -1422,7 +1536,11 @@ class BetaArenaPainter extends CustomPainter {
         yaw: yaw,
         power: .45 + charge * .8,
       );
-      _ring(faces, x, z, .7 + charge * .2, blade, fraction: charge);
+      // A previous sword blessing must not recolor the next spell's channel.
+      final channelColor = run.castingCombo != null
+          ? betaComboColor(run.castingCombo!)
+          : betaElementColor(run.element);
+      _ring(faces, x, z, .7 + charge * .2, channelColor, fraction: charge);
     } else if (releasing && _castRelease > 0) {
       // A short palm burst bridges gathering and projectile travel.
       _spellVisual(
@@ -2053,13 +2171,13 @@ class BetaArenaPainter extends CustomPainter {
     _focal = wide ? size.height * 1.1 : size.width * 1.35;
     _horizon = wide ? .57 : .47;
     final target = wardrobePreview
-        ? _V(run.x, .95, run.z)
+        ? _V(run.x, 1.15, run.z)
         : _V(_cameraX, 0, _cameraZ - 1.7);
     _camera = wardrobePreview
-        ? _V(run.x + 3, 2.3, run.z + 5.5)
+        ? _V(run.x + 3, 2.7, run.z + 5.5)
         : _V(target.x, 11, _cameraZ + 13);
     if (wardrobePreview) {
-      _focal = math.min(size.width, size.height) * 2.2;
+      _focal = math.min(size.width, size.height) * 1.85;
       _horizon = .52;
     }
     _forward = (target - _camera).unit;
@@ -2077,8 +2195,8 @@ class BetaArenaPainter extends CustomPainter {
       if (!wardrobePreview)
         ..._scenery.putIfAbsent((
           run.region,
-          run.puzzle.solved,
-        ), () => _buildScenery(run.region, run.puzzle.solved)),
+          run.sceneryRestored,
+        ), () => _buildScenery(run.region, run.sceneryRestored)),
     ];
     final gateColor = run.passageOpen ? _look.accent : _look.stone;
     final hint = run.puzzleActive ? run.puzzle.revealedHint : null;

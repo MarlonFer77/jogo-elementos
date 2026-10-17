@@ -6,6 +6,7 @@ import 'package:app/game_presentation/sfx_player.dart';
 import 'package:app/ui/beta_access_screen.dart';
 import 'package:app/ui/beta_controls.dart';
 import 'package:app/ui/beta_screen.dart';
+import 'package:app/ui/beta_status_readout.dart';
 import 'package:app/ui/home_screen.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
@@ -42,6 +43,106 @@ void main() {
   Future<void> frame(WidgetTester tester) async {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
+  }
+
+  for (final size in [const Size(320, 568), const Size(568, 320)]) {
+    testWidgets(
+      'simultaneous status feedback preserves critical warning at $size',
+      (tester) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final key = GlobalKey();
+        await tester.pumpWidget(
+          RepaintBoundary(
+            key: key,
+            child: const MaterialApp(
+              debugShowCheckedModeBanner: false,
+              home: BetaScreen(),
+            ),
+          ),
+        );
+        await frame(tester);
+        final game = tester
+            .widget<GameWidget<BetaGame>>(find.byType(GameWidget<BetaGame>))
+            .game!;
+        game.session.start();
+        game.pauseEngine(); // Freeze a worst-case HUD snapshot, not the simulation phase.
+        game.session
+          ..hp = 20
+          ..burnTime = 3
+          ..curseTime = 4
+          ..blessingTime = 5
+          ..runicBladeTime = 4
+          ..protection = 2
+          ..wardTime = .7;
+        game.refresh();
+        await tester.pump();
+        expect(find.text('VIDA BAIXA · Água cura ao acertar'), findsOneWidget);
+        for (final id in [
+          'burn',
+          'curse',
+          'blessing',
+          'rune',
+          'shield',
+          'ward',
+        ]) {
+          expect(
+            find.byKey(ValueKey('beta-effect-$id')).hitTestable(),
+            findsOneWidget,
+          );
+        }
+        final status = tester.getRect(find.byType(BetaStatusReadout));
+        expect(
+          status.overlaps(tester.getRect(find.byType(BetaJoystick))),
+          false,
+        );
+        expect(
+          status.overlaps(tester.getRect(find.byType(BetaActionPad))),
+          false,
+        );
+        expect(tester.takeException(), isNull);
+        if (Platform.environment['ELEMENTOS_ART_PREVIEW'] == '1') {
+          await tester.runAsync(() async {
+            final image =
+                await (key.currentContext!.findRenderObject()
+                        as RenderRepaintBoundary)
+                    .toImage();
+            final bytes = await image.toByteData(
+              format: ui.ImageByteFormat.png,
+            );
+            final file = File(
+              'build/gameplay-preview/beta-status-${size.width.toInt()}.png',
+            );
+            await file.parent.create(recursive: true);
+            await file.writeAsBytes(bytes!.buffer.asUint8List());
+            image.dispose();
+          });
+        }
+        await tester.longPress(find.byKey(const ValueKey('beta-effect-ward')));
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(
+          find.text(
+            'Perseu impediu um efeito negativo. O dano de impacto não foi bloqueado.',
+          ),
+          findsOneWidget,
+        );
+        game.session
+          ..burnTime = 0
+          ..curseTime = 0
+          ..blessingTime = 0
+          ..runicBladeTime = 0
+          ..protection = 0
+          ..wardTime = 0;
+        game.refresh();
+        await tester.pump();
+        expect(find.byKey(const ValueKey('beta-effect-burn')), findsNothing);
+        expect(find.byKey(const ValueKey('beta-effect-ward')), findsNothing);
+        expect(find.text('VIDA BAIXA · Água cura ao acertar'), findsOneWidget);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
   }
 
   testWidgets('back protects a session; guide is available while paused', (

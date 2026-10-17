@@ -34,25 +34,28 @@ class _BetaAccessScreenState extends State<BetaAccessScreen> {
     });
     _password.clear();
     FocusScope.of(context).unfocus();
-    var outfit = HeroOutfit.traveler;
+    var inventory = CosmeticInventory();
     try {
-      outfit = (await CosmeticStore().load()).equipped;
+      inventory = await CosmeticStore().load();
     } catch (_) {
       // A wardrobe error must never prevent playing or erase the inventory.
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Cosméticos indisponíveis: usando traje original. Save preservado.',
+              'Inventário indisponível: usando equipamento original. Save preservado.',
             ),
           ),
         );
       }
     }
     if (!mounted) return;
-    await Navigator.of(
-      context,
-    ).push(pixelSlideRoute((_) => BetaScreen(outfit: outfit)));
+    await Navigator.of(context).push(
+      pixelSlideRoute(
+        (_) =>
+            BetaScreen(outfit: inventory.equipped, loadout: inventory.loadout),
+      ),
+    );
     if (mounted) Navigator.pop(context);
   }
 

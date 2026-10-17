@@ -8,9 +8,13 @@ import 'beta_performance.dart';
 import 'sfx_player.dart';
 
 class BetaGame extends FlameGame {
-  BetaGame({this.outfit = HeroOutfit.traveler});
+  BetaGame({
+    this.outfit = HeroOutfit.traveler,
+    this.loadout = const BetaLoadout(),
+  });
   final HeroOutfit outfit;
-  BetaSession session = BetaSession();
+  final BetaLoadout loadout;
+  late BetaSession session = BetaSession(loadout: loadout);
   late BetaArenaPainter _painter = BetaArenaPainter(session, outfit: outfit);
   final hud = ValueNotifier<int>(0);
   final performance = BetaPerformance();
@@ -31,7 +35,7 @@ class BetaGame extends FlameGame {
   void restart() {
     _painter.dispose();
     performance.reset();
-    session = BetaSession();
+    session = BetaSession(loadout: loadout);
     _painter = BetaArenaPainter(
       session,
       reduceMotion: _reduceMotion,
@@ -67,6 +71,7 @@ class BetaGame extends FlameGame {
         BetaSound.earthImpact => SfxId.stone,
         BetaSound.passage => SfxId.purify,
         BetaSound.discovery => SfxId.unlock,
+        BetaSound.ward => SfxId.purify,
       });
     }
     session.sounds.clear();

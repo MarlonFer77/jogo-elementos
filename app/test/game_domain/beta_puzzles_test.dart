@@ -117,6 +117,10 @@ void main() {
       final run = BetaSession()..start();
       for (var stage = 1; stage <= BetaRegion.values.length; stage++) {
         expect(run.wave, stage);
+        expect(run.restoredAreas, stage - 1);
+        expect(run.sceneryRestored, stage > 1);
+        expect(run.puzzle.solved, false);
+        expect(run.passageOpen, false);
         run.enemies.clear();
         advance(run, .5);
         run.x = BetaRegion.gateX;
@@ -139,6 +143,7 @@ void main() {
           advance(run, .5);
         }
         expect(run.restoredAreas, stage);
+        expect(run.sceneryRestored, true);
         expect(run.discoveredCombos, isEmpty);
         expect(run.xp, 0);
         advance(run, 2.1);
@@ -167,6 +172,8 @@ void main() {
       expect(run.xp, 0);
       expect(run.sounds.where((s) => s == BetaSound.victory), hasLength(1));
       expect(run.attune(), false);
+      expect(run.sceneryRestored, true);
+      expect(BetaSession().sceneryRestored, false);
     },
   );
 }
