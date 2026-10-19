@@ -4,14 +4,17 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Preparando publicação v0.39.0+39: coleção e polimentos do BETA, APK pelo workflow
-existente, assinatura compatível, publicação Latest e verificação do atualizador.
-Sem deploy de backend; preservar arquivos não relacionados.
-
-Correção incluída antes da publicação: restauração visual acompanha as próximas
-regiões da expedição, sem usar o puzzle local como seletor do cenário. Puzzles e
-portais permanecem independentes; reiniciar ainda inicia uma nova expedição.
-Verificando transições nas seis regiões e cache visual limitado a 12 cenários.
+v0.39.0+39 publicada como Latest em 17/10/2026: coleção e polimentos do BETA,
+incluindo restauração visual mantida entre fases da expedição. Puzzles e portais
+continuam independentes; reiniciar começa nova expedição. 69 testes focados e
+análise estática passaram. Build 39080467270, commit 6bae918; APK 59.430.274 bytes,
+assinatura igual à v0.38.0, hash local/build/GitHub conferidos. Atualizador real
+detecta 0.38.0 → 0.39.0 e não oferece atualização para a própria 0.39.0.
+Notas e checksum: docs/release-v0.39.0.md. Sem deploy de backend; arquivos locais
+não relacionados preservados. Próximo: validação física no Android, atualização
+sem desinstalar, loja/relíquias e visual ao atravessar regiões.
+Manutenção futura: workflow passou com avisos de depreciação das actions Node 20
+e setup-java v4; atualizar separadamente, preservando o cache de assinatura.
 
 Checkpoint anterior:
 
