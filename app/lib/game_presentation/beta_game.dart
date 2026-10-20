@@ -11,10 +11,13 @@ class BetaGame extends FlameGame {
   BetaGame({
     this.outfit = HeroOutfit.traveler,
     this.loadout = const BetaLoadout(),
+    this.checkpoint,
   });
   final HeroOutfit outfit;
   final BetaLoadout loadout;
-  late BetaSession session = BetaSession(loadout: loadout);
+  final BetaCheckpoint? checkpoint;
+  late BetaSession session =
+      checkpoint?.restore(loadout: loadout) ?? BetaSession(loadout: loadout);
   late BetaArenaPainter _painter = BetaArenaPainter(session, outfit: outfit);
   final hud = ValueNotifier<int>(0);
   final performance = BetaPerformance();
@@ -33,9 +36,17 @@ class BetaGame extends FlameGame {
   }
 
   void restart() {
+    _replaceSession(BetaSession(loadout: loadout));
+  }
+
+  void restoreCheckpoint(BetaCheckpoint checkpoint) {
+    _replaceSession(checkpoint.restore(loadout: loadout));
+  }
+
+  void _replaceSession(BetaSession next) {
     _painter.dispose();
     performance.reset();
-    session = BetaSession(loadout: loadout);
+    session = next;
     _painter = BetaArenaPainter(
       session,
       reduceMotion: _reduceMotion,

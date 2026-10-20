@@ -11,8 +11,9 @@ import '../game_presentation/pixel_page_route.dart';
 import 'multiplayer_lobby_screen.dart';
 
 class MultiplayerLoginScreen extends StatefulWidget {
-  const MultiplayerLoginScreen({super.key, this.auth});
+  const MultiplayerLoginScreen({super.key, this.auth, this.adventure = false});
   final AccountAuth? auth;
+  final bool adventure;
   @override
   State<MultiplayerLoginScreen> createState() => _MultiplayerLoginScreenState();
 }
@@ -21,6 +22,7 @@ class _MultiplayerLoginScreenState extends State<MultiplayerLoginScreen> {
   late final _auth = widget.auth ?? AccountAuth();
   final _email = TextEditingController(),
       _password = TextEditingController(),
+      _confirmation = TextEditingController(),
       _name = TextEditingController();
   bool _busy = false,
       _register = false,
@@ -37,13 +39,16 @@ class _MultiplayerLoginScreenState extends State<MultiplayerLoginScreen> {
   @override
   void initState() {
     super.initState();
+    _register = widget.adventure;
     unawaited(
       _run(() async {
-        final legacy = MultiplayerClient(baseUrl: defaultMultiplayerBaseUrl);
-        _legacy = await legacy.lastSession();
-        _legacyToken = await legacy.legacyToken();
-        _importLegacy = _legacyToken != null && _legacy.$1.isNotEmpty;
-        _name.text = _legacy.$1;
+        if (!widget.adventure) {
+          final legacy = MultiplayerClient(baseUrl: defaultMultiplayerBaseUrl);
+          _legacy = await legacy.lastSession();
+          _legacyToken = await legacy.legacyToken();
+          _importLegacy = _legacyToken != null && _legacy.$1.isNotEmpty;
+          _name.text = _legacy.$1;
+        }
         await _auth.restore();
         _email.text = _auth.email;
         if (_auth.hasSession) await _connect();
@@ -55,6 +60,7 @@ class _MultiplayerLoginScreenState extends State<MultiplayerLoginScreen> {
   void dispose() {
     _email.dispose();
     _password.dispose();
+    _confirmation.dispose();
     _name.dispose();
     super.dispose();
   }
@@ -79,6 +85,11 @@ class _MultiplayerLoginScreenState extends State<MultiplayerLoginScreen> {
   }
 
   Future<void> _connect() async {
+    if (widget.adventure) {
+      await _auth.verifyIdentity();
+      if (mounted) Navigator.of(context).pop(_auth.uid);
+      return;
+    }
     final client = _client;
     await client.waitUntilReady(requireAccount: true);
     await _auth.idToken(force: true);
@@ -119,8 +130,12 @@ class _MultiplayerLoginScreenState extends State<MultiplayerLoginScreen> {
     if (_register && _password.text.length < 8) {
       throw MultiplayerException('Use pelo menos 8 caracteres na senha.');
     }
+    if (_register && _password.text != _confirmation.text) {
+      throw MultiplayerException('A confirmação da senha não confere.');
+    }
     await _auth.signIn(_email.text, _password.text, register: _register);
     _password.clear();
+    _confirmation.clear();
     if (_register) {
       await _auth.sendVerification();
       _message =
@@ -156,16 +171,24 @@ class _MultiplayerLoginScreenState extends State<MultiplayerLoginScreen> {
       ),
       body: SafeArea(
         child: MultiplayerConnectionPanel(
-          title: _profileNeeded ? 'SEU PERFIL' : 'PORTAL DO DUELO',
-          message: 'Seu progresso online acompanha sua conta.',
+          title: _profileNeeded
+              ? 'SEU PERFIL'
+              : widget.adventure
+              ? 'REGISTRO DOS ECOS'
+              : 'PORTAL DO DUELO',
+          message: widget.adventure
+              ? 'Uma identidade para sua aventura.'
+              : 'Seu progresso online acompanha sua conta.',
           connecting: _busy,
           child: AutofillGroup(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'Treino e Dungeon continuam offline. Esta conta recupera apenas o perfil multiplayer.',
+                Text(
+                  widget.adventure
+                      ? 'Crie sua conta ou use a mesma do Multiplayer. O Firebase gera seu ID. A aventura será salva neste aparelho, separada por conta; ainda sem sincronização entre celulares.'
+                      : 'Treino e Dungeon continuam offline. Sua conta também identifica o save local da aventura BETA.',
                 ),
                 const SizedBox(height: 12),
                 if (!_auth.configured)
@@ -200,6 +223,10 @@ class _MultiplayerLoginScreenState extends State<MultiplayerLoginScreen> {
                   ),
                 ] else if (_auth.hasSession) ...[
                   Text('Conta: ${_auth.email}'),
+                  SelectableText(
+                    'ID: ${_auth.uid}',
+                    style: const TextStyle(fontSize: 11),
+                  ),
                   PixelMenuButton(
                     label: 'Continuar / já confirmei o e-mail',
                     primary: true,
@@ -234,6 +261,15 @@ class _MultiplayerLoginScreenState extends State<MultiplayerLoginScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
+                  if (_register) ...[
+                    PixelTextField(
+                      controller: _confirmation,
+                      label: 'Confirmar senha',
+                      obscureText: true,
+                      autofillHints: const [AutofillHints.newPassword],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   PixelMenuButton(
                     label: _register ? 'Criar conta' : 'Entrar',
                     primary: true,

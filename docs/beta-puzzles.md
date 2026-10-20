@@ -35,8 +35,9 @@ a travessia. A saída final não cria outra área nem concede cura/XP extra.
   Ritual não desbloqueia ataques nem concede XP/itens: combate mantém suas regras.
 - Botões de combate viram Sintonizar/Inscrição sem aumentar o painel.
   Teclado: E sintoniza; H revela pista; elementos e Mistura continuam iguais.
-- Progresso de puzzles/restauração existe só nesta expedição. Reiniciar/sair
-  descarta tudo; sem migração, sincronização ou alteração de outros saves.
+- Na aventura identificada, puzzles/restauração são mantidos nos checkpoints
+  locais da conta ao sair. Nova aventura reinicia esse progresso, com confirmação.
+  Sem sincronização ou alteração de outros saves; ver [salvamento](beta-adventure-save.md).
 
 ## Visual e limites
 

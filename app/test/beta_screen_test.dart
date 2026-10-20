@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'dart:ui' as ui;
 import 'package:app/game_domain/beta_session.dart';
 import 'package:app/game_presentation/beta_game.dart';
@@ -12,6 +13,7 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -450,23 +452,35 @@ void main() {
   testWidgets('home beta requires the exact password again after leaving', (
     tester,
   ) async {
+    FlutterSecureStorage.setMockInitialValues({
+      'elementos.firebase.session.': jsonEncode({
+        'refresh': 'test-refresh',
+        'uid': 'adventurer',
+        'email': 'tester@example.invalid',
+        'verified': true,
+      }),
+    });
     await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
     await tester.tap(find.text('BETA TEST'));
     await frame(tester);
     expect(find.byType(BetaAccessScreen), findsOneWidget);
     await tester.enterText(find.byType(TextField), '32431');
-    await tester.tap(find.text('Acessar BETA TEST'));
+    await tester.tap(find.text('Iniciar aventura'));
     await frame(tester);
-    expect(find.textContaining('Senha incorreta'), findsOneWidget);
+    expect(find.textContaining('Senha do beta incorreta'), findsOneWidget);
     expect(find.byType(BetaScreen), findsNothing);
     await tester.enterText(find.byType(TextField), '032431');
-    await tester.tap(find.text('Acessar BETA TEST'));
+    await tester.tap(find.text('Iniciar aventura'));
     await frame(tester);
     expect(find.byType(BetaScreen), findsOneWidget);
+    await tester.ensureVisible(find.text('Voltar ao menu'));
     await tester.tap(find.text('Voltar ao menu'));
     await frame(tester);
     await frame(tester);
     expect(find.byType(BetaScreen), findsNothing);
+    expect(find.text('Continuar aventura'), findsOneWidget);
+    await tester.pageBack();
+    await frame(tester);
     await tester.tap(find.text('BETA TEST'));
     await frame(tester);
     expect(

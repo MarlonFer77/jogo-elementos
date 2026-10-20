@@ -4,6 +4,26 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Preparando v0.40.0+40: cadastro e checkpoints locais da aventura por conta.
+Gerar APK pelo workflow existente, preservar assinatura e verificar o artefato
+antes de publicar como Latest. Sem deploy de backend ou sincronização em nuvem.
+
+Cadastro e aventura por ID implementados localmente: entrada do BETA reutiliza
+Firebase Auth, confirmação de senha/e-mail e UID exibido. Identidade confirmada
+fica em armazenamento seguro para acesso offline; sair invalida confirmação
+pendente. Checkpoints locais por UID com recuperação, validação/versionamento,
+continuação pausada e confirmação para nova aventura. Preserva XP/PH/build,
+combos, puzzles, cenários, vida/mana e status; combate parcial recomeça inteiro
+do checkpoint sem duplicar XP. Queimadura fatal não substitui o ponto seguro.
+Troca de conta não mistura saves; falha de gravação é visível e bloqueia saída
+até retry. Botão voltar também aguarda salvar; sem escrita por frame.
+Testes focados de domínio, cadastro em duas orientações, retomada, falhas e
+entrada pelo menu passaram; análise estática limpa. Docs: beta-adventure-save.md.
+Sem cloud sync, migração da loja, APK/release/push ou deploy. Próximo: validar
+cadastro real e fechar/reabrir o app no próximo APK; save continua só no aparelho.
+
+Checkpoint anterior:
+
 v0.39.0+39 publicada como Latest em 17/10/2026: coleção e polimentos do BETA,
 incluindo restauração visual mantida entre fases da expedição. Puzzles e portais
 continuam independentes; reiniciar começa nova expedição. 69 testes focados e
@@ -913,16 +933,16 @@ Validação manual em aparelhos e balanceamento pendentes. Sem commit/release/de
 
 # NEXT
 
-Preparar novo APK candidato quando solicitado e validar a expansão do BETA TEST:
-travessia das três regiões, colisões/alcances, câmera, áudio, ciclo de vida,
-atualização e desempenho no Android. Corrigir problemas reproduzidos antes de
-liberar produção. Combos, exploração não linear e progresso permanente ficam
-para blocos futuros; a primeira rota foi autorizada e implementada localmente.
+Preparar novo APK quando solicitado. Validar cadastro/confirmação de e-mail,
+retomada offline após fechar o app, troca de conta e atualização sem desinstalar.
+Percorrer as seis regiões e medir fluidez/áudio no Android. Sincronização online
+da aventura e vínculo da coleção ao ID ficam para outro bloco; não prometer
+recuperação em outro aparelho com o save local atual.
 
 Playtest das variações da Dungeon nos celulares: dificuldade por sala, duração
 das variantes defensivas e decisões de build. Publicação apenas quando solicitada.
 Assinatura definitiva adiada expressamente pelo usuário; não alterar keystore
-ou workflow de assinatura neste bloco. Última publicação registrada: v0.34.0.
+ou workflow de assinatura neste bloco. Última publicação registrada: v0.39.0.
 
 # BACKLOG
 

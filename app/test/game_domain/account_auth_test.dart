@@ -99,6 +99,118 @@ void main() {
     expect(auth.hasSession, isFalse);
     expect(await const FlutterSecureStorage().readAll(), isEmpty);
   });
+  test('sign-out invalidates an in-flight identity verification', () async {
+    final lookup = Completer<http.Response>(), started = Completer<void>();
+    final auth = AccountAuth(
+      apiKey: 'test-key',
+      httpClient: MockClient((req) async {
+        if (req.url.path.endsWith(':lookup')) {
+          started.complete();
+          return lookup.future;
+        }
+        return http.Response(
+          jsonEncode(
+            req.url.host == 'securetoken.googleapis.com'
+                ? {
+                    'id_token': 't',
+                    'refresh_token': 'r',
+                    'user_id': 'u',
+                    'expires_in': '3600',
+                  }
+                : {
+                    'idToken': 't',
+                    'refreshToken': 'r',
+                    'localId': 'u',
+                    'expiresIn': '3600',
+                  },
+          ),
+          200,
+        );
+      }),
+    );
+    await auth.signIn('a@example.invalid', 'not-saved');
+    final verifying = auth.verifyIdentity();
+    final rejected = expectLater(
+      verifying,
+      throwsA(isA<MultiplayerException>()),
+    );
+    await started.future;
+    final logout = auth.signOut();
+    lookup.complete(
+      http.Response(
+        jsonEncode({
+          'users': [
+            {'localId': 'u', 'emailVerified': true},
+          ],
+        }),
+        200,
+      ),
+    );
+    await rejected;
+    await logout;
+    expect(auth.hasSession, false);
+    expect(auth.emailVerified, false);
+    expect(await const FlutterSecureStorage().readAll(), isEmpty);
+  });
+  test(
+    'adventure verifies Firebase UID and email before caching offline identity',
+    () async {
+      var verified = false;
+      final auth = AccountAuth(
+        apiKey: 'test-key',
+        httpClient: MockClient((req) async {
+          if (req.url.host == 'securetoken.googleapis.com') {
+            return http.Response(
+              jsonEncode({
+                'id_token': 't',
+                'refresh_token': 'r',
+                'user_id': 'u',
+                'expires_in': '3600',
+              }),
+              200,
+            );
+          }
+          if (req.url.path.endsWith(':lookup')) {
+            expect(jsonDecode(req.body)['idToken'], 't');
+            return http.Response(
+              jsonEncode({
+                'users': [
+                  {'localId': 'u', 'emailVerified': verified},
+                ],
+              }),
+              200,
+            );
+          }
+          expect(req.url.path, endsWith(':signUp'));
+          return http.Response(
+            jsonEncode({
+              'idToken': 't',
+              'refreshToken': 'r',
+              'localId': 'u',
+              'expiresIn': '3600',
+            }),
+            200,
+          );
+        }),
+      );
+      await auth.signIn('a@example.invalid', 'not-stored', register: true);
+      expect(auth.uid, 'u');
+      await expectLater(
+        auth.verifyIdentity(),
+        throwsA(isA<MultiplayerException>()),
+      );
+      expect(auth.emailVerified, false);
+      verified = true;
+      await auth.verifyIdentity();
+      final offline = AccountAuth(apiKey: 'test-key');
+      await offline.restore();
+      expect(offline.uid, 'u');
+      expect(offline.emailVerified, true);
+      expect(offline.hasSession, true);
+      await offline.signOut();
+      expect(offline.emailVerified, false);
+    },
+  );
   test(
     'recovery hides unknown email but does not hide disabled provider',
     () async {

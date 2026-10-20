@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:convert';
 import 'beta_world.dart';
 import 'beta_spells.dart';
 import 'beta_skills.dart';
@@ -9,6 +10,8 @@ export 'beta_world.dart';
 export 'beta_spells.dart';
 export 'beta_skills.dart';
 export 'beta_puzzles.dart';
+
+part 'beta_checkpoint.dart';
 
 /// Offline sandbox. Never writes campaign/online rewards or turn-based saves.
 enum BetaPhase { ready, playing, paused, won, lost }
@@ -245,6 +248,20 @@ class BetaEffect {
 class BetaSession {
   BetaSession({this.loadout = const BetaLoadout()});
   final BetaLoadout loadout;
+  BetaCheckpoint? latestCheckpoint;
+  bool _checkpointAfterCombat = false;
+  bool _checkpoint() {
+    // Keep the previous safe point if lingering damage would cause a death loop.
+    if (hp <= burnTime * 2 || phase == BetaPhase.lost) return false;
+    latestCheckpoint = BetaCheckpoint._capture(this);
+    return true;
+  }
+
+  /// Start-of-region rollback is atomic: no partial combat XP is persisted.
+  void checkpointOutsideCombat() {
+    if (phase == BetaPhase.ready || remaining == 0) _checkpoint();
+  }
+
   double blessingTime = 0, merlinTime = 0, burnTime = 0, curseTime = 0;
   double wardTime = 0; // Presentation-only confirmation of a resisted status.
   BetaElement blessingElement = BetaElement.fire;
@@ -300,6 +317,7 @@ class BetaSession {
   void revealPuzzleHint() {
     if (!puzzleActive) return;
     puzzle.revealHint();
+    _checkpoint();
     message = 'PISTA · ${puzzle.next!.hint}';
     messageTime = 8;
   }
@@ -329,6 +347,7 @@ class BetaSession {
       );
     }
     // Rituals never spend mana, equip combat skills or grant farmable XP.
+    if (accepted) _checkpoint();
     return accepted;
   }
 
@@ -440,6 +459,7 @@ class BetaSession {
     if (phase != BetaPhase.ready) return;
     phase = BetaPhase.playing;
     _spawn();
+    _checkpoint();
   }
 
   void pause() {
@@ -451,6 +471,7 @@ class BetaSession {
     _clearBuffer();
     _gateHold = 0;
     _moving = false;
+    checkpointOutsideCombat();
   }
 
   void resume() {
@@ -492,6 +513,7 @@ class BetaSession {
     element = combo.first;
     secondaryElement = combo.second;
     _clearBuffer();
+    checkpointOutsideCombat();
     return true;
   }
 
@@ -511,6 +533,7 @@ class BetaSession {
       _equippedCombos.add(combo);
     }
     _clearBuffer();
+    checkpointOutsideCombat();
     return true;
   }
 
@@ -529,6 +552,7 @@ class BetaSession {
     if (skillLock(skill) != null) return false;
     _skills.add(skill);
     _skillPoints--;
+    checkpointOutsideCombat();
     return true;
   }
 
@@ -1087,6 +1111,9 @@ class BetaSession {
         _gateHold = 0;
       }
     }
+    if (_checkpointAfterCombat && playing) {
+      _checkpointAfterCombat = !_checkpoint();
+    }
   }
 
   void _resolveCombo(BetaProjectile projectile, BetaEnemy primary) {
@@ -1189,6 +1216,7 @@ class BetaSession {
     mana = math.min(100, mana + 25);
     arrivalTime = arrivalDuration;
     _spawn();
+    _checkpoint();
   }
 
   void _moveEnemy(BetaEnemy e, double dx, double dz) {
@@ -1224,6 +1252,7 @@ class BetaSession {
     _swordPending = false;
     if (result == BetaPhase.lost) swordTime = castTime = dodgeTime = 0;
     projectiles.clear();
+    if (result == BetaPhase.won) _checkpoint();
   }
 
   void _hit(
@@ -1269,6 +1298,7 @@ class BetaSession {
     e.cancelAttack();
     e.moving = false;
     kills++;
+    if (remaining == 0) _checkpointAfterCombat = true;
     xp += e.kind.reward;
     while (xp >= nextLevelXp) {
       level++;

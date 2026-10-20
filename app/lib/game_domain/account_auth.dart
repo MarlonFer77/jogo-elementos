@@ -17,8 +17,10 @@ class AccountAuth {
   final FlutterSecureStorage _storage;
   String? _refreshToken, _idToken, uid;
   String email = '';
+  bool emailVerified = false;
   DateTime _expires = DateTime(1970);
   Future<String>? _refreshing;
+  Future<void>? _verifying;
   int _generation = 0;
   String get _key => 'elementos.firebase.session.$apiKey';
   bool get configured => apiKey.isNotEmpty;
@@ -35,6 +37,7 @@ class AccountAuth {
       _refreshToken = data['refresh'] as String;
       uid = data['uid'] as String;
       email = data['email'] as String? ?? '';
+      emailVerified = data['verified'] == true;
     } catch (_) {
       throw MultiplayerException(
         'Sessão salva inválida. Saia e entre novamente; seu perfil online não foi apagado.',
@@ -114,6 +117,7 @@ class AccountAuth {
       'password': password,
       'returnSecureToken': true,
     });
+    emailVerified = false;
     await _accept(data, address.trim());
   }
 
@@ -123,7 +127,12 @@ class AccountAuth {
     final token = data['idToken'] as String;
     await _storage.write(
       key: _key,
-      value: jsonEncode({'refresh': refresh, 'uid': user, 'email': address}),
+      value: jsonEncode({
+        'refresh': refresh,
+        'uid': user,
+        'email': address,
+        'verified': emailVerified,
+      }),
     );
     _refreshToken = refresh;
     uid = user;
@@ -183,6 +192,41 @@ class AccountAuth {
     'idToken': await idToken(),
   });
 
+  /// Validate ownership online once; the verified local session can play offline.
+  Future<void> verifyIdentity() =>
+      _verifying ??= _verifyIdentity().whenComplete(() => _verifying = null);
+
+  Future<void> _verifyIdentity() async {
+    final generation = _generation;
+    final data = await _request('lookup', {
+      'idToken': await idToken(force: true),
+    });
+    if (generation != _generation || !hasSession) {
+      throw MultiplayerException('Sessão encerrada.', statusCode: 401);
+    }
+    final users = data['users'] as List?;
+    if (users == null || users.length != 1 || users.single['localId'] != uid) {
+      throw MultiplayerException(
+        'Não foi possível confirmar a identidade. Entre novamente.',
+      );
+    }
+    if (users.single['emailVerified'] != true) {
+      throw MultiplayerException(
+        'Confirme seu e-mail antes de salvar a aventura. Confira também o spam.',
+      );
+    }
+    await _storage.write(
+      key: _key,
+      value: jsonEncode({
+        'refresh': _refreshToken,
+        'uid': uid,
+        'email': email,
+        'verified': true,
+      }),
+    );
+    emailVerified = true;
+  }
+
   Future<void> resetPassword(String address) async {
     await _request('sendOobCode', {
       'requestType': 'PASSWORD_RESET',
@@ -200,10 +244,16 @@ class AccountAuth {
     } catch (_) {
       /* Sign-out must still clear storage. */
     }
+    try {
+      await _verifying;
+    } catch (_) {
+      /* A pending verification must not recreate the signed-out identity. */
+    }
     await _storage.delete(key: _key);
     _refreshToken = null;
     _idToken = null;
     uid = null;
     email = '';
+    emailVerified = false;
   }
 }

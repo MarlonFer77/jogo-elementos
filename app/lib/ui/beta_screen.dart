@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' show FramePhase, FrameTiming;
 import 'package:flame/game.dart';
 import 'package:flutter/foundation.dart';
@@ -6,6 +7,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../game_domain/beta_session.dart';
+import '../game_domain/beta_adventure_store.dart';
 import '../game_domain/cosmetics.dart';
 import '../game_presentation/beta_game.dart';
 import '../game_presentation/beta_arena_painter.dart' show betaElementColor;
@@ -20,20 +22,33 @@ class BetaScreen extends StatefulWidget {
     super.key,
     this.outfit = HeroOutfit.traveler,
     this.loadout = const BetaLoadout(),
+    this.checkpoint,
+    this.adventureStore,
   });
   final HeroOutfit outfit;
   final BetaLoadout loadout;
+  final BetaCheckpoint? checkpoint;
+  final BetaAdventureStore? adventureStore;
   @override
   State<BetaScreen> createState() => _BetaScreenState();
 }
 
 class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
-  late final _game = BetaGame(outfit: widget.outfit, loadout: widget.loadout);
+  late final _game = BetaGame(
+    outfit: widget.outfit,
+    loadout: widget.loadout,
+    checkpoint: widget.checkpoint,
+  );
+  final _saveStatus = ValueNotifier<String>('Preparando checkpoint…');
+  String? _saveAttempt;
+  bool _saveFailed = false;
+  Future<bool>? _savePending;
   final _focus = FocusNode();
   final _keys = <LogicalKeyboardKey>{};
   Size? _viewport;
   bool _collecting = false;
   bool _exitPromptOpen = false, _exitApproved = false;
+  bool _exitingSave = false;
   int _timingStart = 0;
   int _inputRegion = 1;
   @override
@@ -41,6 +56,75 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _game.hud.addListener(_syncTimings);
+    _game.hud.addListener(_watchCheckpoint);
+    if (widget.adventureStore != null) {
+      _game.session.checkpointOutsideCombat();
+      unawaited(_save());
+    }
+  }
+
+  void _watchCheckpoint() => unawaited(_save());
+
+  Future<bool> _save({bool retry = false}) {
+    final checkpoint = _game.session.latestCheckpoint;
+    final store = widget.adventureStore;
+    if (store == null || checkpoint == null) return Future.value(true);
+    if (!retry && _saveAttempt == checkpoint.encoded) {
+      return _savePending ?? Future.value(!_saveFailed);
+    }
+    _saveAttempt = checkpoint.encoded;
+    return _savePending = (_savePending ?? Future.value(true)).then((_) async {
+      if (mounted) _saveStatus.value = 'Salvando checkpoint…';
+      try {
+        await store.save(checkpoint);
+        _saveFailed = false;
+        if (mounted) {
+          _saveStatus.value =
+              'Checkpoint salvo neste aparelho · região ${checkpoint.wave}';
+        }
+        return true;
+      } catch (_) {
+        _saveFailed = true;
+        if (mounted) {
+          _saveStatus.value =
+              'Falha ao salvar. Tente novamente; nenhum save anterior foi apagado.';
+        }
+        return false;
+      }
+    });
+  }
+
+  Future<void> _retryOrRestart() async {
+    if (widget.adventureStore != null) {
+      if (_game.session.phase == BetaPhase.lost &&
+          _game.session.latestCheckpoint != null) {
+        _game.restoreCheckpoint(_game.session.latestCheckpoint!);
+        _play();
+        return;
+      }
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialog) => AlertDialog(
+          title: const Text('Nova aventura?'),
+          content: const Text(
+            'Substitui a aventura salva desta conta. As compras da loja permanecem.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialog, false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialog, true),
+              child: const Text('Começar novamente'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted || confirmed != true) return;
+    }
+    _game.restart();
+    _play();
   }
 
   @override
@@ -54,6 +138,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
       _game.session.pause();
       _game.pauseEngine();
       _syncTimings();
+      unawaited(_save());
     }
     _viewport = size;
   }
@@ -136,7 +221,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
   }
 
   void _play() {
-    if (_exitPromptOpen || _exitApproved) return;
+    if (_exitPromptOpen || _exitApproved || _exitingSave) return;
     _keys.clear();
     if (_game.session.phase == BetaPhase.ready) {
       _game.session.start();
@@ -163,7 +248,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _requestExit() async {
-    if (_exitPromptOpen || _exitApproved) return;
+    if (_exitPromptOpen || _exitApproved || _exitingSave) return;
     _pause();
     if (_game.session.phase == BetaPhase.paused) {
       _exitPromptOpen = true;
@@ -185,9 +270,11 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  const Text(
-                    'Esta sessão não tem salvamento. Ao sair, você perde '
-                    'o nível e os encontros atuais. Os outros modos não serão alterados.',
+                  Text(
+                    widget.adventureStore != null
+                        ? 'Sua aventura fica no último checkpoint desta conta. Se sair durante o combate, a luta recomeça do início, com o progresso daquele checkpoint.'
+                        : 'Esta sessão não tem salvamento. Ao sair, você perde '
+                              'o nível e os encontros atuais. Os outros modos não serão alterados.',
                     style: TextStyle(fontSize: 13),
                   ),
                   const SizedBox(height: 14),
@@ -201,7 +288,11 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF7C3429),
                     ),
-                    child: const Text('Sair e descartar sessão'),
+                    child: Text(
+                      widget.adventureStore != null
+                          ? 'Salvar e sair'
+                          : 'Sair e descartar sessão',
+                    ),
                   ),
                 ],
               ),
@@ -212,6 +303,21 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
       if (!mounted) return;
       _exitPromptOpen = false;
       if (discard != true) return; // Cancel remains paused, with no held input.
+    }
+    if (!mounted) return;
+    _exitingSave = true;
+    if (!await _save(retry: true)) {
+      _exitingSave = false;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Não foi possível salvar. Tente novamente antes de sair.',
+            ),
+          ),
+        );
+      }
+      return;
     }
     if (!mounted) return;
     setState(() => _exitApproved = true);
@@ -234,6 +340,8 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
       SchedulerBinding.instance.removeTimingsCallback(_recordTimings);
     }
     _game.hud.removeListener(_syncTimings);
+    _game.hud.removeListener(_watchCheckpoint);
+    _saveStatus.dispose();
     _game.close();
     _focus.dispose();
     super.dispose();
@@ -307,9 +415,11 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
         return PopScope(
           canPop:
               _exitApproved ||
-              run.phase == BetaPhase.ready ||
-              ((run.phase == BetaPhase.won || run.phase == BetaPhase.lost) &&
-                  !run.settling),
+              (widget.adventureStore == null &&
+                  (run.phase == BetaPhase.ready ||
+                      ((run.phase == BetaPhase.won ||
+                              run.phase == BetaPhase.lost) &&
+                          !run.settling))),
           onPopInvokedWithResult: (didPop, _) {
             if (didPop) return;
             if (run.playing || run.settling) {
@@ -568,13 +678,15 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                     ready
                         ? 'Atravesse seis regiões e restaure seus ecos.\n'
                               'Vença os inimigos, decifre os altares e transforme o cenário.\n'
-                              'Progresso temporário: sair encerra esta sessão.'
+                              '${widget.adventureStore == null ? 'Progresso temporário: sair encerra esta sessão.' : 'Save local por checkpoint, vinculado à conta.'}'
                         : paused
-                        ? 'O tempo está parado. Seu progresso neste beta dura somente até sair.'
+                        ? widget.adventureStore == null
+                              ? 'O tempo está parado. Seu progresso neste beta dura somente até sair.'
+                              : 'Tempo parado. Ao sair: combate reinicia do checkpoint; puzzles mantêm o progresso.'
                         : '${run.phase == BetaPhase.won ? 'A estrada dos ecos foi recuperada.' : 'Você caiu em ${run.region.title}.'}\n'
                               '${run.kills} inimigos · ${run.xp} XP · nível ${run.level}\n'
                               '${run.restoredAreas}/${BetaRegion.values.length} áreas restauradas\n'
-                              'Progresso desta sessão; seus outros modos não são alterados.',
+                              '${widget.adventureStore == null ? 'Progresso desta sessão; seus outros modos não são alterados.' : 'Seus outros modos não são alterados.'}',
                     style: const TextStyle(fontSize: 13),
                   ),
                   if (ready || paused) ...[
@@ -582,16 +694,38 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                     _route(run),
                   ],
                   const SizedBox(height: 12),
+                  if (widget.adventureStore != null)
+                    ValueListenableBuilder<String>(
+                      valueListenable: _saveStatus,
+                      builder: (_, status, _) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(status, style: const TextStyle(fontSize: 11)),
+                          if (_saveFailed)
+                            TextButton(
+                              onPressed: () => unawaited(_save(retry: true)),
+                              child: const Text('Tentar salvar novamente'),
+                            ),
+                        ],
+                      ),
+                    ),
                   PixelMenuButton(
                     label: ready
                         ? 'Entrar na ruína'
                         : paused
                         ? 'Retomar'
-                        : 'Testar novamente',
+                        : widget.adventureStore == null
+                        ? 'Testar novamente'
+                        : run.phase == BetaPhase.lost
+                        ? 'Tentar do checkpoint'
+                        : 'Nova aventura',
                     primary: true,
                     onPressed: () {
-                      if (!ready && !paused) _game.restart();
-                      _play();
+                      if (!ready && !paused) {
+                        unawaited(_retryOrRestart());
+                      } else {
+                        _play();
+                      }
                     },
                   ),
                   const SizedBox(height: 8),
@@ -761,7 +895,7 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
         'antes de levantar; '
         'saia da área do golpe, não apenas role parado contra a parede.\n\n'
         'Equipe até 3 combos e aprenda habilidades no grimório, antes da expedição '
-        'ou após limpar a área. PH, descobertas e build duram só esta sessão.\n\n'
+        'ou após limpar a área. Na aventura com conta, PH, descobertas e build são guardados nos checkpoints.\n\n'
         'Teclado: WASD/setas · J espada · K magia · Espaço rolar · '
         '1–4 elemento · Shift + 1–4 mistura.',
         style: TextStyle(fontSize: 12),

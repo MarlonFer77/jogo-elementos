@@ -67,7 +67,7 @@ class _BetaBuildPanelState extends State<BetaBuildPanel> {
                 ],
               ),
               Text(
-                'Nível ${run.level} · ${run.skillPoints} PH desta sessão',
+                'Nível ${run.level} · ${run.skillPoints} PH da expedição',
                 style: const TextStyle(fontSize: 12),
               ),
               if (!run.canManageBuild)
