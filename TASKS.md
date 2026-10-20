@@ -4,9 +4,16 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Preparando v0.40.0+40: cadastro e checkpoints locais da aventura por conta.
-Gerar APK pelo workflow existente, preservar assinatura e verificar o artefato
-antes de publicar como Latest. Sem deploy de backend ou sincronização em nuvem.
+v0.40.0+40 publicada como Latest em 20/10/2026: cadastro e checkpoints locais
+da aventura por conta. Build 39478699114, commit 33aac58; APK 59.594.110 bytes.
+27 testes focados passaram; análise estática limpa. Assinatura igual à v0.39.0;
+hash local/build/GitHub conferidos. Atualizador real confirmou 0.39.0 → 0.40.0
+e nenhuma atualização para a própria 0.40.0. Notas: docs/release-v0.40.0.md.
+Sem deploy de backend ou cloud sync. Próximo: atualização no celular sem
+desinstalar, cadastro real, confirmação de e-mail, salvar/fechar/reabrir,
+troca de conta e retomada de combate/puzzles. Validação física pendente.
+
+Checkpoint de implementação anterior à publicação:
 
 Cadastro e aventura por ID implementados localmente: entrada do BETA reutiliza
 Firebase Auth, confirmação de senha/e-mail e UID exibido. Identidade confirmada
@@ -19,8 +26,7 @@ Troca de conta não mistura saves; falha de gravação é visível e bloqueia sa
 até retry. Botão voltar também aguarda salvar; sem escrita por frame.
 Testes focados de domínio, cadastro em duas orientações, retomada, falhas e
 entrada pelo menu passaram; análise estática limpa. Docs: beta-adventure-save.md.
-Sem cloud sync, migração da loja, APK/release/push ou deploy. Próximo: validar
-cadastro real e fechar/reabrir o app no próximo APK; save continua só no aparelho.
+Sem cloud sync ou migração da loja; save continua só no aparelho.
 
 Checkpoint anterior:
 

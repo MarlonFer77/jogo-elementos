@@ -1,6 +1,6 @@
 # Registro e aventura por ID
 
-Implementação preparada para a v0.40.0; publicação acompanhada em TASKS.md.
+Incluído na v0.40.0, publicada em 20/10/2026. Validação física ainda pendente.
 
 ## Entrada
 

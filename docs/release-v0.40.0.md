@@ -27,7 +27,7 @@ A loja e os Ecos continuam compartilhados no aparelho; não foram migrados
 para a conta. Iniciar nova aventura não apaga as compras.
 
 Treino, Dungeon e servidor Multiplayer não recebem mudanças neste bloco.
-A assinatura anterior será preservada; assinatura definitiva continua pendente.
+A assinatura anterior foi preservada; assinatura definitiva continua pendente.
 O BETA permanece experimental.
 
 ## Validação no celular
@@ -39,3 +39,19 @@ O BETA permanece experimental.
 - Troque de conta e confira que cada uma mantém sua própria aventura.
 - Confira orientação, áudio e fluidez. Testes automatizados não substituem
   esta validação física.
+
+## APK verificado
+
+- Commit compilado: `33aac587da46f44350c627434f34ae1b048d2ac4`.
+- [Build GitHub Actions](https://github.com/MarlonFer77/jogo-elementos/actions/runs/39478699114).
+- `app-release.apk`: 59.594.110 bytes; versão `0.40.0+40`.
+- Package ID `com.example.app`; Android 7/API 24 ou superior.
+- Arquiteturas: arm64-v8a, armeabi-v7a e x86_64; APK não depurável.
+- Certificado igual ao da v0.39.0, mantendo a assinatura Android Debug anterior.
+- SHA-256: `203558d3064f8f0ce929d43af033c85858c1fd3051812c51817e3bedf0c4e455`.
+
+27 testes focados de cadastro, checkpoints e atualizador passaram nesta release;
+análise estática dos arquivos alterados sem problemas. Hash local igual ao build.
+
+Publicada como Latest em 20/10/2026. Digest público igual ao APK validado.
+Verificador real confirmou 0.39.0+39 → 0.40.0; a própria 0.40.0+40 está atualizada.
