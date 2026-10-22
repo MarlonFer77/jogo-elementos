@@ -4,6 +4,26 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Preparando v0.41.0+41 como Latest: abertura Anjo da Aurora, APK pelo workflow
+existente e verificação da assinatura, integridade e atualizador público.
+Sem deploy de backend. Validação física continua pendente.
+
+Checkpoint de implementação:
+
+Abertura Anjo da Aurora implementada localmente: três goblins, defesa luminosa,
+corte giratório, rolamento, conjuração, contato e ruínas animadas. Reutiliza
+modelagens do BETA sem executar gameplay/saves. Barra segmentada de preferências
+e consulta real; apresentação inicial de três segundos com entrada antecipada por
+toque quando pronto, ciclo visual de oito segundos se a consulta demorar.
+UpdateGate mantém atualização/erro/retry e consulta manual; menu com fade.
+Pausa em segundo plano, áudio próprio respeitando volume/mudo e redução de
+movimento estática. 15 testes focados passaram; análise estática limpa e prévias
+vertical/horizontal conferidas. Docs: docs/loading-opening.md.
+Sem APK, publicação, push ou mudança de saves/backend. Próximo: validar fluidez,
+áudio e abertura/retorno no Android quando o usuário solicitar o próximo APK.
+
+Checkpoint anterior:
+
 v0.40.0+40 publicada como Latest em 20/10/2026: cadastro e checkpoints locais
 da aventura por conta. Build 39478699114, commit 33aac58; APK 59.594.110 bytes.
 27 testes focados passaram; análise estática limpa. Assinatura igual à v0.39.0;

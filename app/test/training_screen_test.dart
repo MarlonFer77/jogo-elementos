@@ -81,6 +81,8 @@ void main() {
     await tester.pump(
       const Duration(milliseconds: 1),
     ); // resolve o Future.delayed da checagem de atualização
+    await tester.tap(find.text('Toque para entrar'));
+    await tester.pump();
 
     await tester.tap(find.text('MODO TREINO'));
     await tester.pump();
@@ -102,6 +104,8 @@ void main() {
       await tester.pump(
         const Duration(milliseconds: 1),
       ); // resolve o Future.delayed da checagem de atualização
+      await tester.tap(find.text('Toque para entrar'));
+      await tester.pump();
 
       await tester.tap(find.text('MODO TREINO'));
       await tester.pump();

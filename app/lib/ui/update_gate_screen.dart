@@ -10,6 +10,7 @@ import '../game_domain/update_checker.dart';
 import '../game_presentation/pixel_menu_button.dart';
 import '../game_presentation/update_frame.dart';
 import 'home_screen.dart';
+import 'loading_battle_scene.dart';
 
 enum _GateState { checking, upToDate, updateRequired, failed }
 
@@ -48,6 +49,7 @@ class UpdateGateScreen extends StatefulWidget {
 
 class _UpdateGateScreenState extends State<UpdateGateScreen> {
   _GateState _state = _GateState.checking;
+  bool _introComplete = false;
   String? _latestVersion;
   String? _downloadUrl;
   String? _checksum, _checkError, _installedVersion;
@@ -233,8 +235,33 @@ class _UpdateGateScreenState extends State<UpdateGateScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.manual &&
+        (_state == _GateState.checking ||
+            (_state == _GateState.upToDate && !_introComplete))) {
+      return LoadingBattleScene(
+        ready: _state == _GateState.upToDate,
+        onPresented: () {
+          if (mounted && !_introComplete) setState(() => _introComplete = true);
+        },
+        onEnter: () {
+          if (_state == _GateState.upToDate) {
+            setState(() => _introComplete = true);
+          }
+        },
+      );
+    }
     if (_state == _GateState.upToDate && !widget.manual) {
-      return const HomeScreen();
+      return TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: Duration(
+          milliseconds: MediaQuery.disableAnimationsOf(context) ? 0 : 240,
+        ),
+        builder: (_, opacity, child) => ColoredBox(
+          color: const Color(0xFF142B2C),
+          child: Opacity(opacity: opacity, child: child),
+        ),
+        child: const HomeScreen(),
+      );
     }
 
     final downloading = _downloadState == _DownloadState.downloading;
@@ -324,7 +351,10 @@ class _UpdateGateScreenState extends State<UpdateGateScreen> {
               if (widget.manual) {
                 Navigator.of(context).pop();
               } else {
-                setState(() => _state = _GateState.upToDate);
+                setState(() {
+                  _introComplete = true;
+                  _state = _GateState.upToDate;
+                });
               }
             },
             child: Text(widget.manual ? 'Voltar' : 'Continuar sem verificar'),

@@ -7,6 +7,7 @@ import 'beta_health_feedback.dart';
 part 'beta_spell_effects.dart';
 part 'beta_world_art.dart';
 part 'beta_wardrobe_art.dart';
+part 'loading_battle_art.dart';
 
 Color betaElementColor(BetaElement element) => switch (element) {
   BetaElement.fire => const Color(0xFFEAAF52),

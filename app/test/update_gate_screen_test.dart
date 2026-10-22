@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:app/game_domain/update_checker.dart';
 import 'package:app/game_presentation/sfx_player.dart';
 import 'package:app/ui/home_screen.dart';
+import 'package:app/ui/loading_battle_scene.dart';
 import 'package:app/ui/update_gate_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -212,7 +213,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('shows the Home screen directly when not running on Android', (
+  testWidgets('intro can be skipped when not running on Android', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -225,6 +226,9 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 1));
 
+    expect(find.byType(LoadingBattleScene), findsOneWidget);
+    await tester.tap(find.text('Toque para entrar'));
+    await tester.pump();
     expect(find.byType(HomeScreen), findsOneWidget);
 
     await tester.pumpWidget(
@@ -232,7 +236,7 @@ void main() {
     ); // dispose the idle AnimationControllers
   });
 
-  testWidgets('shows the Home screen after checking, when up to date', (
+  testWidgets('up-to-date intro automatically opens Home after three seconds', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -246,6 +250,8 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 1));
 
+    expect(find.byType(HomeScreen), findsNothing);
+    await tester.pump(const Duration(milliseconds: 3100));
     expect(find.byType(HomeScreen), findsOneWidget);
 
     await tester.pumpWidget(
