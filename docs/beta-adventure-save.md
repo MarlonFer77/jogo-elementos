@@ -4,7 +4,7 @@ Incluído na v0.40.0, publicada em 20/10/2026. Validação física ainda pendent
 
 ## Entrada
 
-Correção posterior à v0.41.0 (ainda não publicada): login/cadastro pertencem ao
+Correção incluída na v0.42.0: login/cadastro pertencem ao
 aplicativo inteiro, antes do menu, e não ao BETA. `AppAccountGate` restaura uma
 única sessão e `AccountLoginScreen` permite criar/recuperar conta e confirmar o
 e-mail. O UID vem do Firebase, nunca de um campo editável. Contas existentes

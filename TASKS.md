@@ -4,9 +4,13 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Publicação autorizada da v0.42.0+42 em andamento: conta global do Elementos.
-Compilar pelo workflow existente, conferir versão/assinatura/hash do APK e
-publicar como Latest. Sem alteração de backend ou migração de saves.
+v0.42.0+42 publicada como Latest em 22/10/2026: conta global do Elementos.
+Build 39830854711, commit ce4f712; APK 59.790.834 bytes. Versão e assinatura
+anterior conferidas; hash local/build/GitHub idêntico. O atualizador real confirmou
+0.41.0+41 → 0.42.0 e nenhuma atualização para a própria 0.42.0+42.
+Notas: docs/release-v0.42.0.md. Sem alteração de backend ou migração de saves.
+Próximo: atualizar sem desinstalar e validar conta existente/cadastro, entrada
+global, modos locais offline e troca de conta no Android.
 
 Checkpoint de implementação:
 
@@ -18,8 +22,7 @@ a mesma sessão. BETA mantém somente senha de teste e save, sem cadastro/logout
 próprio. A animação já era global; sua legenda agora identifica o jogo inteiro.
 Saves preservados, sem migração ou nova sincronização em nuvem. 33 testes focados
 passaram e análise estática limpa; menu conferido em 320×568 e 568×320.
-Sem nova release/APK/deploy neste bloco. Próximo: validar este fluxo no Android
-ao gerar a próxima versão (conta existente, cadastro, offline e troca de conta).
+Implementação incluída na v0.42.0 acima. Validação física do fluxo ainda pendente.
 
 Checkpoint anterior:
 

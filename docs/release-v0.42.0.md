@@ -33,3 +33,15 @@ vertical/horizontal. Validação física no Android continua necessária.
 Nenhuma mudança de servidor. O modo BETA continua experimental. A assinatura
 definitiva continua pendente; esta versão mantém a assinatura anterior para
 permitir atualização sem apagar dados.
+
+## APK verificado
+
+- Commit compilado: `ce4f712618cf4e677e60f09b8ff4f44a5c7f16dd`.
+- [Build GitHub Actions](https://github.com/MarlonFer77/jogo-elementos/actions/runs/39830854711).
+- Versão `0.42.0+42`; pacote `com.example.app`; Android 7/API 24 ou superior.
+- Certificado igual ao da v0.41.0, preservando a assinatura Android Debug anterior.
+- SHA-256: `47eabe1eee0b42d60ed13f2d1282afb3fcf2055feba0a312a65ac98800c7d8d5`.
+
+Publicada como Latest em 22/10/2026. APK com 59.790.834 bytes; hash idêntico
+no build, arquivo local e GitHub. O atualizador real confirmou 0.41.0+41 → 0.42.0;
+a própria 0.42.0+42 está atualizada.

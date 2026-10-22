@@ -2,7 +2,7 @@
 
 Incluído na v0.41.0, publicada como Latest em 22/10/2026.
 
-Correção posterior (ainda não publicada): abertura → verificação da versão →
+Correção incluída na v0.42.0: abertura → verificação da versão →
 conta do Elementos → menu de todos os modos. Uma sessão já confirmada abre o
 menu diretamente, sem repetir cadastro. A arte do anjo/goblins é a abertura
 do aplicativo, não a entrada exclusiva do BETA; a legenda agora é global.
