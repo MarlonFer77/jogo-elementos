@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'ui/update_gate_screen.dart';
 import 'settings/game_settings.dart';
 import 'game_presentation/sfx_player.dart';
+import 'game_domain/account_auth.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,7 +15,8 @@ Future<void> main() async {
 }
 
 class GameApp extends StatelessWidget {
-  const GameApp({super.key});
+  const GameApp({super.key, this.auth});
+  final AccountAuth? auth;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +26,7 @@ class GameApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange),
         useMaterial3: true,
       ),
-      home: const UpdateGateScreen(),
+      home: UpdateGateScreen(auth: auth),
     );
   }
 }

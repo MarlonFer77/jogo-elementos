@@ -219,7 +219,7 @@ class _LoadingBattleSceneState extends State<LoadingBattleScene>
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'ANJO DA AURORA',
+                    'DESCUBRA · CONJURE · DOMINE',
                     style: TextStyle(
                       color: Color(0xFFD1D5B6),
                       fontSize: 11,

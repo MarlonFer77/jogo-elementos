@@ -4,11 +4,18 @@ Incluído na v0.40.0, publicada em 20/10/2026. Validação física ainda pendent
 
 ## Entrada
 
-O BETA reutiliza Firebase Auth e a tela de conta existente: criar conta com
-e-mail, senha e confirmação; confirmar o e-mail; continuar. O UID vem do Firebase,
-nunca de um campo editável. Contas Multiplayer existentes usam o mesmo ID.
-Esse fluxo não cria salas nem depende do Render. Recuperação de senha e reenvio
-da confirmação continuam disponíveis. Nenhuma senha é salva no aparelho.
+Correção posterior à v0.41.0 (ainda não publicada): login/cadastro pertencem ao
+aplicativo inteiro, antes do menu, e não ao BETA. `AppAccountGate` restaura uma
+única sessão e `AccountLoginScreen` permite criar/recuperar conta e confirmar o
+e-mail. O UID vem do Firebase, nunca de um campo editável. Contas existentes
+continuam válidas. Esse fluxo não cria salas nem depende do Render.
+
+Treino, Dungeon, batalha 2D, Multiplayer, loja e BETA ficam no mesmo menu.
+“Minha conta” centraliza ID e saída; o Multiplayer e o BETA recebem a mesma
+instância de sessão. Sair remove as rotas abertas, sem apagar progresso.
+O BETA mantém apenas a senha de testador, continuar/nova aventura e checkpoints.
+Recuperação de senha e reenvio de confirmação continuam disponíveis na entrada
+global. Nenhuma senha da conta é salva no aparelho.
 
 Após a primeira confirmação online, a sessão guardada em armazenamento seguro
 permite jogar offline. Trocar conta mantém saves separados por UID e não migra
@@ -45,7 +52,9 @@ Não sincroniza com Firestore nem protege contra adulteração do aparelho. Não
 usar esses dados como autoridade para economia online. Desinstalar/limpar dados
 pode perder a aventura; entrar em outro aparelho ainda não a recupera.
 A coleção da loja permanece compartilhada/local, como antes deste bloco.
-Treino, Dungeon, multiplayer e seus saves não são alterados.
+Treino, Dungeon, multiplayer e seus formatos de save não são alterados.
+Conta global não significa sincronização automática: progresso local legado
+permanece no aparelho, sem migração ou transferência entre contas neste bloco.
 
 ## Verificação
 

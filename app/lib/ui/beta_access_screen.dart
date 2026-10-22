@@ -11,9 +11,8 @@ import '../game_presentation/pixel_content_panel.dart';
 import '../game_presentation/pixel_menu_button.dart';
 import '../game_presentation/pixel_page_route.dart';
 import 'beta_screen.dart';
-import 'multiplayer_login_screen.dart';
 
-/// Tester password is only a local gate. Firebase owns the adventure identity.
+/// Module gate only: the app supplies the already identified account.
 class BetaAccessScreen extends StatefulWidget {
   const BetaAccessScreen({super.key, this.auth});
   final AccountAuth? auth;
@@ -39,7 +38,7 @@ class _BetaAccessScreenState extends State<BetaAccessScreen> {
 
   Future<void> _load() async {
     try {
-      await _auth.restore();
+      if (widget.auth == null) await _auth.restore();
       _store = _auth.hasSession && _auth.emailVerified && _auth.uid != null
           ? BetaAdventureStore(_auth.uid!)
           : null;
@@ -52,34 +51,6 @@ class _BetaAccessScreenState extends State<BetaAccessScreen> {
       _dataError = true;
       _error =
           'Não foi possível ler a conta ou aventura. Dados preservados; tente novamente.';
-    }
-    if (mounted) setState(() => _opening = false);
-  }
-
-  Future<void> _account() async {
-    if (_opening) return;
-    setState(() => _opening = true);
-    await Navigator.of(context).push(
-      pixelSlideRoute(
-        (_) => MultiplayerLoginScreen(auth: _auth, adventure: true),
-      ),
-    );
-    if (mounted) await _load();
-  }
-
-  Future<void> _signOut() async {
-    if (_opening) return;
-    setState(() => _opening = true);
-    _store = null;
-    _saved = null;
-    try {
-      await _auth.signOut();
-      _store = null;
-      _saved = null;
-      _dataError = false;
-      _error = null;
-    } catch (_) {
-      _error = 'Não foi possível encerrar a conta. Tente novamente.';
     }
     if (mounted) setState(() => _opening = false);
   }
@@ -208,27 +179,19 @@ class _BetaAccessScreenState extends State<BetaAccessScreen> {
                         const SizedBox(height: 12),
                         if (_store == null) ...[
                           const Text(
-                            'Registre-se ou entre na sua conta para identificar e salvar a aventura. Após confirmar o e-mail, você pode jogar offline neste aparelho.',
+                            'Entre na conta do Elementos pela entrada do aplicativo. O BETA é apenas um dos modos e usa a mesma conta.',
                           ),
                           PixelMenuButton(
-                            label: 'Criar conta / entrar',
+                            label: 'Voltar ao menu',
                             primary: true,
-                            onPressed: _opening ? null : _account,
+                            onPressed: _opening
+                                ? null
+                                : () => Navigator.of(context).maybePop(),
                           ),
-                          if (_auth.hasSession || _dataError)
-                            TextButton(
-                              onPressed: _opening ? null : _signOut,
-                              child: const Text('Sair / usar outra conta'),
-                            ),
                         ] else ...[
-                          Text(_auth.email),
-                          SelectableText(
-                            'ID: ${_store!.uid}',
-                            style: const TextStyle(fontSize: 11),
-                          ),
-                          TextButton(
-                            onPressed: _opening ? null : _signOut,
-                            child: const Text('Trocar conta (mantém os saves)'),
+                          const Text(
+                            'Usando sua conta do Elementos.',
+                            style: TextStyle(fontSize: 12),
                           ),
                           if (!_unlocked)
                             TextField(

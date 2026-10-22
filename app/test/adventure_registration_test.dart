@@ -6,7 +6,7 @@ import 'package:app/game_presentation/beta_game.dart';
 import 'package:app/game_presentation/sfx_player.dart';
 import 'package:app/ui/beta_access_screen.dart';
 import 'package:app/ui/beta_screen.dart';
-import 'package:app/ui/multiplayer_login_screen.dart';
+import 'package:app/ui/account_login_screen.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -122,7 +122,7 @@ void main() {
                       context,
                       MaterialPageRoute(
                         builder: (_) =>
-                            MultiplayerLoginScreen(auth: auth, adventure: true),
+                            AccountLoginScreen(auth: auth, accountOnly: true),
                       ),
                     );
                   },
@@ -171,7 +171,7 @@ void main() {
   }
 
   testWidgets(
-    'saved adventure resumes paused and account switch cannot reuse another UID',
+    'saved adventure resumes paused; module contains no account registration or logout',
     (tester) async {
       final auth = TestAuth()
         ..signed = true
@@ -213,11 +213,9 @@ void main() {
       await tester.tap(find.text('Cancelar'));
       await frame(tester);
       expect((await store.load())!.cleared, true);
-      await tester.ensureVisible(find.text('Trocar conta (mantém os saves)'));
-      await tester.tap(find.text('Trocar conta (mantém os saves)'));
-      await frame(tester);
-      expect(find.text('Criar conta / entrar'), findsOneWidget);
-      expect(find.text('Continuar aventura'), findsNothing);
+      expect(find.text('Trocar conta (mantém os saves)'), findsNothing);
+      expect(find.text('Criar conta / entrar'), findsNothing);
+      expect(find.text('Continuar aventura'), findsOneWidget);
       expect((await store.load())!.cleared, true);
     },
   );

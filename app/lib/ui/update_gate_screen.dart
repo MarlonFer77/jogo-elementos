@@ -9,7 +9,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../game_domain/update_checker.dart';
 import '../game_presentation/pixel_menu_button.dart';
 import '../game_presentation/update_frame.dart';
-import 'home_screen.dart';
+import '../game_domain/account_auth.dart';
+import 'app_account_gate.dart';
 import 'loading_battle_scene.dart';
 
 enum _GateState { checking, upToDate, updateRequired, failed }
@@ -28,6 +29,7 @@ class UpdateGateScreen extends StatefulWidget {
   const UpdateGateScreen({
     super.key,
     this.manual = false,
+    this.auth,
     UpdateChecker? updateChecker,
     String? currentVersion,
     bool? isAndroid,
@@ -39,6 +41,7 @@ class UpdateGateScreen extends StatefulWidget {
 
   final UpdateChecker? _updateChecker;
   final bool manual;
+  final AccountAuth? auth;
   final String? _currentVersion;
   final bool? _isAndroid;
   final Stream<OtaEvent> Function(String url)? _startDownload;
@@ -260,7 +263,7 @@ class _UpdateGateScreenState extends State<UpdateGateScreen> {
           color: const Color(0xFF142B2C),
           child: Opacity(opacity: opacity, child: child),
         ),
-        child: const HomeScreen(),
+        child: AppAccountGate(auth: widget.auth),
       );
     }
 

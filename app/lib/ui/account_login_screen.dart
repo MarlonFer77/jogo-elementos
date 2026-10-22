@@ -10,15 +10,24 @@ import '../game_presentation/pixel_text_field.dart';
 import '../game_presentation/pixel_page_route.dart';
 import 'multiplayer_lobby_screen.dart';
 
-class MultiplayerLoginScreen extends StatefulWidget {
-  const MultiplayerLoginScreen({super.key, this.auth, this.adventure = false});
+class AccountLoginScreen extends StatefulWidget {
+  const AccountLoginScreen({
+    super.key,
+    this.auth,
+    this.accountOnly = false,
+    this.restoreSession = true,
+    this.onAuthenticated,
+    this.onSignOut,
+  });
   final AccountAuth? auth;
-  final bool adventure;
+  final bool accountOnly, restoreSession;
+  final VoidCallback? onAuthenticated;
+  final Future<void> Function()? onSignOut;
   @override
-  State<MultiplayerLoginScreen> createState() => _MultiplayerLoginScreenState();
+  State<AccountLoginScreen> createState() => _AccountLoginScreenState();
 }
 
-class _MultiplayerLoginScreenState extends State<MultiplayerLoginScreen> {
+class _AccountLoginScreenState extends State<AccountLoginScreen> {
   late final _auth = widget.auth ?? AccountAuth();
   final _email = TextEditingController(),
       _password = TextEditingController(),
@@ -39,17 +48,17 @@ class _MultiplayerLoginScreenState extends State<MultiplayerLoginScreen> {
   @override
   void initState() {
     super.initState();
-    _register = widget.adventure;
+    _register = widget.accountOnly;
     unawaited(
       _run(() async {
-        if (!widget.adventure) {
+        if (!widget.accountOnly) {
           final legacy = MultiplayerClient(baseUrl: defaultMultiplayerBaseUrl);
           _legacy = await legacy.lastSession();
           _legacyToken = await legacy.legacyToken();
           _importLegacy = _legacyToken != null && _legacy.$1.isNotEmpty;
           _name.text = _legacy.$1;
         }
-        await _auth.restore();
+        if (widget.restoreSession && !_auth.hasSession) await _auth.restore();
         _email.text = _auth.email;
         if (_auth.hasSession) await _connect();
       }),
@@ -85,9 +94,14 @@ class _MultiplayerLoginScreenState extends State<MultiplayerLoginScreen> {
   }
 
   Future<void> _connect() async {
-    if (widget.adventure) {
+    if (widget.accountOnly) {
       await _auth.verifyIdentity();
-      if (mounted) Navigator.of(context).pop(_auth.uid);
+      if (!mounted) return;
+      if (widget.onAuthenticated != null) {
+        widget.onAuthenticated!();
+      } else {
+        Navigator.of(context).pop(_auth.uid);
+      }
       return;
     }
     final client = _client;
@@ -114,7 +128,7 @@ class _MultiplayerLoginScreenState extends State<MultiplayerLoginScreen> {
           client: client,
           accountName: player,
           onSignOut: () async {
-            await _auth.signOut();
+            await _signOut();
             _profileNeeded = false;
           },
         ),
@@ -145,6 +159,15 @@ class _MultiplayerLoginScreenState extends State<MultiplayerLoginScreen> {
     }
   });
 
+  Future<void> _signOut() async {
+    if (widget.onSignOut != null) {
+      await widget.onSignOut!();
+    } else {
+      await _auth.signOut();
+    }
+    _profileNeeded = false;
+  }
+
   Future<void> _saveProfile() => _run(() async {
     final client = _client;
     final player = await client.account(
@@ -165,7 +188,7 @@ class _MultiplayerLoginScreenState extends State<MultiplayerLoginScreen> {
     child: Scaffold(
       backgroundColor: const Color(0xFF172D2C),
       appBar: AppBar(
-        title: const Text('CONTA DO AVENTUREIRO'),
+        title: Text(widget.accountOnly ? 'CONTA ELEMENTOS' : 'MULTIPLAYER'),
         backgroundColor: const Color(0xFF172D2C),
         foregroundColor: const Color(0xFFF1E8C9),
       ),
@@ -173,11 +196,11 @@ class _MultiplayerLoginScreenState extends State<MultiplayerLoginScreen> {
         child: MultiplayerConnectionPanel(
           title: _profileNeeded
               ? 'SEU PERFIL'
-              : widget.adventure
-              ? 'REGISTRO DOS ECOS'
+              : widget.accountOnly
+              ? 'BEM-VINDO AO ELEMENTOS'
               : 'PORTAL DO DUELO',
-          message: widget.adventure
-              ? 'Uma identidade para sua aventura.'
+          message: widget.accountOnly
+              ? 'Uma conta. Todos os modos do jogo.'
               : 'Seu progresso online acompanha sua conta.',
           connecting: _busy,
           child: AutofillGroup(
@@ -186,9 +209,9 @@ class _MultiplayerLoginScreenState extends State<MultiplayerLoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  widget.adventure
-                      ? 'Crie sua conta ou use a mesma do Multiplayer. O Firebase gera seu ID. A aventura será salva neste aparelho, separada por conta; ainda sem sincronização entre celulares.'
-                      : 'Treino e Dungeon continuam offline. Sua conta também identifica o save local da aventura BETA.',
+                  widget.accountOnly
+                      ? 'Uma conta para Treino, batalha 2D, Dungeon, Multiplayer e BETA TEST. Já joga? Use sua conta existente. Após confirmar o e-mail, os modos locais funcionam offline neste aparelho.'
+                      : 'Conectando com sua conta do Elementos. O Multiplayer requer internet; os modos locais continuam no menu.',
                 ),
                 const SizedBox(height: 12),
                 if (!_auth.configured)
@@ -228,7 +251,9 @@ class _MultiplayerLoginScreenState extends State<MultiplayerLoginScreen> {
                     style: const TextStyle(fontSize: 11),
                   ),
                   PixelMenuButton(
-                    label: 'Continuar / já confirmei o e-mail',
+                    label: widget.accountOnly
+                        ? 'Continuar / já confirmei o e-mail'
+                        : 'Conectar ao Multiplayer',
                     primary: true,
                     onPressed: _busy ? null : () => _run(_connect),
                   ),
@@ -309,8 +334,7 @@ class _MultiplayerLoginScreenState extends State<MultiplayerLoginScreen> {
                     onPressed: _busy
                         ? null
                         : () => _run(() async {
-                            await _auth.signOut();
-                            _profileNeeded = false;
+                            await _signOut();
                           }),
                     child: const Text('Sair / usar outra conta'),
                   ),

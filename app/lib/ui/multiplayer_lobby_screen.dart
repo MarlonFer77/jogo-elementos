@@ -195,7 +195,10 @@ class _MultiplayerLobbyScreenState extends State<MultiplayerLobbyScreen> {
                       setState(() => _loading = true);
                       try {
                         await widget.onSignOut!();
-                        if (context.mounted) Navigator.of(context).pop();
+                        if (context.mounted &&
+                            ModalRoute.of(context)?.isCurrent == true) {
+                          Navigator.of(context).pop();
+                        }
                       } catch (_) {
                         if (mounted) {
                           setState(() {

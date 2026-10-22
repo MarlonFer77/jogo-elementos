@@ -1,5 +1,5 @@
 import 'package:app/game_domain/account_auth.dart';
-import 'package:app/ui/multiplayer_login_screen.dart';
+import 'package:app/ui/account_login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,7 +18,7 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
         await tester.pumpWidget(
           MaterialApp(
-            home: MultiplayerLoginScreen(auth: AccountAuth(apiKey: 'test-key')),
+            home: AccountLoginScreen(auth: AccountAuth(apiKey: 'test-key')),
           ),
         );
         await tester.pump();

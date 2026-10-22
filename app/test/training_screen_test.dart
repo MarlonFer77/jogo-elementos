@@ -5,6 +5,8 @@ import 'package:battle_engine/battle_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 SkillProgress _allElementsUnlocked() => SkillProgress(
   defaultSkillTree,
@@ -14,6 +16,14 @@ SkillProgress _allElementsUnlocked() => SkillProgress(
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({
+      'elementos.firebase.session.': jsonEncode({
+        'refresh': 'test-refresh',
+        'uid': 'training-account',
+        'email': 'tester@example.invalid',
+        'verified': true,
+      }),
+    });
   });
 
   testWidgets(

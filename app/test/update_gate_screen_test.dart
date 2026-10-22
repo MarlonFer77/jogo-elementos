@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -11,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:ota_update/ota_update.dart';
 
 class _FakeUpdateChecker implements UpdateChecker {
@@ -32,6 +34,14 @@ class _ThrowingUpdateChecker implements UpdateChecker {
 
 void main() {
   setUp(() {
+    FlutterSecureStorage.setMockInitialValues({
+      'elementos.firebase.session.': jsonEncode({
+        'refresh': 'test-refresh',
+        'uid': 'global-account',
+        'email': 'tester@example.invalid',
+        'verified': true,
+      }),
+    });
     final previous = sfxPlayer;
     sfxPlayer = SfxPlayer(play: (_) {});
     addTearDown(() => sfxPlayer = previous);
@@ -168,6 +178,7 @@ void main() {
     expect(find.byType(HomeScreen), findsNothing);
     await tester.tap(find.text('Continuar sem verificar'));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
     expect(find.byType(HomeScreen), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
@@ -229,6 +240,7 @@ void main() {
     expect(find.byType(LoadingBattleScene), findsOneWidget);
     await tester.tap(find.text('Toque para entrar'));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
     expect(find.byType(HomeScreen), findsOneWidget);
 
     await tester.pumpWidget(
@@ -252,6 +264,7 @@ void main() {
 
     expect(find.byType(HomeScreen), findsNothing);
     await tester.pump(const Duration(milliseconds: 3100));
+    await tester.pump(const Duration(milliseconds: 1));
     expect(find.byType(HomeScreen), findsOneWidget);
 
     await tester.pumpWidget(

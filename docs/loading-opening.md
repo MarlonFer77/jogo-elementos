@@ -1,6 +1,11 @@
-# Abertura — Anjo da Aurora
+# Abertura global do Elementos — Anjo da Aurora
 
 Incluído na v0.41.0, publicada como Latest em 22/10/2026.
+
+Correção posterior (ainda não publicada): abertura → verificação da versão →
+conta do Elementos → menu de todos os modos. Uma sessão já confirmada abre o
+menu diretamente, sem repetir cadastro. A arte do anjo/goblins é a abertura
+do aplicativo, não a entrada exclusiva do BETA; a legenda agora é global.
 
 - Cena procedural de oito segundos: defesa luminosa, corte giratório,
   rolamento, conjuração e recuo dos três goblins. Ruínas, bandeiras e partículas
@@ -18,7 +23,7 @@ Incluído na v0.41.0, publicada como Latest em 22/10/2026.
 - Quando pronto: pode entrar por toque ou automaticamente após três segundos
   de apresentação ativa. Se a rede demorar, a coreografia repete; a intro nunca
   dispensa o resultado da consulta. Falha permite continuar explicitamente
-  sem verificar, como antes. Menu entra com fade de 240 ms.
+  sem verificar, como antes. Entrada de conta/menu usa fade de 240 ms.
 - Horizontal/vertical sem scroll. Segundo plano pausa animação e corta os
   efeitos da abertura; preferências de volume/mudo são respeitadas. Redução
   de movimento usa quadro estático, sem som, tremor ou espera obrigatória.

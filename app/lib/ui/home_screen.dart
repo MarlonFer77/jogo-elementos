@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import '../game_presentation/home_title_scene.dart';
 import '../game_presentation/pixel_menu_button.dart';
 import '../game_presentation/pixel_page_route.dart';
-import 'multiplayer_login_screen.dart';
+import '../game_domain/account_auth.dart';
+import 'account_login_screen.dart';
 import 'training_screen.dart';
 import 'dungeon_screen.dart';
 import 'audio_settings.dart';
@@ -15,7 +16,9 @@ import '../settings/game_settings.dart';
 
 /// Menu de entrada; regras, progresso e conexão continuam nas telas de destino.
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.auth, this.onSignOut});
+  final AccountAuth? auth;
+  final Future<void> Function()? onSignOut;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -23,6 +26,49 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _opening = false;
+
+  Future<void> _account() async {
+    if (_opening || widget.auth == null) return;
+    setState(() => _opening = true);
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        title: const Text('CONTA ELEMENTOS'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(widget.auth!.email),
+              SelectableText('ID: ${widget.auth!.uid}'),
+              const SizedBox(height: 12),
+              const Text(
+                'Esta conta dá acesso a todos os modos. Treino, Dungeon e loja continuam locais neste aparelho. O BETA mantém checkpoints por ID; o Multiplayer usa o perfil online. Sair não apaga esses dados.',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialog, false),
+            child: const Text('Voltar'),
+          ),
+          TextButton(
+            onPressed: widget.onSignOut == null
+                ? null
+                : () => Navigator.pop(dialog, true),
+            child: const Text('Sair da conta'),
+          ),
+        ],
+      ),
+    );
+    if (leave == true && mounted) await widget.onSignOut?.call();
+    if (mounted) setState(() => _opening = false);
+  }
+
+  Widget _multiplayer() =>
+      AccountLoginScreen(auth: widget.auth, onSignOut: widget.onSignOut);
+  Widget _beta() => BetaAccessScreen(auth: widget.auth);
 
   Future<void> _open(WidgetBuilder destination) async {
     if (_opening) return;
@@ -125,10 +171,19 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Expanded(
                   child: TextButton.icon(
-                    style: TextButton.styleFrom(foregroundColor: ink),
-                    icon: const Icon(Icons.help_outline),
+                    style: TextButton.styleFrom(
+                      foregroundColor: ink,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    icon: compact && widget.auth != null
+                        ? null
+                        : const Icon(Icons.help_outline),
                     label: Text(
-                      gameSettings.tutorialSeen ? 'Como jogar' : 'Comece aqui',
+                      compact && widget.auth != null
+                          ? 'Ajuda'
+                          : gameSettings.tutorialSeen
+                          ? 'Como jogar'
+                          : 'Comece aqui',
                     ),
                     onPressed: _opening
                         ? null
@@ -156,6 +211,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       : () =>
                             _open((_) => const UpdateGateScreen(manual: true)),
                 ),
+                if (widget.auth != null)
+                  IconButton(
+                    tooltip: 'Minha conta',
+                    color: ink,
+                    icon: const Icon(Icons.account_circle_outlined),
+                    onPressed: _opening ? null : _account,
+                  ),
               ],
             ),
           ),
@@ -167,11 +229,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ('MODO TREINO', () => _open((_) => const TrainingScreen())),
               ],
               [
-                (
-                  'MULTIPLAYER',
-                  () => _open((_) => const MultiplayerLoginScreen()),
-                ),
-                ('BETA TEST', () => _open((_) => const BetaAccessScreen())),
+                ('MULTIPLAYER', () => _open((_) => _multiplayer())),
+                ('BETA TEST', () => _open((_) => _beta())),
               ],
             ])
               Padding(
@@ -236,9 +295,7 @@ class _HomeScreenState extends State<HomeScreen> {
               enabled: !_opening,
               child: PixelMenuButton(
                 label: 'MULTIPLAYER',
-                onPressed: _opening
-                    ? null
-                    : () => _open((_) => const MultiplayerLoginScreen()),
+                onPressed: _opening ? null : () => _open((_) => _multiplayer()),
               ),
             ),
             if (!compact)
@@ -251,9 +308,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             PixelMenuButton(
               label: 'BETA TEST',
-              onPressed: _opening
-                  ? null
-                  : () => _open((_) => const BetaAccessScreen()),
+              onPressed: _opening ? null : () => _open((_) => _beta()),
             ),
             const SizedBox(height: 10),
           ],

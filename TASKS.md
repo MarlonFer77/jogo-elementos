@@ -4,6 +4,25 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Publicação autorizada da v0.42.0+42 em andamento: conta global do Elementos.
+Compilar pelo workflow existente, conferir versão/assinatura/hash do APK e
+publicar como Latest. Sem alteração de backend ou migração de saves.
+
+Checkpoint de implementação:
+
+Correção de escopo concluída localmente: abertura global → conta Elementos →
+menu com todos os modos. AppAccountGate restaura a sessão; AccountLoginScreen
+centraliza cadastro/entrada/recuperação. Sessão confirmada abre o menu offline.
+“Minha conta” no menu; logout encerra as rotas abertas. Multiplayer e BETA recebem
+a mesma sessão. BETA mantém somente senha de teste e save, sem cadastro/logout
+próprio. A animação já era global; sua legenda agora identifica o jogo inteiro.
+Saves preservados, sem migração ou nova sincronização em nuvem. 33 testes focados
+passaram e análise estática limpa; menu conferido em 320×568 e 568×320.
+Sem nova release/APK/deploy neste bloco. Próximo: validar este fluxo no Android
+ao gerar a próxima versão (conta existente, cadastro, offline e troca de conta).
+
+Checkpoint anterior:
+
 v0.41.0+41 publicada como Latest em 22/10/2026: abertura Anjo da Aurora.
 Build 39802134650, commit 5182446; APK 59.708.798 bytes. 15 testes focados
 passaram; assinatura igual à v0.40.0 e hashes local/build/GitHub conferidos.
