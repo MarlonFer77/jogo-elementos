@@ -1,6 +1,6 @@
 # Abertura — Anjo da Aurora
 
-Preparado para v0.41.0; publicação acompanhada em TASKS.md.
+Incluído na v0.41.0, publicada como Latest em 22/10/2026.
 
 - Cena procedural de oito segundos: defesa luminosa, corte giratório,
   rolamento, conjuração e recuo dos três goblins. Ruínas, bandeiras e partículas

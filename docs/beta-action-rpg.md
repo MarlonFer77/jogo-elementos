@@ -8,10 +8,11 @@ Não substitui o combate por turnos. Polimentos anteriores incluídos na v0.34.0
 três regiões, combos e árvore incluídos na **v0.35.0**. A **v0.36.0** foi
 publicada em 15/10/2026; a v0.37.0 adicionou loja e novos efeitos de magias.
 A v0.39.0 adicionou coleção e restauração mantida entre regiões.
-A **v0.40.0** é a Latest atual, com cadastro e checkpoints da aventura por conta.
+A v0.40.0 adicionou cadastro e checkpoints da aventura por conta.
+A **v0.41.0** é a Latest atual, com [abertura Anjo da Aurora](loading-opening.md).
 Sem deploy ou troca de assinatura.
 Validação física ainda pendente, independentemente do canal de distribuição.
-Artefato e verificações em [Release v0.40.0](release-v0.40.0.md).
+Artefato e verificações em [Release v0.41.0](release-v0.41.0.md).
 Incluído: [cadastro e save local da aventura por ID](beta-adventure-save.md).
 Esse bloco substitui os limites antigos de sessão temporária descritos abaixo
 quando o jogador entra na aventura com conta; não adiciona sincronização online.

@@ -4,9 +4,13 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
-Preparando v0.41.0+41 como Latest: abertura Anjo da Aurora, APK pelo workflow
-existente e verificação da assinatura, integridade e atualizador público.
-Sem deploy de backend. Validação física continua pendente.
+v0.41.0+41 publicada como Latest em 22/10/2026: abertura Anjo da Aurora.
+Build 39802134650, commit 5182446; APK 59.708.798 bytes. 15 testes focados
+passaram; assinatura igual à v0.40.0 e hashes local/build/GitHub conferidos.
+Atualizador real confirmou 0.40.0 → 0.41.0 e nenhuma atualização para a própria
+0.41.0. Notas: docs/release-v0.41.0.md. Sem deploy de backend.
+Próximo: atualizar sem desinstalar e validar abertura, orientação, áudio, pausa
+e saves no Android. Validação física continua pendente.
 
 Checkpoint de implementação:
 
@@ -19,8 +23,7 @@ UpdateGate mantém atualização/erro/retry e consulta manual; menu com fade.
 Pausa em segundo plano, áudio próprio respeitando volume/mudo e redução de
 movimento estática. 15 testes focados passaram; análise estática limpa e prévias
 vertical/horizontal conferidas. Docs: docs/loading-opening.md.
-Sem APK, publicação, push ou mudança de saves/backend. Próximo: validar fluidez,
-áudio e abertura/retorno no Android quando o usuário solicitar o próximo APK.
+Sem mudança de saves/backend. A implementação está incluída na v0.41.0 acima.
 
 Checkpoint anterior:
 
