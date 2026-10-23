@@ -586,6 +586,14 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
                       run.mana / 100,
                       const Color(0xFF83BCC7),
                     ),
+                    const SizedBox(height: 3),
+                    _bar(
+                      'ST ${run.stamina.floor()}/${BetaSession.maxStamina.round()}',
+                      run.stamina / BetaSession.maxStamina,
+                      run.stamina < BetaSession.dodgeStaminaCost
+                          ? const Color(0xFFE8A17E)
+                          : const Color(0xFFE3C476),
+                    ),
                     BetaStatusReadout(run: run, critical: critical),
                   ],
                 ),
@@ -849,7 +857,10 @@ class _BetaScreenState extends State<BetaScreen> with WidgetsBindingObserver {
       const Text(
         'Alvo dourado: espada no alcance. Azul: aproxime-se ou use magia. '
         'Colunas bloqueiam golpes e disparos. Magia simples custa 25 MP; '
-        'mana retorna sozinha. Em Mistura, toque no segundo elemento e conjure '
+        'mana retorna sozinha. Stamina (ST): espada custa 18 e rolar custa 28. '
+        'Recupera 22/s após 0,8s sem gastar. Andar e conjurar não gastam ST; '
+        'alterne magia e combate físico para recuperar o fôlego. '
+        'Em Mistura, toque no segundo elemento e conjure '
         '(35–45 MP). Acerte para descobrir; os três primeiros combos são equipados.',
         style: TextStyle(fontSize: 12),
       ),

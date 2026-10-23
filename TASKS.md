@@ -4,6 +4,58 @@ Fonte única da verdade sobre o trabalho atual.
 
 # NOW
 
+Release v0.43.0+43 em preparação: reúne polimento de combate, efeitos de magias
+e stamina do BETA. Compilar no GitHub Actions, conferir assinatura/versão/hash,
+publicar como Latest e verificar o atualizador. Sem alterações no servidor.
+
+Checkpoint anterior:
+
+Stamina do BETA concluída localmente em 23/10/2026: 100 ST, espada 18 ST,
+esquiva 28 ST; recuperação de 22/s após 0,8s sem gasto. Movimento e magias não
+gastam ST. Rejeição sem saldo, custo somente ao executar, fila revalidada e
+cancelamento pela esquiva sem reembolso do golpe iniciado. Pausa/resultados
+não regeneram; recuperação é limitada e consistente em 30/60/120 FPS.
+HUD com terceira barra compacta, custos nos controles, “Sem stamina” e guia.
+Checkpoint v1 aditivo preserva ST/espera; legado inicia com 100, valores inválidos
+são rejeitados sem apagar saves. 38 testes passaram (regras, regressão de combate,
+checkpoints e HUD); análise estática limpa, prévias 320×568/568×320 conferidas.
+Arquivos: beta_session.dart, beta_checkpoint.dart, beta_controls.dart,
+beta_screen.dart e testes de stamina/HUD. Modo 2D, loja e backend inalterados.
+Sem novo APK/release. Próximo: validar ritmo de consumo/recuperação no celular;
+custos e regeneração são o balanceamento inicial, sem novas habilidades de ST.
+
+Checkpoint anterior:
+
+Polimento das magias do BETA concluído localmente em 23/10/2026: dois elementos
+se reúnem na mão antes da mistura; rastros direcionais de fogo/água/ar e detritos
+para terra/lama/erupção/estilhaços, limitados à distância realmente percorrida.
+Impactos com expansão rápida e dissipação, brasas ascendentes, rachaduras na
+terra/magma, vapor que sobe, névoa que se dispersa e fragmentos que caem.
+Rastros substituem os antigos, sem empilhar emissores; redução de movimento os
+desliga. Projéteis expirados não deixam desenho residual. Preservados os quatro
+elementos, seis combos, dano, custo, colisões, duração e saves; nenhuma regra nova.
+9 testes focados passaram; análise estática limpa e prévias de voo, impacto e
+conjuração conferidas. Limite de 200 faces por efeito isolado mantido nos testes,
+incluindo estágios de formação/dissipação, orientações, pausa e redução de movimento.
+Arquivos: beta_spell_effects.dart, beta_arena_painter.dart, beta_spell_effects_test.dart.
+Sem nova release/APK. Próximo: conferir fluidez e legibilidade no celular.
+
+Checkpoint anterior:
+
+Polimento de combate do BETA concluído localmente em 23/10/2026: poses contínuas
+de espada, impulso no instante real do contato e retorno suave à guarda.
+Rastro curto amostrado da própria lâmina (máximo 5 segmentos), braços em
+contrapeso, base das pernas durante golpes/conjuração e reação ao dano com
+compressão/retorno. Correção do salto de postura na recuperação da estocada.
+Redução de movimento desliga os rastros decorativos. Regras, dano, alcance,
+tempos, skins, saves e combate 2D preservados; sem novas dependências.
+16 testes focados passaram (poses, render, skins/técnicas e abertura reutilizada);
+análise estática limpa, prévias de combate e mobs conferidas visualmente.
+Arquivos: beta_sword_pose.dart, beta_arena_painter.dart, beta_sword_pose_test.dart.
+Sem novo APK/release. Próximo: validar sensação de movimento e fluidez no Android.
+
+Checkpoint anterior:
+
 v0.42.0+42 publicada como Latest em 22/10/2026: conta global do Elementos.
 Build 39830854711, commit ce4f712; APK 59.790.834 bytes. Versão e assinatura
 anterior conferidas; hash local/build/GitHub idêntico. O atualizador real confirmou

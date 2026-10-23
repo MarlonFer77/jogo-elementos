@@ -23,6 +23,8 @@ class BetaCheckpoint {
       'won': run.phase == BetaPhase.won,
       'hp': run.hp,
       'mana': run.mana,
+      'stamina': run.stamina,
+      'staminaWait': run._staminaWait,
       'x': run.x,
       'z': run.z,
       'angle': run.angle,
@@ -151,6 +153,17 @@ class BetaCheckpoint {
     require(!won || (cleared && run.finalArea && run.puzzle.solved));
     run.hp = number('hp', .000001, run.maxHp);
     run.mana = number('mana', 0, 100);
+    // Additive v1 fields: old checkpoints start rested; present invalid values
+    // are rejected instead of silently restoring an exhausted/corrupt save.
+    require(data.containsKey('stamina') == data.containsKey('staminaWait'));
+    if (data.containsKey('stamina')) {
+      run.stamina = number('stamina', 0, BetaSession.maxStamina);
+      run._staminaWait = number(
+        'staminaWait',
+        0,
+        BetaSession.staminaRecoveryDelay,
+      );
+    }
     run.time = number('time', 0, 1e9);
     run.x = number('x', -BetaSession.arenaX, BetaSession.arenaX);
     run.z = number('z', -BetaSession.arenaZ, BetaSession.arenaZ);

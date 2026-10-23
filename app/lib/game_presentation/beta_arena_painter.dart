@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../game_domain/beta_session.dart';
 import '../game_domain/cosmetics.dart';
 import 'beta_health_feedback.dart';
+import 'beta_sword_pose.dart';
 
 part 'beta_spell_effects.dart';
 part 'beta_world_art.dart';
@@ -1039,6 +1040,8 @@ class BetaArenaPainter extends CustomPainter {
       0.0,
       1.0,
     );
+    // A brief compression and release, rather than snapping the whole mesh back.
+    final hitBend = dead ? 0.0 : math.sin((1 - recoil) * math.pi) * recoil * 2;
     final bob = moving && !dodging
         ? math.sin(stride * 2).abs() * .05
         : math.sin(_clock * 2 + (hero ? 0 : x * .3 + z * .2)) * .018;
@@ -1078,20 +1081,17 @@ class BetaArenaPainter extends CustomPainter {
               run.swordSide
         : 0.0;
 
+    final swordPose = hero && run.swordTime > 0
+        ? BetaSwordPose.at(
+            BetaSession.swordDuration - run.swordTime,
+            run.swordSide,
+          )
+        : BetaSwordPose.rest;
     var swing = 0.0, lift = 0.0, lunge = 0.0, thrust = 0.0;
     if (hero && run.swordTime > 0) {
-      final elapsed = BetaSession.swordDuration - run.swordTime;
-      if (elapsed < .09) {
-        swing = -1.25 * ease(elapsed / .09);
-      } else if (elapsed < BetaSession.swordContact + .07) {
-        swing = -1.25 + 2.5 * ease((elapsed - .09) / .14);
-      } else {
-        swing = 1.25 * (1 - ease((elapsed - .23) / .21));
-      }
-      swing *= run.swordSide;
-      lift = .18;
-      lunge =
-          math.sin(ease(elapsed / BetaSession.swordDuration) * math.pi) * .18;
+      swing = swordPose.swing;
+      lift = swordPose.lift;
+      lunge = swordPose.lunge;
     } else if (!hero && enemy.windup > 0) {
       final prepare = ease(
         (enemy.preparation - enemy.windup) / (enemy.preparation * .6),
@@ -1115,7 +1115,13 @@ class BetaArenaPainter extends CustomPainter {
     } else if (!hero && enemy.recovery > 0) {
       final recover = 1 - ease(1 - enemy.recovery / enemy.recoveryDuration);
       final sweeping = enemy.attackShape == BetaAttackShape.sweep;
-      lunge = (sweeping ? .13 : .22) * recover;
+      lunge =
+          (sweeping
+              ? .13
+              : enemy.attackShape == BetaAttackShape.thrust
+              ? .27
+              : .22) *
+          recover;
       if (sweeping) swing = 1.35 * recover;
       if (enemy.attackShape == BetaAttackShape.thrust) thrust = .63 * recover;
     }
@@ -1143,11 +1149,18 @@ class BetaArenaPainter extends CustomPainter {
       const Color(0xFFFFEBC3),
       recoil * .8,
     )!;
-    final yaw = angle + swing * .16 + spinYaw;
+    final brace = dead || dodging
+        ? 0.0
+        : hero
+        ? math.max(swordPose.brace, castLift * .7)
+        : enemy.windup > 0
+        ? ease((enemy.preparation - enemy.windup) / (enemy.preparation * .6))
+        : 1 - ease(1 - enemy.recovery / enemy.recoveryDuration);
+    final yaw = angle + swing * .22 + spinYaw - castLift * .18 + castPush * .22;
     final collapse = enemy?.boss == true ? fall : 0.0;
     final tilt =
         -fall * (hero ? math.pi / 2 : .2) -
-        recoil * .12 +
+        hitBend * .22 +
         lunge * .5 -
         castLift * .08 +
         castPush * .15;
@@ -1216,7 +1229,9 @@ class BetaArenaPainter extends CustomPainter {
       transform: world,
     );
     _disc(faces, x, z, .56 * scale, const Color(0x550E2726));
-    final walk = moving && !dodging ? math.sin(stride) * .3 : 0.0;
+    final walk = moving && !dodging
+        ? math.sin(stride) * .3 * (1 - brace * .85)
+        : 0.0;
     if (enemy != null) {
       _creatureMesh(
         faces,
@@ -1228,19 +1243,20 @@ class BetaArenaPainter extends CustomPainter {
         thrust: thrust,
         recoil: recoil,
         collapse: collapse,
+        brace: brace,
       );
       return;
     }
     for (final side in [-1.0, 1.0]) {
       final foot = _V(
-        side * (.18 + tuck * .06),
+        side * (.18 + tuck * .06 + brace * .06),
         .1 + math.max(0, walk * side) * .22 + tuck * .38,
-        -walk * side + tuck * .06,
+        -walk * side + tuck * .06 + side * brace * .13,
       );
       final knee = _V(
         side * .18,
-        .32 + tuck * .38,
-        -walk * side * .5 + .08 + tuck * .3,
+        .32 + tuck * .38 - brace * .04,
+        -walk * side * .5 + .08 + tuck * .3 + brace * .12,
       );
       _beam(faces, _V(side * .18, .57, 0), knee, .22, body, world);
       _beam(faces, knee, foot, .2, const Color(0xFF313F3C), world);
@@ -1359,17 +1375,17 @@ class BetaArenaPainter extends CustomPainter {
     _V tucked(_V rest, _V folded) => rest + (folded - rest) * tuck;
     final hand = tucked(
       _V(
-        .42 + math.sin(swing) * .3,
-        .77 + lift * .65 - castLift * .14,
-        .25 + math.cos(swing) * .17 + walk * .4 + thrust - castLift * .2,
+        swordPose.handX,
+        swordPose.handY - castLift * .14,
+        swordPose.handZ + walk * .4 - castLift * .2,
       ),
       const _V(.28, 1.12, .26),
     );
     final leftHand = tucked(
       _V(
-        -.45 - castLift * .15 + castPush * .1,
-        .69 + castLift * .4 - castPush * .18,
-        .16 + castLift * .19 + castPush * .3 - walk * .5,
+        -.45 - castLift * .15 + castPush * .1 - swing * .08,
+        .69 + castLift * .4 - castPush * .18 + swordPose.brace * .16,
+        .16 + castLift * .19 + castPush * .3 - walk * .5 - swordPose.lunge * .5,
       ),
       const _V(-.28, 1.12, .26),
     );
@@ -1387,7 +1403,7 @@ class BetaArenaPainter extends CustomPainter {
     final blade = run.bladeCombo != null
         ? betaComboColor(run.bladeCombo!)
         : betaElementColor(run.bladeElement);
-    final bladePitch = .12 + castLift * -.45;
+    final bladePitch = swordPose.pitch + castLift * -.45;
     final direction = _V(
       math.sin(swing) * math.cos(bladePitch),
       math.sin(bladePitch),
@@ -1509,19 +1525,39 @@ class BetaArenaPainter extends CustomPainter {
         fraction: (run.curseTime / 4).clamp(0.0, 1.0),
       );
     }
-    // Short, opaque arc: readable blade motion without a full-screen glow.
+    // Sample the blade itself, not an unrelated ring around the actor's feet.
+    // Five segments maximum; no history buffers or per-frame particle spawns.
     final elapsed = BetaSession.swordDuration - run.swordTime;
-    if (hero && run.swordTime > 0 && elapsed >= .1 && elapsed <= .24) {
+    if (!reduceMotion &&
+        hero &&
+        run.swordTime > 0 &&
+        elapsed > BetaSwordPose.windupEnd &&
+        elapsed <= BetaSwordPose.followEnd) {
+      _V arc(double time, double length) {
+        final pose = BetaSwordPose.at(time, run.swordSide);
+        final grip = _V(pose.handX, pose.handY, pose.handZ + walk * .4);
+        final direction = _V(
+          math.sin(pose.swing) * math.cos(pose.pitch),
+          math.sin(pose.pitch),
+          math.cos(pose.swing) * math.cos(pose.pitch),
+        );
+        return world(grip + direction * length);
+      }
+
       for (var i = 0; i < 5; i++) {
-        final a = swing - run.swordSide * i * .13;
-        final b = a - run.swordSide * .13;
-        _V arc(double angle, double radius) =>
-            world(_V(math.sin(angle) * radius, .96, math.cos(angle) * radius));
+        final a = math.max(BetaSwordPose.windupEnd, elapsed - i * .008);
+        final b = math.max(BetaSwordPose.windupEnd, a - .008);
+        if (a == b) break;
         faces.add(
           _Face(
-            [arc(a, 1.8), arc(b, 1.8), arc(b, 1.67), arc(a, 1.67)],
-            Color.lerp(blade, const Color(0xFFF7EDCB), 1 - i / 5)!,
+            [arc(a, 1.49), arc(b, 1.49), arc(b, 1.22), arc(a, 1.22)],
+            Color.lerp(
+              blade,
+              const Color(0xFFF7EDCB),
+              1 - i / 5,
+            )!.withValues(alpha: .85 - i * .13),
             unlit: true,
+            doubleSided: true,
           ),
         );
       }
@@ -1529,13 +1565,13 @@ class BetaArenaPainter extends CustomPainter {
     if (casting) {
       final orb = leftHand + const _V(0, .16, .12);
       final orbit = (1 - charge) * .28;
-      _spellVisual(
+      _conjureVisual(
         faces,
         world(orb + _V(-orbit, 0, 0)),
         run.element,
-        combo: run.castingCombo,
-        yaw: yaw,
-        power: .45 + charge * .8,
+        run.castingCombo,
+        charge,
+        yaw,
       );
       // A previous sword blessing must not recolor the next spell's channel.
       final channelColor = run.castingCombo != null
@@ -1603,6 +1639,7 @@ class BetaArenaPainter extends CustomPainter {
     required double thrust,
     required double recoil,
     required double collapse,
+    required double brace,
   }) {
     const leather = Color(0xFF554232), iron = Color(0xFFB6C4BC);
     const bone = Color(0xFFE5D8AF), dark = Color(0xFF283236);
@@ -1690,7 +1727,7 @@ class BetaArenaPainter extends CustomPainter {
         ((enemy.windup > 0 && enemy.windup < enemy.strikeDuration) ||
             enemy.recovery > enemy.recoveryDuration - .08);
     void slash(_V hand, double yaw, double reach, double direction) {
-      if (!striking) return;
+      if (!striking || reduceMotion) return;
       // Small ribbons follow the weapon; the ground marker owns hit detection.
       for (var i = 0; i < 3; i++) {
         final a = yaw - direction * i * .14;
@@ -1738,14 +1775,14 @@ class BetaArenaPainter extends CustomPainter {
         : .25;
     for (final side in [-1.0, 1.0]) {
       final foot = _V(
-        side * stance,
+        side * (stance + brace * .045),
         .1 + math.max(0, walk * side) * .2,
-        -walk * side + (goblin ? .1 : 0),
+        -walk * side + (goblin ? .1 : 0) + side * brace * .12,
       );
       final knee = _V(
         side * (stance + (goblin ? .08 : 0)),
-        hip * .55,
-        -walk * side * .45 + (goblin ? .22 : .04),
+        hip * .55 - brace * .025,
+        -walk * side * .45 + (goblin ? .22 : .04) + brace * .1,
       );
       beam(_V(side * stance, hip, -.04), knee, legWidth, skin);
       beam(knee, foot, legWidth * .85, stone ? dark : leather);
@@ -2383,6 +2420,7 @@ class BetaArenaPainter extends CustomPainter {
       moving: run.moving,
     );
     for (final p in run.projectiles) {
+      if (p.life <= 0) continue;
       final yaw = math.atan2(p.dx, p.dz);
       final age = (1.3 - p.life).clamp(0.0, 1.3);
       _spellVisual(
@@ -2391,46 +2429,9 @@ class BetaArenaPainter extends CustomPainter {
         p.element,
         combo: p.combo,
         yaw: yaw,
+        flight: true,
+        travel: age * 12,
       );
-      if (p.combo != null) {
-        continue; // Combo silhouettes carry their own trails.
-      }
-      for (var i = 1; i <= 3; i++) {
-        final offset = i * .25;
-        if (offset > age * 12) break; // Never trail behind the launch point.
-        final center = _V(p.x - p.dx * offset, .83, p.z - p.dz * offset);
-        final element = p.combo != null && i.isEven
-            ? p.combo!.second
-            : p.element;
-        final color = betaElementColor(element);
-        final size = 1 - i * .22;
-        if (element == BetaElement.earth) {
-          _box(
-            faces,
-            center,
-            _V(.17, .13, .17) * size,
-            color,
-            yaw: yaw + age * 6 + i,
-          );
-        } else if (element == BetaElement.water ||
-            element == BetaElement.wind) {
-          _beam(
-            faces,
-            center,
-            center +
-                _V(
-                  -p.dx * .18,
-                  element == BetaElement.wind ? .1 : -.035,
-                  -p.dz * .18,
-                ),
-            .075 * size,
-            color,
-            (p) => p,
-          );
-        } else {
-          _gem(faces, center, _V(.12, .15, .18) * size, color, yaw);
-        }
-      }
     }
     for (final fx in run.effects) {
       if (fx.area case final area?) {

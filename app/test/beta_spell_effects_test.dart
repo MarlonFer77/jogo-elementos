@@ -121,6 +121,11 @@ void main() {
           if (impact) {
             final effect = run.effects.single;
             expect(effect.life, .41);
+            for (final life in [.64, .52, .3, .06]) {
+              effect.life = life;
+              frame(size).dispose();
+              expect(effect.life, life); // Drawing must not advance gameplay.
+            }
             // Fizzles must not reuse a full damaging-area silhouette.
             run.effects
               ..clear()
@@ -141,6 +146,11 @@ void main() {
             expect(painter.lastSpellFaceCount, 0);
           } else {
             expect(run.projectiles.single.life, 1.1);
+            run.projectiles.single.life = 0;
+            final recorder = ui.PictureRecorder();
+            painter.paint(Canvas(recorder), size);
+            recorder.endRecording().dispose();
+            expect(painter.lastSpellFaceCount, 0);
           }
         }
         expect(signatures, hasLength(10));
@@ -160,6 +170,40 @@ void main() {
           });
         }
         picture.dispose();
+      }
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'six mixtures gather both elements before forming; bounded at every stage',
+    (tester) async {
+      for (final combo in BetaCombo.values) {
+        final run = BetaSession()..start();
+        run.enemies.clear();
+        run.select(combo.first);
+        run.mix(combo.second);
+        expect(run.cast(), true);
+        final mana = run.mana, time = run.time;
+        final painter = BetaArenaPainter(run);
+        addTearDown(painter.dispose);
+        for (final charge in [.01, .2, .44, .45, .7, .98]) {
+          run.castTime = run.activeCastDuration * (1 - charge);
+          final castTime = run.castTime;
+          for (final reduced in [false, true]) {
+            painter.reduceMotion = reduced;
+            for (final size in [const Size(360, 640), const Size(640, 360)]) {
+              final recorder = ui.PictureRecorder();
+              painter.paint(Canvas(recorder), size);
+              recorder.endRecording().dispose();
+              expect(painter.lastSpellFaceCount, inInclusiveRange(1, 200));
+            }
+          }
+          expect(run.castTime, castTime);
+          expect(run.mana, mana);
+          expect(run.time, time);
+          expect(run.projectiles, isEmpty);
+        }
       }
       expect(tester.takeException(), isNull);
     },

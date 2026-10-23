@@ -189,6 +189,7 @@ class _BetaActionPadState extends State<BetaActionPad> {
 
   String _detail(BetaAction action) {
     if (run.queuedAction == action) return 'Na fila';
+    if (!run.hasStaminaFor(action)) return 'Sem stamina';
     if (run.castTime > 0) return 'Conjurando';
     if (action == BetaAction.cast && run.swordTime > 0) return 'Em ataque';
     if (run.dodgeTime > 0) return 'Rolando';
@@ -205,14 +206,14 @@ class _BetaActionPadState extends State<BetaActionPad> {
     if (cooldown > 0) return '${cooldown.toStringAsFixed(1)}s';
     return switch (action) {
       BetaAction.sword =>
-        run.aimTarget == null
+        '${run.staminaCost(action).round()} ST · ${run.aimTarget == null
             ? 'Mire à frente'
             : run.inSwordRange(run.aimTarget!)
             ? 'No alcance'
-            : 'Aproxime-se',
+            : 'Aproxime-se'}',
       BetaAction.cast =>
         '${run.spellManaCost.round()} MP · ${run.selectedCombo?.label ?? run.element.label}',
-      BetaAction.dodge => 'Esquiva direcional',
+      BetaAction.dodge => '${run.staminaCost(action).round()} ST',
     };
   }
 

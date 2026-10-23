@@ -380,6 +380,24 @@ class BetaSession {
   final effects = <BetaEffect>[];
   final sounds = <BetaSound>[];
   double x = 0, z = 5, angle = math.pi, hp = 100, mana = 100, time = 0;
+  static const maxStamina = 100.0,
+      swordStaminaCost = 18.0,
+      dodgeStaminaCost = 28.0,
+      staminaRecovery = 22.0,
+      staminaRecoveryDelay = .8;
+  double stamina = maxStamina;
+  double _staminaWait = 0;
+  double staminaCost(BetaAction action) => switch (action) {
+    BetaAction.sword => swordStaminaCost,
+    BetaAction.dodge => dodgeStaminaCost,
+    BetaAction.cast => 0,
+  };
+  bool hasStaminaFor(BetaAction action) => stamina >= staminaCost(action);
+  void _spendStamina(BetaAction action) {
+    stamina -= staminaCost(action);
+    _staminaWait = staminaRecoveryDelay;
+  }
+
   double moveX = 0,
       moveZ = 0,
       swordCooldown = 0,
@@ -426,6 +444,7 @@ class BetaSession {
   int get remaining => enemies.where((e) => e.alive).length;
   bool get canSword =>
       playing &&
+      hasStaminaFor(BetaAction.sword) &&
       arrivalTime <= 0 &&
       swordCooldown <= 0 &&
       castTime <= 0 &&
@@ -439,7 +458,11 @@ class BetaSession {
       swordTime <= 0 &&
       dodgeTime <= 0;
   bool get canDodge =>
-      playing && arrivalTime <= 0 && dodgeCooldown <= 0 && castTime <= 0;
+      playing &&
+      hasStaminaFor(BetaAction.dodge) &&
+      arrivalTime <= 0 &&
+      dodgeCooldown <= 0 &&
+      castTime <= 0;
   double get aimDirection => swordTime > 0 || castTime > 0 ? angle : _aimAngle;
   double get dodgeDirection => math.atan2(_dodgeX, _dodgeZ);
   BetaEnemy? get aimTarget {
@@ -565,6 +588,7 @@ class BetaSession {
   bool canRequest(BetaAction action) =>
       playing &&
       arrivalTime <= 0 &&
+      hasStaminaFor(action) &&
       (action != BetaAction.cast || (mana >= spellManaCost && spellEquipped)) &&
       _actionWait(action) <= inputBuffer;
 
@@ -599,7 +623,9 @@ class BetaSession {
     // Otherwise input on the last frame of a cast/swing is silently dropped.
     if (_actionWait(action) <= 0 && _bufferTime > 0) {
       _clearBuffer();
-      _execute(action); // Rechecks mana/phase; never spends twice.
+      _execute(
+        action,
+      ); // Rechecks resources/phase; queued intent spends nothing.
     } else {
       _bufferTime = _tick(_bufferTime, dt);
       if (_bufferTime == 0) _clearBuffer();
@@ -608,6 +634,7 @@ class BetaSession {
 
   bool sword() {
     if (!canSword) return false;
+    _spendStamina(BetaAction.sword);
     _aim(swordReach, melee: true);
     swordCooldown = .52;
     swordTime = swordDuration;
@@ -630,6 +657,7 @@ class BetaSession {
 
   bool dodge() {
     if (!canDodge) return false;
+    _spendStamina(BetaAction.dodge);
     final length = math.sqrt(moveX * moveX + moveZ * moveZ);
     _dodgeX = length > .05 ? moveX / length : math.sin(angle);
     _dodgeZ = length > .05 ? moveZ / length : math.cos(angle);
@@ -836,6 +864,12 @@ class BetaSession {
       }
     }
     mana = math.min(100, mana + dt * (curseTime > 0 ? 4.5 : 9));
+    // Integrate only the part of this step after the recovery delay expires.
+    final recoveryTime = math.max(0.0, dt - _staminaWait);
+    _staminaWait = _tick(_staminaWait, dt);
+    if (swordTime <= 0 && dodgeTime <= 0) {
+      stamina = math.min(maxStamina, stamina + recoveryTime * staminaRecovery);
+    }
     final rolling = dodgeTime > 0;
     final speed = castTime > 0
         ? 1.1

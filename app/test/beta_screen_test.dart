@@ -73,6 +73,7 @@ void main() {
         game.pauseEngine(); // Freeze a worst-case HUD snapshot, not the simulation phase.
         game.session
           ..hp = 20
+          ..stamina = 0
           ..burnTime = 3
           ..curseTime = 4
           ..blessingTime = 5
@@ -82,6 +83,8 @@ void main() {
         game.refresh();
         await tester.pump();
         expect(find.text('VIDA BAIXA · Água cura ao acertar'), findsOneWidget);
+        expect(find.text('ST 0/100'), findsOneWidget);
+        expect(find.text('Sem stamina'), findsNWidgets(2));
         for (final id in [
           'burn',
           'curse',
@@ -132,6 +135,7 @@ void main() {
         );
         game.session
           ..burnTime = 0
+          ..stamina = 100
           ..curseTime = 0
           ..blessingTime = 0
           ..runicBladeTime = 0
@@ -140,6 +144,9 @@ void main() {
         game.refresh();
         await tester.pump();
         expect(find.byKey(const ValueKey('beta-effect-burn')), findsNothing);
+        expect(find.text('ST 100/100'), findsOneWidget);
+        expect(find.text('28 ST'), findsOneWidget);
+        expect(find.text('Sem stamina'), findsNothing);
         expect(find.byKey(const ValueKey('beta-effect-ward')), findsNothing);
         expect(find.text('VIDA BAIXA · Água cura ao acertar'), findsOneWidget);
         await tester.pumpWidget(const SizedBox());

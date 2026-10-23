@@ -32,6 +32,10 @@ local, não autenticação nem autorização de operações no servidor.
 - Cada passo/pista do puzzle e alteração de build fora do combate são guardados.
 - Pausa fora do combate atualiza o checkpoint; status e durações são preservados.
 - Retomada sempre pausada; sem comandos presos, projéteis ou ataques em execução.
+- Stamina e espera de regeneração são preservadas nos novos checkpoints. Saves
+  anteriores sem esses campos continuam válidos e começam com 100 ST. Pausa ou
+  tempo com o aplicativo fechado não recuperam stamina. Campos presentes fora
+  dos limites são rejeitados, sem substituir o progresso por valores padrão.
 - Morte permite tentar novamente do checkpoint. Vitória conserva a conclusão.
 - Nova aventura pede confirmação e substitui o save da conta; loja não é apagada.
 

@@ -13,11 +13,23 @@ extension _BetaSpellEffects on BetaArenaPainter {
     bool impact = false,
     double progress = 0,
     double opacity = 1,
+    bool flight = false,
+    double travel = 0,
   }) {
     if (power <= .001 || opacity <= .001) return;
     final before = faces.length;
     final phase = reduceMotion ? 0.0 : _clock * 5;
-    final growth = impact ? .3 + .7 * math.sin(math.pi * progress).abs() : 1.0;
+    progress = progress.clamp(0.0, 1.0);
+    double ease(double t) {
+      t = t.clamp(0.0, 1.0);
+      return t * t * (3 - 2 * t);
+    }
+
+    // Fast arrival, then debris and vapour settle. Never pulse a blast twice.
+    final growth = impact
+        ? (.2 + .8 * ease(progress / .22)) *
+              (1 - .45 * ease((progress - .4) / .6))
+        : 1.0;
     final scale = power * (impact ? 1 : .48);
     _V world(_V p) =>
         center +
@@ -39,11 +51,12 @@ extension _BetaSpellEffects on BetaArenaPainter {
             [
               world(a),
               world(b),
-              world(b + _V(0, width, 0)),
-              world(a + _V(0, width, 0)),
+              world(b + _V(0, width * (1 - i / points.length * .65), 0)),
+              world(a + _V(0, width * (1 - (i - 1) / points.length * .65), 0)),
             ],
             color,
             unlit: true,
+            doubleSided: true,
           ),
         );
       }
@@ -115,6 +128,36 @@ extension _BetaSpellEffects on BetaArenaPainter {
       }
     }
 
+    void cracks(double radius, int color) {
+      for (var i = 0; i < 5; i++) {
+        final a = i * math.pi * 2 / 5;
+        final points = [
+          for (var j = 0; j < 4; j++)
+            _V(
+              math.cos(a + (j.isOdd ? .13 : -.13)) * radius * j / 3,
+              .018,
+              math.sin(a + (j.isOdd ? .13 : -.13)) * radius * j / 3,
+            ),
+        ];
+        for (var j = 1; j < points.length; j++) {
+          final side = _V(-math.sin(a), 0, math.cos(a)) * .025;
+          faces.add(
+            _Face(
+              [
+                world(points[j - 1] - side),
+                world(points[j] - side),
+                world(points[j] + side),
+                world(points[j - 1] + side),
+              ],
+              tint(color, .8),
+              unlit: true,
+              ground: true,
+            ),
+          );
+        }
+      }
+    }
+
     switch (combo) {
       case BetaCombo.firestorm:
         // Narrow foot, broad crown, three rising helices and orbiting embers.
@@ -177,6 +220,8 @@ extension _BetaSpellEffects on BetaArenaPainter {
         for (var i = 0; i < 5; i++) {
           final a = i * math.pi * 2 / 5;
           final height = (.9 + (i % 3) * .45) * growth;
+          final sway =
+              math.sin(phase * .6 + i) * (impact ? progress * .2 : .08);
           ribbon(
             [
               _V(math.cos(a) * .15, 0, math.sin(a) * .15),
@@ -187,7 +232,11 @@ extension _BetaSpellEffects on BetaArenaPainter {
             tint(0xFF9ED9D6, .8),
           );
           cloud(
-            _V(math.cos(a) * .4, height + progress * .6, math.sin(a) * .4),
+            _V(
+              math.cos(a) * .4 + sway,
+              height + progress * .9,
+              math.sin(a) * .4,
+            ),
             .36 + progress * .28,
             0xFFE7E3CD,
             .6,
@@ -195,12 +244,16 @@ extension _BetaSpellEffects on BetaArenaPainter {
         }
       case BetaCombo.eruption:
         final radius = impact ? combo!.radius : .85;
-        if (impact) pool(radius * .7 * growth, 0xFFA54B2C);
+        if (impact) {
+          pool(radius * .7 * growth, 0xFFA54B2C);
+          cracks(radius * ease(progress / .4), 0xFFFFC269);
+        }
         for (var i = 0; i < 7; i++) {
           final a = i * math.pi * 2 / 7;
           final r = radius * (impact ? .25 + progress * .6 : .55);
           final height = impact
-              ? math.sin(progress * math.pi) * (1.4 + i % 2 * .4)
+              ? math.max(0.0, 4 * progress * (1 - progress)) *
+                    (1.4 + i % 2 * .4)
               : .35;
           final point = _V(math.cos(a) * r, height, math.sin(a) * r);
           gem(point, const _V(.24, .32, .24), 0xFF68523F);
@@ -214,7 +267,11 @@ extension _BetaSpellEffects on BetaArenaPainter {
           final a = i * math.pi / 3 + phase * .1;
           final r = radius * (impact ? .2 + progress * .5 : .45);
           cloud(
-            _V(math.cos(a) * r, .22 + (i % 2) * .15, math.sin(a) * r),
+            _V(
+              math.cos(a) * r,
+              .22 + (i % 2) * .15 + progress * .3,
+              math.sin(a) * r,
+            ),
             radius * .26 * growth,
             0xFFBBD8CB,
             .38,
@@ -240,7 +297,10 @@ extension _BetaSpellEffects on BetaArenaPainter {
         }
         for (var i = 0; i < 6; i++) {
           final a = i * math.pi / 3;
-          final y = impact ? math.sin(progress * math.pi) * .65 : .25;
+          // Heavy droplets fall earlier than water; the puddle stays flat.
+          final y = impact
+              ? math.max(0.0, 3 * progress * (1 - progress * 1.4))
+              : .25;
           gem(
             _V(math.cos(a) * radius * .7, y, math.sin(a) * radius * .7),
             const _V(.19, .22, .15) * growth,
@@ -250,10 +310,16 @@ extension _BetaSpellEffects on BetaArenaPainter {
       case BetaCombo.shards:
         // Sharp fragments fan outward; stone is angular, air is a thin crescent.
         for (var i = 0; i < 7; i++) {
-          final a = i * math.pi * 2 / 7 + phase;
+          final a = i * math.pi * 2 / 7 + (impact ? .25 : phase);
           final r = impact ? .25 + progress * .8 : .6;
           gem(
-            _V(math.cos(a) * r, .6 + math.sin(a * 2) * .3, math.sin(a) * r),
+            _V(
+              math.cos(a) * r,
+              impact
+                  ? .15 + math.sin(progress * math.pi) * (.8 + i % 2 * .3)
+                  : .6 + math.sin(a * 2) * .3,
+              math.sin(a) * r,
+            ),
             _V(.1, .32 * growth, .12),
             i.isEven ? 0xFFD0C8A4 : 0xFF8A9486,
           );
@@ -281,6 +347,20 @@ extension _BetaSpellEffects on BetaArenaPainter {
                 .15,
                 i.isEven ? 0xFFE88739 : 0xFFFFCD6C,
               );
+            }
+            if (impact) {
+              for (var i = 0; i < 4; i++) {
+                final a = i * math.pi / 2 + .3;
+                gem(
+                  _V(
+                    math.cos(a) * progress,
+                    progress * (1.8 - progress),
+                    math.sin(a) * progress,
+                  ),
+                  const _V(.045, .1, .045),
+                  0xFFFFD483,
+                );
+              }
             }
           case BetaElement.water:
             // Crown splash, falling droplets and two expanding water ripples.
@@ -318,6 +398,7 @@ extension _BetaSpellEffects on BetaArenaPainter {
             }
           case BetaElement.earth:
             if (impact) {
+              cracks(1.05 * ease(progress / .35), 0xFF5C503C);
               for (var i = 0; i < 5; i++) {
                 final a = i * math.pi * 2 / 5;
                 gem(
@@ -330,6 +411,87 @@ extension _BetaSpellEffects on BetaArenaPainter {
             }
         }
     }
+    // Directional tails exist only in flight and never precede the launch point.
+    // Replaces the old shared trail, rather than stacking particle emitters.
+    if (flight && !reduceMotion && travel > 0) {
+      final length = math.min(travel, 1.1) / scale;
+      final solid =
+          combo == BetaCombo.eruption ||
+          combo == BetaCombo.mud ||
+          combo == BetaCombo.shards ||
+          (combo == null && element == BetaElement.earth);
+      if (solid) {
+        for (var i = 1; i <= 3; i++) {
+          final t = i / 3, wobble = math.sin(phase + i) * .12;
+          final color = combo == BetaCombo.eruption
+              ? 0xFFEFA154
+              : combo == BetaCombo.mud
+              ? 0xFF927349
+              : 0xFFC5BA99;
+          gem(
+            _V(wobble, -.12 * t, -length * t),
+            _V(.12, combo == BetaCombo.shards ? .23 : .12, .18) * (1 - t * .65),
+            color,
+            1 - t * .55,
+          );
+        }
+      } else {
+        final hot = element == BetaElement.fire && combo != BetaCombo.steam;
+        final color = hot
+            ? 0xFFFFCB78
+            : combo == BetaCombo.steam
+            ? 0xFFE6E8D6
+            : element == BetaElement.wind
+            ? 0xFFD0E4C7
+            : 0xFF8DD2D7;
+        for (var strand = 0; strand < 2; strand++) {
+          ribbon(
+            [
+              for (var i = 0; i <= 5; i++)
+                _V(
+                  math.sin(phase + i * .8 + strand * math.pi) * .18 * i / 5,
+                  strand * .15 + (hot ? .15 : -.08) * i / 5,
+                  -length * i / 5,
+                ),
+            ],
+            hot ? .18 : .09,
+            tint(color, .65 - strand * .15),
+          );
+        }
+      }
+    }
+    _spellFaceCount += faces.length - before;
+  }
+
+  void _conjureVisual(
+    List<_Face> faces,
+    _V center,
+    BetaElement element,
+    BetaCombo? combo,
+    double charge,
+    double yaw,
+  ) {
+    if (combo == null || charge >= .45) {
+      final gathered = combo == null ? charge : ((charge - .45) / .55);
+      _spellVisual(
+        faces,
+        center,
+        element,
+        combo: combo,
+        yaw: yaw,
+        power: combo == null ? .35 + charge * .9 : .15 + gathered * 1.1,
+      );
+      return;
+    }
+    final before = faces.length;
+    final remaining = 1 - charge / .45;
+    final angle = (reduceMotion ? 0 : charge * math.pi * 2) + yaw;
+    final orbit =
+        _V(math.cos(angle), .25 * math.sin(angle), math.sin(angle)) *
+        (.4 * remaining);
+    final power = .12 + .45 * math.sin(remaining * math.pi / 2);
+    _spellShape(faces, center + orbit, combo.first, yaw: yaw, power: power);
+    _spellShape(faces, center - orbit, combo.second, yaw: yaw, power: power);
     _spellFaceCount += faces.length - before;
   }
 }
